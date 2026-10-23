@@ -1,0 +1,11 @@
+# Planning kit
+packs/
+__pycache__/
+*.pyc
+
+# Godot (for game/, later)
+.godot/
+*.import.tmp
+export_presets.cfg.bak
+
+.DS_Store

@@ -9,3 +9,6 @@ __pycache__/
 export_presets.cfg.bak
 
 .DS_Store
+
+# Builds
+build/

@@ -5,14 +5,33 @@ that introduces them. Alphabetical within each section.
 
 ## Game terms
 
-To be filled in Phase 1 and 2. Likely candidates: creature, species,
-part, seam, stuffing, fluff, condition, wetness, mold, habitat,
-expedition, package, theme.
+Working definitions from the first pitch session (2026-10-23). None
+are owned by a system yet; Phase 2 assigns owners.
 
-Format:
+Format: **Term**: definition in one or two sentences. *Owned by:*
+system. *Not to be confused with:* other term, if any.
 
-**Term**: definition in one or two sentences. *Owned by:* system.
-*Not to be confused with:* other term, if any.
+Still to define: species, seam, stuffing, fluff, condition, wetness,
+mold, habitat, expedition, package, theme.
+
+**Creature**: a stitched, doll-like animal the player cares for, plays
+with and repairs. *Owned by:* no system yet. *Not to be confused
+with:* species.
+
+**Part**: a piece of a creature: a limb, an eye, an accessory. A part
+can rot, be ripped off, be sewn on, or be added. *Owned by:* no system
+yet.
+
+**Play**: interacting with a creature for its own sake: poking,
+feeding, minigames, watching it react. The preferred word over
+"train". *Owned by:* no system yet.
+
+**Quest**: a task a creature is sent on and comes back from changed.
+*Owned by:* no system yet. *Not to be confused with:* minigame.
+
+**Repair**: ripping off a rotting part and sewing on a replacement or
+an addition. A repaired creature is never the same as before. *Owned
+by:* no system yet.
 
 ## Planning terms
 

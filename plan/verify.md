@@ -2,7 +2,7 @@
 
 Technical claims waiting for a Verifier session (`kit/sessions/verifier.md`).
 One line each: number, claim, where it's used, how to confirm. Ticked
-items are cleared by Cleanup. Next number: V-012.
+items are cleared by Cleanup. Next number: V-014.
 
 ## Open
 
@@ -17,6 +17,8 @@ items are cleared by Cleanup. Next number: V-012.
 - [ ] V-009: Changing Godot's 2D physics engine is a project setting that needs no game-code changes. (decisions/0005) Confirm in: Godot docs, Rapier plugin docs.
 - [ ] V-010: Godot 2D joints don't break on their own; breaking must be scripted. (first chat; will feed systems/creature-body) Confirm in: Godot class reference, Joint2D.
 - [ ] V-011: The current stable Godot is 4.7.1. (first chat) Confirm on: godotengine.org.
+- [ ] V-012: In Trauma Center (DS), the player does the cutting and stitching directly with the stylus. (00-vision/pitch.md) Confirm in: game reviews or a playthrough.
+- [ ] V-013: The Nightmare Before Christmas is stop-motion; 9 is computer-animated, not stop-motion; check how Tim Burton was involved in each. (00-vision/pitch.md) Confirm in: the films' production notes.
 
 ## Done
 

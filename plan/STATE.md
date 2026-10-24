@@ -14,8 +14,8 @@ core playing its golden loops (spike 2).
 
 ## Next steps
 
-1. Mikey switches on GitHub Pages (`game/README.md`) and plays the
-   build on his phone, then answers the questions in
+1. Mikey plays the build on his phone (live at
+   https://nowmichaelclark.github.io/brokenfriends/), then answers the questions in
    `prototypes/01-first-five-minutes.md`.
 2. Mikey answers the 21 numbered points from the recording (decisions,
    assumptions, questions) in the planning chat; Claude records them.
@@ -27,7 +27,7 @@ core playing its golden loops (spike 2).
 
 ## Blockers
 
-None. GitHub Pages needs switching on by Mikey (admin setting).
+None.
 
 ## Decided so far
 

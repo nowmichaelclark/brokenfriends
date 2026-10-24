@@ -8,8 +8,8 @@ contain transcription slips. Likely ones: "Grosstop's" = "gross stops";
 part"; "rich creature" = "which creature"; "just after the movie" =
 probably "just like a movie"; "someone else could plan and joy" =
 "play and enjoy"; "most vocal programmers" = probably the most critical
-programmers. "Bear" means the creature. Raw material, not decisions;
-Claude's reading of it is in `2026-10-24-recording-2-digest.md`.
+programmers. "Bear" means the creature. Raw material; Mikey confirmed
+Claude's reading of it on 2026-10-25, recorded as decisions 0022 to 0041.
 
 ---
 

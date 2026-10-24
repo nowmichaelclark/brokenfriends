@@ -11,7 +11,7 @@ it. Research notes go in `research/`.
 **The care, train, send-out loop**
 - Tamagotchi: the starting point (Mikey's reference).
 - Chao Garden (Sonic Adventure 1 and 2): feeding changes looks and stats; minigame training; races.
-- Monster Rancher: training drills; "errantry" trips away that change the creature.
+- Monster Rancher: training drills; "errantry" trips away that change the friend.
 - Digimon World (PS1): weight, care mistakes and their consequences.
 - Fallout Shelter: exploring continues while the app is closed.
 
@@ -22,14 +22,14 @@ it. Research notes go in `research/`.
 - Little Inferno: the pleasure of watching toys react.
 
 **Physical bodies**
-- Rain World: physics-driven 2D creature animation (its developer's GDC 2016 talk).
+- Rain World: physics-driven 2D friend animation (its developer's GDC 2016 talk).
 - People Playground: layered body and limb systems (borrow the logic, not the gore).
 - World of Goo, Gish, JellyCar: 2D squishiness from springs and points.
 - Gang Beasts: wobbly physics characters.
 
 **The stitched, fabric look**
 - LittleBigPlanet, Kirby's Epic Yarn, Yoshi's Woolly World, Unravel.
-- The films *9* and *The Nightmare Before Christmas* (Mikey's references for the creatures).
+- The films *9* and *The Nightmare Before Christmas* (Mikey's references for the friends).
 
 **Carrying and ecosystems**
 - Pikmin: weight decides carrying speed and how many helpers are needed.

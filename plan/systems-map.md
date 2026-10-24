@@ -13,7 +13,7 @@ Rules:
 
 - Every piece of data has one owner. Other systems read it or ask the
   owner to change it.
-- Prefer events ("creature got wet") over systems reaching into each
+- Prefer events ("friend got wet") over systems reaching into each
   other's data. It keeps them separable, and lets `audio-music` listen
   without the others knowing it exists.
 

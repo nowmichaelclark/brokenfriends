@@ -37,7 +37,7 @@ budgets, the development workflow and the test scenes.
 How the build stays light, borrowed from Driftloom's habits:
 
 - Nothing is redrawn unless it changed. Detailed drawings (the tent,
-  each part of a creature) are made once into a picture and then only
+  each part of a friend) are made once into a picture and then only
   moved; a part is drawn again only when it changes (a new eye, mud).
 - Sounds are made ahead of time while the game starts, never in the
   middle of play.

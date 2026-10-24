@@ -1,14 +1,14 @@
 ---
 status: idea
 last_reviewed: 2026-10-24
-depends_on: [needs-growth, species-habitats, creature-body]
+depends_on: [needs-growth, species-habitats, friend-body]
 feeds: [expeditions, progression]
 ---
 # Play
 
 ## In charge of
 
-Toys, minigames, and how creatures grow their skills and stats (and may
+Toys, minigames, and how friends grow their skills and stats (and may
 learn new skills) by playing.
 
 ## Not in charge of
@@ -22,9 +22,9 @@ learn new skills) by playing.
 
 - "Play" instead of "train" (decision 0017): "Train sounds like a gym;
   yes their stats can increase from playing, but it is still largely
-  playing through which the creatures develop their skills or perhaps
+  playing through which the friends develop their skills or perhaps
   even learn new skills."
-- Creatures should be fun to poke and listen to, with toys, like
+- Friends should be fun to poke and listen to, with toys, like
   Nintendogs (Q-023).
 - References: Nintendogs; Chao Garden and Monster Rancher for stats
   that grow.
@@ -34,4 +34,4 @@ learn new skills) by playing.
 - Which skills and stats exist, and what does each change on quests?
 - How long is one minigame?
 - How do toys differ from minigames?
-- Can play wear a creature out or damage it?
+- Can play wear a friend out or damage it?

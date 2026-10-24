@@ -22,7 +22,7 @@ Built from Mikey's recording of 2026-10-24
 - **Grab the rotting leg and pull.** It stretches, fluff starts
   escaping, and it tears off with a burst of fluff and hydraulic fluid.
   Healthy limbs stretch a little and protest, but don't come off
-  (donating healthy parts is still open: Q-016).
+  (decision 0025 says they should, after several hard pulls).
 - **Toss it in the bin.** A spare leg (different fabric: they're never
   the same) then waits in a pocket on the right.
 - **Drag the spare onto the wound** to start surgery, which zooms in:
@@ -98,7 +98,7 @@ Rules the code follows:
 - **Systems talk through `Events`.** Driftloom music will listen there
   (decision 0016) without the rest of the game knowing.
 - **No image or sound files.** Everything is drawn and synthesized in
-  code, a first step toward generated art (Q-006).
+  code, a first step toward generated art (decision 0037).
 - **Draw once, then move** (Driftloom's habit). Nothing redraws every
   frame. Detailed drawings are baked into a picture with `Baked` and
   re-baked only when what they show changes; motion is done by moving
@@ -137,12 +137,13 @@ line) for frame time, the music's cost and draw calls, printed as
 These are guesses from the recording (see the numbered list in the
 planning chat). Each is easy to change.
 
-- Front view only; the creature never turns sideways.
+- Front view only; the creature never turns sideways (0031 adds the
+  back view).
 - Stuffing is weight: eating stuffing fills them out, losing it makes
   them thin (assumption 8).
 - Oil and hydraulic fluid keep joints loose; dry joints squeak and move
   stiffly (assumption 9).
 - A spare leg appears in the pocket once the rotten one is in the bin.
-- Each camp has a tent; surgery and play happen inside it (assumption 16).
-- Only rotting parts tear off; healthy parts can't be removed yet (Q-016).
+- Each camp has a tent; surgery and play happen inside it (assumption
+  16; 0031 moves surgery to its own table, lying down).
 - The creature naps after about 40 seconds alone in the play corner.

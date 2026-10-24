@@ -50,7 +50,7 @@ planned from the start?
 
 ## Phase 3: deep pass, the core trio
 
-Produce: `creature-body`, `condition` and `care-touch` at full depth,
+Produce: `friend-body`, `condition` and `care-touch` at full depth,
 enough to build the first toy. Everything else stays shallow.
 
 Sessions: Brain (F), Drafter (F), Red team (F), Verifier (M) to clear
@@ -62,7 +62,7 @@ prototype and the yardsticks for judging it.
 
 ## Prototype 1: the toy
 
-Not planning, but it closes the phase. One creature on Mikey's phone
+Not planning, but it closes the phase. One friend on Mikey's phone
 that can be poked, dragged, torn, sewn and overfed. Mikey plays it, and
 the results go in `prototypes/`. Docs are updated with what it taught
 and moved to `prototyped`.

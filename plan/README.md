@@ -1,7 +1,7 @@
 # Broken Friends: the plan
 
 This folder holds the **plans** for Broken Friends, a 2D, mobile-first
-creature-care game: stuffed creatures you feed, soak, rip and sew,
+friend-care game: stuffed friends you feed, soak, rip and sew,
 train with minigames, and send out on delivery runs. Game code goes in
 `../game/` once the planning gates say so (see `kit/PHASES.md`).
 
@@ -16,7 +16,7 @@ Run these from inside `plan/` (`cd ~/projects/brokenfriends/plan`).
 
 ```bash
 # 1. Build a session pack: the brief, the rules and only the files needed
-python3 kit/tools/pack.py drafter systems/creature-body/README.md \
+python3 kit/tools/pack.py drafter systems/friend-body/README.md \
     --task "Turn my notes into a full draft of this system doc." --copy
 
 # 2. Paste the pack into any chat model. Talk it through. When the model
@@ -28,7 +28,7 @@ python3 kit/tools/check.py
 
 # 4. Look at what changed, then commit
 git diff
-git add -A && git commit -m "Drafter: creature-body first draft"
+git add -A && git commit -m "Drafter: friend-body first draft"
 ```
 
 `--copy` and `wl-paste` use your clipboard (on Fedora KDE, `wl-clipboard`:

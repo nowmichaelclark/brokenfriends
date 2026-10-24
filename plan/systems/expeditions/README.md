@@ -1,14 +1,14 @@
 ---
 status: idea
 last_reviewed: 2026-10-23
-depends_on: [play, needs-growth, condition, creature-body, species-habitats, time-save]
+depends_on: [play, needs-growth, condition, friend-body, species-habitats, time-save]
 feeds: [progression, condition, needs-growth, audio-music]
 ---
 # Expeditions
 
 ## In charge of
 
-Sending creatures out to pick up and deliver packages: the routes, the
+Sending friends out to pick up and deliver packages: the routes, the
 terrain, carrying, what can go wrong, time away and the rewards.
 
 ## Not in charge of
@@ -27,5 +27,5 @@ terrain, carrying, what can go wrong, time away and the rewards.
 ## First questions
 
 - Does the player watch or control a delivery, or only send and wait?
-- Can a creature be lost or badly hurt on an expedition?
-- Do several creatures carry together?
+- Can a friend be lost or badly hurt on an expedition?
+- Do several friends carry together?

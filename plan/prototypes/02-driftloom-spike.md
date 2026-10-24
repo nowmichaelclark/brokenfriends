@@ -21,7 +21,7 @@ reference hashes; a test that renders them in the game and compares.
 ## Out of scope
 
 Writing new music in Rust (Driftloom's generator is still JavaScript
-until its phase 2), creature themes, music that follows the camp,
+until its phase 2), friend themes, music that follows the camp,
 Android and Windows libraries.
 
 ## How it was judged

@@ -13,8 +13,8 @@ new places, and anything earned or spent.
 
 ## Not in charge of
 
-- An individual creature's growth: `needs-growth`.
-- An individual creature's skills: `play`.
+- An individual friend's growth: `needs-growth`.
+- An individual friend's skills: `play`.
 
 ## Seed notes
 

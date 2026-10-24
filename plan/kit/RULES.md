@@ -20,7 +20,7 @@ each **whole file** sits between marker lines, like this:
 
 ```
     ~~~~
-    === FILE: systems/creature-body/README.md ===
+    === FILE: systems/friend-body/README.md ===
     (the complete file, raw markdown, from first line to last)
     === END FILE ===
 
@@ -62,7 +62,7 @@ Every factual claim you haven't checked against a real source in this
 session gets `[unverified]` right after it, and one line in `verify.md`:
 
 ```
-- [ ] V-012: Godot 2D joints do not break on their own. (systems/creature-body) Confirm in: Godot class reference for Joint2D.
+- [ ] V-012: Godot 2D joints do not break on their own. (systems/friend-body) Confirm in: Godot class reference for Joint2D.
 ```
 
 If you did check it, cite the source in the doc's **Sources** section

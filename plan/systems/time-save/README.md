@@ -13,7 +13,7 @@ and saving and loading everything.
 
 ## Not in charge of
 
-- What time does to a creature: each system's own rules, applied when
+- What time does to a friend: each system's own rules, applied when
   this system says time has passed.
 - Where saves are stored on each platform: `platforms-tech`.
 

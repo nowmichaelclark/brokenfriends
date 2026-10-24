@@ -4,11 +4,11 @@ last_reviewed: 2026-10-23
 depends_on: [species-habitats, condition]
 feeds: [care-touch, condition, needs-growth, expeditions, art-direction]
 ---
-# Creature body
+# Friend body
 
 ## In charge of
 
-The physical creature: its parts, the seams that hold them together,
+The physical friend: its parts, the seams that hold them together,
 its skeleton, and how it moves, flops and comes apart.
 
 ## Not in charge of
@@ -23,12 +23,12 @@ its skeleton, and how it moves, flops and comes apart.
 
 - Limbs can be pulled off and sewn back on.
 - Gets visibly big when overfed, skinny when underfed.
-- Stuffed, stitched creatures (teddy bear, the dolls from *9*).
+- Stuffed, stitched friends (teddy bear, the dolls from *9*).
 - Squishiness will likely need to be faked with springs or a wobble
   effect [unverified].
 
 ## First questions
 
 - What is a "part", and what is a "seam"?
-- What does a creature with a missing limb do?
-- Can parts be swapped between creatures?
+- What does a friend with a missing limb do?
+- Can parts be swapped between friends?

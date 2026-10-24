@@ -4,7 +4,7 @@ Read this first in every session, whatever model you are.
 
 ## What this is
 
-The plans for **Broken Friends**, a 2D, mobile-first creature-care game.
+The plans for **Broken Friends**, a 2D, mobile-first friend-care game.
 Planning only: no game code yet. Mikey is the designer and the only one
 who decides. You help him think, draft, check and criticize.
 

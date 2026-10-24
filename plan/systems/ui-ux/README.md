@@ -13,7 +13,7 @@ and accessibility.
 
 ## Not in charge of
 
-- What each gesture does to a creature: `care-touch`.
+- What each gesture does to a friend: `care-touch`.
 - The visual style: `art-direction`.
 
 ## Seed notes (from the first chat, unconfirmed)
@@ -24,5 +24,5 @@ and accessibility.
 ## First questions
 
 - Portrait or landscape?
-- How does the player move between creatures and places?
-- Push notifications when a creature needs care? (careful: nagging)
+- How does the player move between friends and places?
+- Push notifications when a friend needs care? (careful: nagging)

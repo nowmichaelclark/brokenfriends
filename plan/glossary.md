@@ -14,36 +14,37 @@ system. *Not to be confused with:* other term, if any.
 Still to define: species, seam, stuffing, fluff, condition, wetness,
 mold, habitat, expedition, package, theme.
 
-**Camp**: the place the player mostly stays, with their creatures,
-tools and tents. A creature that is not on a quest is at camp. *Owned
+**Camp**: the place the player mostly stays, with their friends,
+tools and tents. A friend that is not on a quest is at camp. *Owned
 by:* no system yet. *Not to be confused with:* habitat, expedition.
 
-**Creature**: a stitched, doll-like animal the player cares for, plays
-with and repairs. *Owned by:* no system yet. *Not to be confused
-with:* species.
-
-**Donation**: moving a part from one creature to another: a rotting
-limb replaced, or a healthy spare part given. A sewn part is permanent
-(decision 0011). *Owned by:* no system yet. *Not to be confused with:*
+**Donation**: moving a part from one friend to another: a rotting
+limb replaced, or a healthy spare part given. The donor is left without
+the part (0025). A sewn part is permanent (0011). *Owned by:* no system yet. *Not to be confused with:*
 repair.
 
-**Keepsake**: a part left behind when a creature dies fully. Higher
-quality parts are more likely to survive. Keepsakes are the only thing
-death leaves behind (decision 0011). *Owned by:* no system yet.
+**Friend**: a stitched, doll-like being the player cares for, plays
+with and repairs; the game's word for them (decision 0022). Not
+"creature". *Owned by:* no system yet. *Not to be confused with:*
+species.
 
-**Part**: a piece of a creature: a limb, an eye, an accessory. A part
+**Keepsake**: a part left behind when a friend dies. Died at camp:
+nearly all its parts; died on a quest: one or two (decision 0026).
+The friend itself never comes back (0011). *Owned by:* no system yet.
+
+**Part**: a piece of a friend: a limb, an eye, an accessory. A part
 can rot, be ripped off, be sewn on, be added, or be donated to another
-creature. *Owned by:* no system yet.
+friend. *Owned by:* no system yet.
 
-**Play**: interacting with a creature for its own sake: poking,
+**Play**: interacting with a friend for its own sake: poking,
 feeding, minigames, watching it react. The preferred word over
 "train". *Owned by:* no system yet.
 
-**Quest**: a task a creature is sent on and comes back from changed.
+**Quest**: a task a friend is sent on and comes back from changed.
 *Owned by:* no system yet. *Not to be confused with:* minigame.
 
 **Repair**: ripping off a rotting part and sewing on a replacement or
-an addition. A repaired creature is never the same as before. *Owned
+an addition. A repaired friend is never the same as before. *Owned
 by:* no system yet. *Not to be confused with:* donation.
 
 ## Planning terms

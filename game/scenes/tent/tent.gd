@@ -123,7 +123,7 @@ func _ready() -> void:
 
 func set_active(on: bool) -> void:
 	visible = on
-	layer.visible = on
+	layer.visible = on and not Flags.has("nohud")
 	process_mode = Node.PROCESS_MODE_INHERIT if on else Node.PROCESS_MODE_DISABLED
 	if on:
 		camera.make_current()

@@ -61,7 +61,7 @@ this build" in `game/README.md` and are asked, never decided.
   place, close enough to see stitches, front and back. *Done when:*
   reached from the tent, and sharp at full zoom. (Done for the front;
   the back view comes with B8.)
-- [ ] **B8. Generated friends, first cut** (0037). A few body plans
+- [x] **B8. Generated friends, first cut** (0037). A few body plans
   with generated heads, ears, colours, fabric and proportions; front
   and back; thin friends wobble, plump ones bounce; a voice per
   friend. *Done when:* 20 seeds look clearly different, parts swap

@@ -37,6 +37,10 @@ const SLOTS := ["leg_l", "leg_r", "arm_l", "arm_r", "eye_l", "eye_r"]
 @export var stamina := 0.0
 ## Death is final (0011).
 @export var dead := false
+## How the head and body look (decision 0037; see Looks). Empty means
+## the sketch's bear. The head's look goes with the head (0026).
+@export var head_look: Dictionary = {}
+@export var body_look: Dictionary = {}
 ## The head's own fabric (it can end up on a body of another colour,
 ## decision 0026).
 @export var head_fabric := Color(0, 0, 0, 0)
@@ -47,6 +51,16 @@ const SLOTS := ["leg_l", "leg_r", "arm_l", "arm_r", "eye_l", "eye_r"]
 ## for about a day (0026). `off_at` is when it came off (game time).
 @export var head_only := false
 @export var off_at := 0.0
+
+
+## One value of the head's look.
+func hl(key: String):
+	return head_look.get(key, Looks.bear_head()[key])
+
+
+## One value of the body's look.
+func bl(key: String):
+	return body_look.get(key, Looks.bear_body()[key])
 
 
 func head_color() -> Color:
@@ -95,6 +109,7 @@ func take_head(now: float) -> FriendData:
 	var body := FriendData.new()
 	body.name = "Body"
 	body.headless = true
+	body.body_look = body_look
 	body.look_seed = look_seed
 	body.body_fabric = body_fabric
 	body.trim = trim
@@ -121,6 +136,7 @@ func take_head(now: float) -> FriendData:
 func join_body(body: FriendData) -> void:
 	for slot in ["arm_l", "arm_r", "leg_l", "leg_r"]:
 		parts[slot] = body.parts.get(slot)
+	body_look = body.body_look
 	body_fabric = body.body_fabric
 	trim = body.trim
 	stuffing = body.stuffing
@@ -244,7 +260,7 @@ func to_dict() -> Dictionary:
 		"mud": mud, "asleep": asleep,
 		"tickle_spot": [tickle_spot.x, tickle_spot.y],
 		"catch_skill": catch_skill, "parts": pd,
-		"stamina": stamina, "met": met,
+		"stamina": stamina, "met": met, "head_look": head_look, "body_look": body_look,
 		"brain": brain, "dead": dead, "head_fabric": head_color().to_html(),
 		"headless": headless, "head_only": head_only, "off_at": off_at,
 	}
@@ -267,6 +283,8 @@ static func from_dict(d: Dictionary) -> FriendData:
 	c.brain = d.get("brain", 1.0)
 	c.stamina = d.get("stamina", 0.0)
 	c.met = d.get("met", true)
+	c.head_look = d.get("head_look", {})
+	c.body_look = d.get("body_look", {})
 	c.dead = d.get("dead", false)
 	c.head_fabric = Color.html(d.get("head_fabric", c.body_fabric.to_html()))
 	c.headless = d.get("headless", false)
@@ -344,8 +362,12 @@ static func test_friend(seed_value: int) -> FriendData:
 	var c := FriendData.new()
 	c.name = "Test friend %d" % seed_value
 	c.look_seed = seed_value
-	c.body_fabric = Color.from_hsv(rng.randf(), rng.randf_range(0.2, 0.5), rng.randf_range(0.5, 0.8))
-	c.trim = Color.from_hsv(rng.randf(), rng.randf_range(0.05, 0.2), rng.randf_range(0.85, 0.97))
+	var look := Looks.generate(seed_value)
+	c.head_look = look["head"]
+	c.body_look = look["body"]
+	c.body_fabric = look["fabric"]
+	c.head_fabric = look["fabric"]
+	c.trim = look["trim"]
 	c.stuffing = rng.randf_range(0.7, 1.05)
 	c.tickle_spot = Vector2(rng.randf_range(-60, 60), rng.randf_range(-10, 80))
 	for slot in SLOTS:

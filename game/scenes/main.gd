@@ -13,6 +13,13 @@ func _ready() -> void:
 		if arg.begins_with("--flow-test"):
 			flow_arg = arg
 			Save.new_game()
+	var gallery := Flags.value("gallery", "none")
+	if gallery != "none" or Flags.has("gallery"):
+		# Test: twenty generated friends side by side (tests/gallery.gd).
+		var g: Node2D = load("res://tests/gallery.gd").new()
+		g.out_dir = gallery if gallery != "none" else ""
+		add_child(g)
+		return
 	if Flags.has("empty"):
 		# Debug: nothing but the engine, to measure its own cost per frame.
 		add_child(load("res://debug/perf_overlay.gd").new())

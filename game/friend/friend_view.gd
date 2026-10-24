@@ -8,14 +8,17 @@ extends Node2D
 ## droopy lids, a slow heart patch and a pale, wet or muddy coat.
 
 const HEAD_C := Vector2(0, -200)
+## The head's size for things outside the view that need a rough figure
+## (the play corner's ball); the real size comes from the look.
 const HEAD_R := 100.0
-const EYE_R := 21.0
 const ARM_LEN := 100.0
 const LEG_LEN := 100.0
 
 var data: FriendData
 var fx: FxLayer
 
+## "front" or "back" (decision 0031: front and back only).
+var facing := "front"
 ## Arms raised, as when catching a ball.
 var arms_up := false
 ## Set while walking in the play corner; swings the legs.
@@ -104,21 +107,35 @@ func head_center() -> Vector2:
 
 func eye_anchor(slot: String) -> Vector2:
 	var side := -1.0 if slot == "eye_l" else 1.0
-	return head_center() + Vector2(side * 40.0, -12.0)
+	return head_center() + FriendArt.eye_pos(data, side)
+
+
+func eye_radius() -> float:
+	return FriendArt.eye_radius(data)
 
 
 func mouth_pos() -> Vector2:
-	return head_center() + Vector2(0, 50)
+	return head_center() + FriendArt.mouth_pos(data)
+
+
+## Body width and height from the look (0037).
+func body_w() -> float:
+	return float(data.bl("w")) if data else 1.0
+
+
+func body_h() -> float:
+	return float(data.bl("h")) if data else 1.0
 
 
 func socket(slot: String) -> Vector2:
-	var s := body_scale()
+	var s := body_scale() * body_w()
+	var h := body_h()
 	match slot:
-		"arm_l": return Vector2(-98.0 * s, -62.0)
-		"arm_r": return Vector2(98.0 * s, -62.0)
-		"leg_l": return Vector2(-46.0 * s, 108.0)
-		"leg_r": return Vector2(46.0 * s, 108.0)
-		"neck": return Vector2(0, -128.0)
+		"arm_l": return Vector2(-98.0 * s, -62.0 * h)
+		"arm_r": return Vector2(98.0 * s, -62.0 * h)
+		"leg_l": return Vector2(-46.0 * s, 108.0 * h)
+		"leg_r": return Vector2(46.0 * s, 108.0 * h)
+		"neck": return Vector2(0, -128.0 * h)
 	return Vector2.ZERO
 
 
@@ -158,7 +175,7 @@ func tip(slot: String) -> Vector2:
 
 ## Where the feet touch the ground, in local units.
 func feet_y() -> float:
-	return 108.0 + LEG_LEN + 24.0
+	return 108.0 * body_h() + LEG_LEN + 24.0
 
 
 # --- Hit tests ----------------------------------------------------------
@@ -166,7 +183,7 @@ func feet_y() -> float:
 ## The limb or dangling eye under a local point, or "".
 func part_at(p: Vector2) -> String:
 	var eye: PartData = data.part("eye_r")
-	if eye and not eye.attached and p.distance_to(_eye_pos) < EYE_R + 16.0:
+	if eye and not eye.attached and p.distance_to(_eye_pos) < eye_radius() + 16.0:
 		return "eye_r"
 	for slot in ["arm_l", "arm_r", "leg_l", "leg_r"]:
 		if data.part(slot) == null:
@@ -184,22 +201,32 @@ func region_at(p: Vector2) -> String:
 	var hc := head_center()
 	if p.distance_to(mouth_pos()) < 46.0:
 		return "mouth"
-	if p.distance_to(hc) < HEAD_R + 6.0 or _in_ears(p):
-		return "head_top" if p.y < hc.y - 52.0 else "head"
+	var hrx := FriendArt.head_rx(data) + 6.0
+	var hry := FriendArt.head_ry(data) + 6.0
+	if not data.headless and (pow((p.x - hc.x) / hrx, 2) + pow((p.y - hc.y) / hry, 2) <= 1.0 or _in_ears(p)):
+		return "head_top" if p.y < hc.y - hry * 0.55 else "head"
 	var s := body_scale()
 	var spot := Vector2(data.tickle_spot.x * s, data.tickle_spot.y)
 	if p.distance_to(spot) < 42.0:
 		return "tickle"
-	var rx := 112.0 * s
-	var ry := 132.0
+	var rx := 112.0 * s * body_w()
+	var ry := 132.0 * body_h()
 	if pow(p.x / rx, 2) + pow(p.y / ry, 2) <= 1.05:
 		return "body"
 	return ""
 
 
 func _in_ears(p: Vector2) -> bool:
-	var hc := head_center()
-	return p.distance_to(hc + Vector2(-72, -78)) < 34.0 or p.distance_to(hc + Vector2(72, -78)) < 34.0
+	var length := FriendArt.ear_length(data)
+	if length <= 0.0:
+		return false
+	for side in [-1.0, 1.0]:
+		var base := head_center() + FriendArt.ear_base(data, side)
+		var tip_at := base + Vector2(0, -length).rotated(FriendArt.ear_angle(data, side))
+		var q := Geometry2D.get_closest_point_to_segment(p, base, tip_at)
+		if p.distance_to(q) < 30.0:
+			return true
+	return false
 
 
 func is_on_friend(p: Vector2) -> bool:
@@ -268,7 +295,7 @@ func pet(p: Vector2, moved: float) -> void:
 		set_expression("squint", "smile", 0.6)
 		if _pet_sound <= 0.0:
 			Events.friend_reacted.emit("purr")
-			_fx("heart", head_center() + Vector2(0, -HEAD_R), 1, 20.0)
+			_fx("heart", head_center() + Vector2(0, -FriendArt.head_ry(data)), 1, 20.0)
 			_pet_sound = 1.1
 
 
@@ -433,7 +460,7 @@ func drag_head(p: Vector2, delta: float) -> bool:
 		if l > 130.0 and _pull_time > 0.3 and not _pull_counted:
 			_pull_counted = true
 			_neck_pulls += 1
-			_fx("fluff", HEAD_C + Vector2(0, HEAD_R * 0.8), 4, 16.0)
+			_fx("fluff", HEAD_C + Vector2(0, FriendArt.head_ry(data) * 0.8), 4, 16.0)
 			Voice.tear(0.3)
 			_shake = 0.6
 			if _neck_pulls >= 3:
@@ -682,6 +709,9 @@ var _heart: Baked
 var _limb_nodes: Dictionary = {}
 var _head: Node2D
 var _head_art: Baked
+## The ears, -1 (left) and 1 (right): their own pictures, so they can
+## swing (thin, long ears droop and swing; 0037).
+var _ear_nodes: Dictionary = {}
 var _face: Baked
 var _dangle: Part
 var _surgery_art: Part
@@ -693,7 +723,7 @@ func set_detail(d: float) -> void:
 	bake_detail = d
 	# Lying on the table (more detail), the floor shadow would show.
 	_shadow.visible = d <= 2.0
-	for b in [_shadow, _body, _heart, _head_art, _face]:
+	for b in [_shadow, _body, _heart, _head_art, _face, _ear_nodes[-1.0], _ear_nodes[1.0]]:
 		b.set_resolution(d)
 	for slot in _limb_nodes:
 		_limb_nodes[slot].set_resolution(d)
@@ -718,17 +748,19 @@ func _baked(parent: Node, rect: Rect2, painter: Callable) -> Baked:
 func _build_parts() -> void:
 	if _rig:
 		return
-	_shadow = _baked(self, Rect2(-150, feet_y() - 18, 300, 44), _paint_shadow)
+	_shadow = _baked(self, Rect2(-170, 200, 340, 70), _paint_shadow)
 	_rig = Node2D.new()
 	add_child(_rig)
-	_body = _baked(_rig, Rect2(-140, -145, 280, 300), _paint_body)
+	_body = _baked(_rig, Rect2(-180, -180, 360, 380), _paint_body)
 	_heart = _baked(_rig, Rect2(-16, -12, 32, 30), _paint_heart)
 	for slot in ["leg_l", "leg_r", "arm_l", "arm_r"]:
 		_limb_nodes[slot] = _baked(_rig, Rect2(-40, -40, 80, 185), _paint_limb.bind(slot))
 	_head = Node2D.new()
 	_rig.add_child(_head)
-	_head_art = _baked(_head, Rect2(-112, -118, 224, 218), _paint_head)
-	_face = _baked(_head, Rect2(-72, -44, 144, 116), _paint_face)
+	for side in [-1.0, 1.0]:
+		_ear_nodes[side] = _baked(_head, Rect2(-44, -224, 88, 236), _paint_ear)
+	_head_art = _baked(_head, Rect2(-135, -130, 270, 270), _paint_head)
+	_face = _baked(_head, Rect2(-95, -64, 190, 160), _paint_face)
 	_dangle = _part(_rig, _paint_dangle)
 	_surgery_art = _part(_rig, _paint_surgery)
 
@@ -763,9 +795,16 @@ func _update_parts(wb: float) -> void:
 	var sit := Vector2(0, LEG_LEN * 0.85) if legs == 0 else Vector2.ZERO
 	if legs == 0:
 		lean = 0.0
+	# Build shows in how they move (0037): a thin friend wobbles, a plump
+	# one bounces.
+	var wobble := 0.0
+	var bounce := 1.0
+	if not data.dead and not data.asleep:
+		wobble = sin(_t * 2.6) * 0.05 * clampf((0.78 - data.stuffing) / 0.4, 0.0, 1.0)
+		bounce = 1.0 + absf(sin(_t * 3.2)) * 0.02 * clampf((data.stuffing - 1.02) / 0.4, 0.0, 1.0)
 	_rig.position = jitter + Vector2(0, _squash * feet_y()) + (Vector2(6, 22) if data.dead else Vector2.ZERO) + sit
-	_rig.rotation = sin(_t * 18.0) * 0.08 * _wiggle + (0.12 if data.dead else 0.0) + lean
-	_rig.scale = Vector2(1.0 + _squash, (1.0 - _squash) * breathe)
+	_rig.rotation = sin(_t * 18.0) * 0.08 * _wiggle + (0.12 if data.dead else 0.0) + lean + wobble
+	_rig.scale = Vector2(1.0 + _squash, (1.0 - _squash) * breathe * bounce)
 	_shadow.position = jitter
 	_shadow.refresh([_q(s, 0.02)])
 
@@ -783,11 +822,13 @@ func _update_parts(wb: float) -> void:
 	for slot in wounds:
 		wound_key.append(slot)
 		wound_key.append((wounds[slot] as Array).size())
-	_body.refresh([_q(s, 0.02), wq, wet, mud_body, wound_key])
+	var back := facing == "back"
+	_body.refresh([_q(s, 0.02), wq, wet, mud_body, wound_key, back, data.body_look.hash(), data.body_fabric])
 
 	_heart.position = Vector2(-42.0 * s, -52.0)
 	var pulse := 1.0 + maxf(0.0, sin(_beat)) * 0.12
 	_heart.scale = Vector2(pulse, pulse)
+	_heart.visible = not back
 	_heart.refresh([wq])
 
 	for slot in _limb_nodes:
@@ -805,12 +846,29 @@ func _update_parts(wb: float) -> void:
 
 	_head.visible = not data.headless
 	_head.position = head_center()
-	_head_art.refresh([wq, wet, mud_head, data.head_color()])
+	_head_art.refresh([wq, wet, mud_head, data.head_color(), back, data.head_look.hash()])
+	# Ears swing: long and thin ones most, and with every shake of the head.
+	var ears := str(data.hl("ears"))
+	var swing := 0.07 if ears in ["long", "floppy", "antennae"] else 0.015
+	if float(data.hl("ear_size")) < 1.0:
+		swing *= 1.5
+	if data.dead:
+		swing = 0.0
+	for side in _ear_nodes:
+		var ear: Baked = _ear_nodes[side]
+		ear.visible = ears != "none"
+		if not ear.visible:
+			continue
+		ear.position = FriendArt.ear_base(data, side)
+		ear.rotation = FriendArt.ear_angle(data, side) + sin(_t * 1.9 + side) * swing \
+			+ sin(_t * 30.0) * _shake * swing * 4.0 + _wiggle * sin(_t * 14.0) * swing * 3.0
+		ear.refresh([wq, wet, back, data.head_look.hash(), data.head_color()])
 	var mouth := _mouth_kind(wb)
 	var happy := _lid > 0.5 and _lid < 0.8 and (_expr_eyes == "squint" or _pet_amount > 110.0)
 	var eye_l: PartData = data.part("eye_l")
 	var eye_r: PartData = data.part("eye_r")
-	_face.refresh([_q(_lid, 0.04), mouth, happy, wq, wet,
+	_face.visible = not back
+	_face.refresh([data.head_look.hash(), _q(_lid, 0.04), mouth, happy, wq, wet,
 		eye_l != null and eye_l.stitched, eye_r != null and eye_r.attached, eye_r != null and eye_r.stitched,
 		int(_t * 6.0) if mouth == "wavy" else 0])
 
@@ -840,17 +898,14 @@ func _trim() -> Color:
 
 
 func _paint_shadow(ci: CanvasItem) -> void:
-	PlushArt.ellipse(ci, Vector2(0, feet_y() + 4.0), 120.0 * body_scale(), 16.0, Color(0, 0, 0, 0.22), false)
+	PlushArt.ellipse(ci, Vector2(0, feet_y() + 4.0), 120.0 * body_scale() * body_w(), 16.0, Color(0, 0, 0, 0.22), false)
 
 
 func _paint_body(ci: CanvasItem) -> void:
 	var wb := data.wellbeing()
 	var s := body_scale()
 	var fabric := _fabric(wb)
-	var ry := 132.0
-	PlushArt.ellipse(ci, Vector2.ZERO, 112.0 * s, ry, fabric)
-	PlushArt.ellipse(ci, Vector2(0, 28), 68.0 * s, 80.0, _trim(), false)
-	PlushArt.seam(ci, PackedVector2Array([Vector2(0, -ry + 10), Vector2(0, -60)]), fabric.darkened(0.35))
+	FriendArt.draw_body(ci, data, s, fabric, _trim(), facing == "back")
 	if data.wetness > 0.1:
 		ci.draw_arc(Vector2(30.0 * s, -40), 50.0, -1.2, -0.4, 10, Color(1, 1, 1, 0.35 * data.wetness), 4.0, true)
 	_paint_mud(ci, false, s, Vector2.ZERO)
@@ -879,34 +934,31 @@ func _paint_limb(ci: CanvasItem, slot: String) -> void:
 
 ## The head, centered on its node.
 func _paint_head(ci: CanvasItem) -> void:
-	var fabric := _head_fabric(data.wellbeing())
-	var trim := _trim()
-	for side in [-1.0, 1.0]:
-		var ear := Vector2(72.0 * side, -78.0)
-		PlushArt.ellipse(ci, ear, 34.0, 34.0, fabric)
-		PlushArt.ellipse(ci, ear, 19.0, 19.0, trim, false)
-	PlushArt.ellipse(ci, Vector2.ZERO, HEAD_R, HEAD_R * 0.94, fabric)
-	PlushArt.seam(ci, PackedVector2Array([Vector2(0, -HEAD_R + 8), Vector2(0, -30)]), fabric.darkened(0.35))
-	PlushArt.ellipse(ci, Vector2(0, 38), 48.0, 33.0, trim, false)
-	PlushArt.ellipse(ci, Vector2(0, 24), 12.0, 8.0, Color(0.22, 0.15, 0.13), false)
+	FriendArt.draw_head(ci, data, Vector2.ZERO, _head_fabric(data.wellbeing()), _trim(), facing == "back")
 	_paint_mud(ci, true, 1.0, -HEAD_C)
+
+
+## One ear, from its own base (the node sits where it joins the head).
+func _paint_ear(ci: CanvasItem) -> void:
+	FriendArt.draw_ear(ci, data, _head_fabric(data.wellbeing()), _trim(), facing == "back")
 
 
 ## Eyes and mouth, in the head's coordinates.
 func _paint_face(ci: CanvasItem) -> void:
 	var wb := data.wellbeing()
 	var fabric := _head_fabric(wb)
-	_paint_mouth(ci, _mouth_kind(wb), Vector2(0, 50))
+	_paint_mouth(ci, _mouth_kind(wb), FriendArt.mouth_pos(data))
 	var happy := _lid > 0.5 and _lid < 0.8 and (_expr_eyes == "squint" or _pet_amount > 110.0)
+	var r := eye_radius()
 	var eye_l: PartData = data.part("eye_l")
 	if eye_l:
-		PlushArt.button_eye(ci, Vector2(-40, -12), EYE_R, eye_l.fabric, _lid, fabric, eye_l.stitched, happy)
+		PlushArt.button_eye(ci, FriendArt.eye_pos(data, -1.0), r, eye_l.fabric, _lid, fabric, eye_l.stitched, happy)
 	var eye_r: PartData = data.part("eye_r")
 	if eye_r:
 		if eye_r.attached:
-			PlushArt.button_eye(ci, Vector2(40, -12), EYE_R, eye_r.fabric, _lid, fabric, eye_r.stitched, happy)
+			PlushArt.button_eye(ci, FriendArt.eye_pos(data, 1.0), r, eye_r.fabric, _lid, fabric, eye_r.stitched, happy)
 		else:
-			ci.draw_circle(Vector2(40, -12), 9.0, Color(0.12, 0.08, 0.07))
+			ci.draw_circle(FriendArt.eye_pos(data, 1.0), 9.0, Color(0.12, 0.08, 0.07))
 
 
 ## The eye hanging on its thread, in the friend's coordinates.
@@ -916,8 +968,8 @@ func _paint_dangle(ci: CanvasItem) -> void:
 		return
 	var anchor := eye_anchor("eye_r")
 	var mid := anchor.lerp(_eye_pos, 0.5) + Vector2(6, 10)
-	ci.draw_polyline(PackedVector2Array([anchor, mid, _eye_pos + Vector2(0, -EYE_R)]), PlushArt.THREAD, 2.5, true)
-	PlushArt.button_eye(ci, _eye_pos, EYE_R, eye_r.fabric, 0.0, _fabric(data.wellbeing()))
+	ci.draw_polyline(PackedVector2Array([anchor, mid, _eye_pos + Vector2(0, -eye_radius())]), PlushArt.THREAD, 2.5, true)
+	PlushArt.button_eye(ci, _eye_pos, eye_radius(), eye_r.fabric, 0.0, _head_fabric(data.wellbeing()))
 
 
 func _paint_mouth(ci: CanvasItem, kind: String, m: Vector2) -> void:

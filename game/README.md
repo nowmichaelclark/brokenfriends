@@ -91,6 +91,21 @@ changed: soaked, muddy, torn, missing a limb, or a little fitter, with
 supplies for the shelf, parts for the pocket, sometimes a new friend.
 A friend can die out there; then only a part or two comes back.
 
+**Generated friends** (step B8, decision 0037): every newcomer, found
+friend and test friend is made by maths from a seed, weighted like
+Driftloom (`data/looks.gd` holds the weights and ranges: the
+developer's sliders). Six body plans so far: bear, bunny, cat,
+monster, alien, and a plush ghost-like one; each with its own head
+shape, ears (round, long, floppy, pointy, horns, antennae), muzzle,
+nose, eye size and spacing, sometimes cheeks or a patch, body build,
+belly and tail, and colours. Thin friends wobble, plump ones bounce,
+long ears swing. Each friend has its own voice: one of three timbres
+and its own pitch. Friends can be seen from the back (in the play
+corner they sometimes wander off facing away), and any head fits any
+body. `-- --gallery=/tmp/gallery` (or `#gallery`) shows twenty side by
+side, from the back, and with heads swapped. The first two friends of
+the first day stay bears.
+
 **The surgery table** (step B7, decision 0031): sewing happens with
 the friend lying on its own table, under a lamp, after a quick fade;
 the camera comes in close enough to see each stitch, and the friend is
@@ -221,6 +236,9 @@ planning chat). Each is easy to change.
   leg torn off and the wound left open, in about two. A dead friend
   stays at camp until parts can be taken (step B4).
 - The sponge also scrubs the floor; bugs leave when tapped.
+- Body plans turn up bear 30%, bunny 18%, cat 18%, monster 14%,
+  alien 10%, ghost-like 10%; cheeks one in four, a head patch one in
+  seven.
 - Healthy parts take 3 hard pulls (4 for good parts, 5 for the best);
   a head takes 3. Pulling a head means dragging up and away from it;
   stroking it is petting.

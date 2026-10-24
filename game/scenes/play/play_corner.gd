@@ -32,6 +32,8 @@ var _walk_target := 360.0
 var _walk_timer := 0.0
 var _idle := 0.0
 var _base_y := 0.0
+## Wandering off to the back of the corner: seen from behind (0031).
+var _away := false
 
 
 func _ready() -> void:
@@ -216,16 +218,23 @@ func _process(delta: float) -> void:
 		_walk_timer -= delta
 		if _walk_timer <= 0.0:
 			_walk_timer = randf_range(2.5, 5.0)
+			_away = false
 			if ball.global_position.y > FLOOR_Y - 60.0 and ball.linear_velocity.length() < 60.0 and _mode != "ball":
 				_walk_target = ball.global_position.x
 			else:
 				_walk_target = randf_range(150, 570)
+				# Now and then they wander to the back, facing away.
+				_away = randf() < 0.25
 		_walk_target = clampf(_walk_target, 140, 580)
 		var dx := _walk_target - friend.position.x
 		if absf(dx) > 40.0:
 			friend.position.x += signf(dx) * minf(absf(dx), speed * delta)
 			friend.walk_phase += delta * (9.0 if legs == 2 else 5.0)
 			walking = true
+	var far := 1.0 if (_away and walking) else 0.0
+	friend.facing = "back" if far > 0.0 else "front"
+	var k := FRIEND_SCALE * (1.0 - 0.1 * far)
+	friend.scale = Vector2(k, k)
 	if walking:
 		match legs:
 			2: friend.position.y = _base_y - absf(sin(friend.walk_phase)) * 7.0

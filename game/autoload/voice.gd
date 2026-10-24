@@ -41,6 +41,11 @@ var _makers := {
 	"clunk": [1, _voice.bind([[220.0, 120.0, 0.08, 0.0], [160.0, 90.0, 0.14, 0.0]])],
 	"splash": [VARIANTS, _noise.bind(0.3, 0.05, 0.3)],
 }
+## The friends' voices come in a few timbres (Looks.TIMBRES), each made
+## ahead like the rest; each friend also has its own pitch, so
+## thousands of friends each sound their own (decision 0037).
+const VOICE_SOUNDS := ["blip", "giggle", "dislike", "wake", "wince", "cheer", "purr"]
+
 ## name -> Array of made sounds
 var _bank := {}
 var _to_make: Array = []
@@ -48,6 +53,14 @@ var _to_make: Array = []
 
 func _ready() -> void:
 	_rng.randomize()
+	for t in range(1, Looks.TIMBRES):
+		_makers["blip#%d" % t] = [VARIANTS, _make_blip.bind(t)]
+		_makers["giggle#%d" % t] = [VARIANTS, _make_giggle.bind(t)]
+		_makers["dislike#%d" % t] = [1, _voice.bind([[330.0, 300.0, 0.14, 0.05], [290.0, 220.0, 0.2, 0.0]], t)]
+		_makers["wake#%d" % t] = [1, _voice.bind([[260.0, 420.0, 0.35, 0.0]], t)]
+		_makers["wince#%d" % t] = [1, _voice.bind([[700.0, 380.0, 0.16, 0.0]], t)]
+		_makers["cheer#%d" % t] = [1, _voice.bind([[440.0, 560.0, 0.09, 0.02], [560.0, 700.0, 0.09, 0.02], [700.0, 900.0, 0.16, 0.0]], t)]
+		_makers["purr#%d" % t] = [1, _make_purr]
 	for i in POOL_SIZE:
 		var p := AudioStreamPlayer.new()
 		p.bus = "Master"
@@ -83,11 +96,18 @@ func _make(sound: String) -> void:
 
 ## Play a ready-made sound; if it isn't made yet, make one now.
 func _say(sound: String, volume_db: float, pitch_jitter := 0.04) -> void:
+	var pitch := 1.0
+	if sound in VOICE_SOUNDS and Save.friend:
+		# The friend in front speaks in its own voice.
+		var t := int(Save.friend.hl("timbre"))
+		if t > 0:
+			sound = "%s#%d" % [sound, t]
+		pitch = float(Save.friend.hl("voice"))
 	if not _bank.has(sound):
 		_to_make.erase(sound)
 		_make(sound)
 	var versions: Array = _bank[sound]
-	_play(versions[_rng.randi() % versions.size()], volume_db, 1.0 + _rng.randf_range(-pitch_jitter, pitch_jitter))
+	_play(versions[_rng.randi() % versions.size()], volume_db, pitch * (1.0 + _rng.randf_range(-pitch_jitter, pitch_jitter)))
 
 
 func _on_friend_reacted(kind: String) -> void:
@@ -188,23 +208,23 @@ func splash() -> void:
 
 # --- Sound makers -------------------------------------------------------
 
-func _make_blip() -> AudioStreamWAV:
+func _make_blip(timbre := 0) -> AudioStreamWAV:
 	var n := _rng.randi_range(1, 3)
 	var notes: Array = []
 	var base := 520.0 * _rng.randf_range(0.9, 1.15)
 	for i in n:
 		var a := base * _rng.randf_range(0.85, 1.3)
 		notes.append([a, a * _rng.randf_range(0.8, 1.35), 0.075, 0.025])
-	return _voice(notes)
+	return _voice(notes, timbre)
 
 
-func _make_giggle() -> AudioStreamWAV:
+func _make_giggle(timbre := 0) -> AudioStreamWAV:
 	var notes: Array = []
 	var f := 620.0 * _rng.randf_range(0.95, 1.1)
 	for i in 5:
 		notes.append([f, f * 1.25, 0.05, 0.03])
 		f *= 1.09
-	return _voice(notes)
+	return _voice(notes, timbre)
 
 
 func _make_purr() -> AudioStreamWAV:
@@ -239,7 +259,9 @@ func _make_tear(amount: float) -> AudioStreamWAV:
 
 ## notes: [[start_hz, end_hz, seconds, gap_seconds], ...]. A soft
 ## triangle-ish tone through a gentle formant, so it reads as a voice.
-func _voice(notes: Array) -> AudioStreamWAV:
+## `timbre` 0: soft and round with a little vowel; 1: rounder, with a
+## low hum and a slow wobble; 2: reedier, with a quick warble.
+func _voice(notes: Array, timbre := 0) -> AudioStreamWAV:
 	var data := PackedFloat32Array()
 	var phase := 0.0
 	for note in notes:
@@ -250,12 +272,20 @@ func _voice(notes: Array) -> AudioStreamWAV:
 		for i in n:
 			var k := float(i) / maxi(1, n - 1)
 			var f := lerpf(f0, f1, k)
+			var t := float(data.size()) / RATE
+			match timbre:
+				1: f *= 1.0 + sin(TAU * 5.0 * t) * 0.02
+				2: f *= 1.0 + sin(TAU * 11.0 * t) * 0.035
 			phase += f / RATE
 			var tri := 1.0 - 4.0 * absf(fmod(phase, 1.0) - 0.5)
 			var sine := sin(TAU * phase)
-			var vowel := sin(TAU * phase * 2.0) * 0.25
 			var env := minf(1.0, k * 12.0) * minf(1.0, (1.0 - k) * 6.0)
-			data.append((0.45 * tri + 0.55 * sine + vowel) * env * 0.7)
+			var v: float
+			match timbre:
+				1: v = 0.75 * sine + 0.3 * sin(TAU * phase * 0.5) + 0.1 * tri
+				2: v = 0.6 * tri + 0.3 * sine + 0.22 * sin(TAU * phase * 3.0)
+				_: v = 0.45 * tri + 0.55 * sine + sin(TAU * phase * 2.0) * 0.25
+			data.append(v * env * 0.7)
 		for i in int(RATE * float(note[3])):
 			data.append(0.0)
 	return _to_wav(data)

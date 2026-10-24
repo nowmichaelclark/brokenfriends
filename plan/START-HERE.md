@@ -24,7 +24,8 @@ Full rules: `kit/RULES.md`. The short version:
 1. **Only touch the files the task names.** Anything else you notice
    goes in your "Weak spots" list or `open-questions.md`.
 2. **Return whole files** between `=== FILE: path ===` and
-   `=== END FILE ===` lines. Never snippets, never "rest unchanged".
+   `=== END FILE ===` lines, all inside one code block fenced with
+   `~~~~` lines. Never snippets, never "rest unchanged".
 3. **Tag technical claims.** Anything about engines, tools, platforms
    or performance that you have not verified gets `[unverified]` after
    it, and a line in `verify.md`.

@@ -26,8 +26,11 @@ from pathlib import Path, PurePosixPath
 
 from common import LOCKED_STATES, ROOT, path_matches, read_frontmatter
 
-START_RE = re.compile(r"^=== FILE:\s*(.+?)\s*===\s*$")
-END_RE = re.compile(r"^=== END FILE ===\s*$")
+START_RE = re.compile(r"^ {0,3}=== FILE:\s*(.+?)\s*===\s*$")
+END_RE = re.compile(r"^ {0,3}=== END FILE ===\s*$")
+FENCE_RE = re.compile(r"^ {0,3}(```|~~~)")
+HEADING_RE = re.compile(r"^#{1,6} \S", re.M)
+RENDERED_BULLET_RE = re.compile(r"^\s*[·•●▪◦] ", re.M)
 TRUNCATION_RE = re.compile(
     r"(rest of (the )?(file|doc|document|section)|remaining sections?|"
     r"(stays|remains|is|are) (the same|unchanged)|\(unchanged\)|\[unchanged\]|"
@@ -66,7 +69,9 @@ def clean(content):
     nonblank = [i for i, l in enumerate(lines) if l.strip()]
     if len(nonblank) >= 2:
         first, last = nonblank[0], nonblank[-1]
-        if lines[first].lstrip().startswith("```") and lines[last].strip() == "```":
+        opening = FENCE_RE.match(lines[first])
+        if opening and lines[last].strip().startswith(opening.group(1)) \
+                and set(lines[last].strip()) <= set("`~"):
             lines = lines[first + 1:last]
     return "\n".join(lines).strip("\n") + "\n"
 
@@ -107,7 +112,18 @@ def check_content(r, new, args):
     for line in loose:
         warnings.append(f"possible placeholder line: '{line[:70]}'")
 
+    rendered = None
+    if r.endswith(".md"):
+        if not HEADING_RE.search(new):
+            rendered = "has no markdown heading (#)"
+        elif RENDERED_BULLET_RE.search(new):
+            rendered = "has bullets like '·' instead of '-'"
+
     if not args.force:
+        if rendered:
+            return (f"{rendered}: it was probably copied after the chat rendered it. "
+                    "Ask the model to put all files in one ~~~~ code block, "
+                    "and copy with that block's copy button"), warnings
         if placeholder:
             return (f"looks like a partial file ('{placeholder[0][:60]}'); "
                     "ask for the whole file"), warnings
@@ -175,6 +191,7 @@ def main():
         for item in refused:
             print(f"  ! {item}")
 
+    notes = [n for n in notes if not FENCE_RE.match(n)]
     note_text = re.sub(r"\n\s*\n+", "\n\n", "\n".join(notes)).strip()
     if "weak spots" not in text.lower():
         print("\nNote: the reply has no 'Weak spots' section. Ask the model for one.")

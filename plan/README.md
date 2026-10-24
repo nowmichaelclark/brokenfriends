@@ -36,9 +36,13 @@ git add -A && git commit -m "Drafter: creature-body first draft"
 `unpack.py reply.txt`.
 
 Using DeepSeek (or any chat model) in a browser: the Python runs on your
-laptop, before and after the chat. Start a new chat for each session,
-and use the copy button under the model's reply rather than selecting
-the text by hand.
+laptop, before and after the chat. Start a new chat for each session.
+When the model returns files, they sit inside one code block (fenced
+with `~~~~`). Copy them with **that code block's copy button**, not by
+selecting the page text: selected text loses its `#` headings and `-`
+bullets, and `unpack.py` refuses it. If the model forgets the code
+block, ask: "Put all the files in one ~~~~ code block, as kit/RULES.md
+section 2 says."
 
 In Claude Code, sessions edit files directly instead of using packs;
 `CLAUDE.md` at the repo root points them at the same rules.

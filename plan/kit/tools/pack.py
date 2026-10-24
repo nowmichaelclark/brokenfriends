@@ -3,7 +3,8 @@
 
     python3 kit/tools/pack.py SESSION [FILES_OR_FOLDERS ...] --task "..."
 
-Every pack holds START-HERE.md, kit/RULES.md, STATE.md, glossary.md and
+Every pack holds START-HERE.md, kit/RULES.md, STATE.md, glossary.md,
+open-questions.md, verify.md, the decision and session-log templates and
 the session's brief, then the files you name (folders expand to their
 .md files), then your task, at the top and again at the end.
 
@@ -25,7 +26,9 @@ from pathlib import Path
 
 from common import ROOT, read_frontmatter, rel
 
-ALWAYS = ["START-HERE.md", "kit/RULES.md", "STATE.md", "glossary.md"]
+ALWAYS = ["START-HERE.md", "kit/RULES.md", "STATE.md", "glossary.md",
+          "open-questions.md", "verify.md",
+          "kit/templates/decision.md", "kit/templates/session-log.md"]
 SESSIONS = sorted(p.stem for p in (ROOT / "kit" / "sessions").glob("*.md"))
 NO_TASK = "(No task given. Mikey, replace this line with today's task before pasting.)"
 
@@ -130,7 +133,8 @@ def main():
         task,
         "",
         "Follow your brief. Talk first; return files only when Mikey asks or the",
-        "task is finished. End your reply with **Weak spots**.",
+        "task is finished. Then put every file inside ONE code block fenced with",
+        "~~~~ lines (see kit/RULES.md, section 2). End your reply with **Weak spots**.",
         "",
     ])
 

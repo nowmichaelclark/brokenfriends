@@ -29,8 +29,10 @@ The docs for today's topic, plus `00-vision/` once it exists, and
    Mikey's words.
 6. When Mikey says to wrap up, return:
    - the docs for this topic, updated with what was decided;
-   - a `proposed` decision file for each significant choice, for
-     Mikey to sign;
+   - a `proposed` decision file for each choice that other docs will
+     rely on (who the player is, what the game refuses to do), for
+     Mikey to sign. Wording inside a doc is not a decision; the doc
+     itself records it;
    - new questions in `open-questions.md`, new claims in `verify.md`;
    - the log note, and `STATE.md` if it changed;
    - **Weak spots**.

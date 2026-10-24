@@ -14,21 +14,34 @@ stop and say so rather than picking one.
 
 ## 2. Output format
 
-When you return files, return each **whole file**, exactly like this,
-with nothing else on the marker lines:
+When you return files, put **all of them inside one code block**
+that opens and closes with a line of four tildes (`~~~~`). Inside it,
+each **whole file** sits between marker lines, like this:
 
 ```
+    ~~~~
     === FILE: systems/creature-body/README.md ===
-    (the complete file, from first line to last)
+    (the complete file, raw markdown, from first line to last)
     === END FILE ===
+
+    === FILE: log/2026-10-24-brain-pitch.md ===
+    (the complete file)
+    === END FILE ===
+    ~~~~
 ```
 
-(Shown indented here; in your reply the marker lines start at the very
+(Shown indented here; in your reply every line starts at the very
 beginning of the line.)
+
+Why: Mikey copies your reply from a chat window. Text inside a code
+block keeps its raw markdown (`#` headings, `-` bullets, `---`
+frontmatter); text outside it can lose that when copied.
 
 - Never return a partial file, a diff, or "the rest stays the same".
   The unpack tool overwrites the file with what you send.
-- Don't wrap file content in code fences.
+- Don't put other code fences around individual files.
+- If a file you should update isn't in your pack, don't return it.
+  List the lines to add, after the code block, and say why.
 - Paths are relative to the `plan/` folder (so `systems/...`, not
   `plan/systems/...`).
 - Write your conversation and **Weak spots** outside the file blocks.
@@ -106,6 +119,7 @@ it, not raise the limit.
 - A new term gets an entry in `glossary.md` in the same session.
 - Write plainly: short sentences, everyday words, jargon explained the
   first time.
+- American English spelling (color, behavior, favorite).
 
 ## 8. Status ladder
 

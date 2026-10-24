@@ -13,7 +13,7 @@ Built from Mikey's recording of 2026-10-24
 (`plan/inbox/2026-10-24-recording-1.md`).
 
 **In the tent**
-- A sick creature, passed out and shaking, front-on. Mud, a rotting
+- A sick friend, passed out and shaking, front-on. Mud, a rotting
   leg torn open with fluff poking out, mold, a button eye hanging by
   a thread, a little thin, with stiff, squeaky joints.
 - **Poke** to wake them. Tap the top of the head (they shake it, no),
@@ -83,8 +83,8 @@ Then **Actions** → **web** → **Run workflow** (or just push).
 | Folder | What |
 |---|---|
 | `autoload/` | Always-loaded: `Events` (the event bus), `Voice` (sounds, synthesized), `Save`, `Music` (Driftloom) |
-| `data/` | `CreatureData` and `PartData`: creatures as plain data, saved as JSON |
-| `creature/` | `CreatureView` (drawing and body reactions) and `PlushArt` (drawing helpers) |
+| `data/` | `FriendData` and `PartData`: friends as plain data, saved as JSON |
+| `friend/` | `FriendView` (drawing and body reactions) and `PlushArt` (drawing helpers) |
 | `fx/` | `FxLayer`: fluff, fluid, bubbles, drips, sparkles; `Baked`: a drawing made once into a picture |
 | `scenes/tent/` | The tent: care, the bin, the spare pocket, surgery, the tool shelf |
 | `scenes/play/` | The play corner and the ball |
@@ -93,8 +93,8 @@ Then **Actions** → **web** → **Run workflow** (or just push).
 | `tests/` | `flow_test.gd` plays the first five minutes; `music_test.gd` checks Driftloom's hashes |
 
 Rules the code follows:
-- **Data and drawing are separate.** `CreatureData` knows nothing about
-  screens; `CreatureView` draws whatever the data says.
+- **Data and drawing are separate.** `FriendData` knows nothing about
+  screens; `FriendView` draws whatever the data says.
 - **Systems talk through `Events`.** Driftloom music will listen there
   (decision 0016) without the rest of the game knowing.
 - **No image or sound files.** Everything is drawn and synthesized in
@@ -119,7 +119,7 @@ godot --path game --resolution 720x1280 -- --flow-test=/tmp/shots
 ```
 
 The playthrough prints `ok` or `FAIL` for each step and ends with
-`FLOW OK`. Run it before pushing changes to the tent or the creature.
+`FLOW OK`. Run it before pushing changes to the tent or the friend.
 
 ```bash
 # Driftloom's golden loops, rendered in the game (needs rust/build.sh linux)
@@ -128,7 +128,7 @@ godot --headless --path game -- --music-test
 
 Speed: add `#perf` to the web address (or `-- --perf` on the command
 line) for frame time, the music's cost and draw calls, printed as
-`PERF` lines too. Add `&nobg`, `&nocreature`, `&nohud`, `&nomusic` or
+`PERF` lines too. Add `&nobg`, `&nofriend`, `&nohud`, `&nomusic` or
 `&empty` to see what each part costs. Numbers are in
 `plan/systems/platforms-tech/README.md`.
 
@@ -137,7 +137,7 @@ line) for frame time, the music's cost and draw calls, printed as
 These are guesses from the recording (see the numbered list in the
 planning chat). Each is easy to change.
 
-- Front view only; the creature never turns sideways (0031 adds the
+- Front view only; the friend never turns sideways (0031 adds the
   back view).
 - Stuffing is weight: eating stuffing fills them out, losing it makes
   them thin (assumption 8).
@@ -146,4 +146,4 @@ planning chat). Each is easy to change.
 - A spare leg appears in the pocket once the rotten one is in the bin.
 - Each camp has a tent; surgery and play happen inside it (assumption
   16; 0031 moves surgery to its own table, lying down).
-- The creature naps after about 40 seconds alone in the play corner.
+- The friend naps after about 40 seconds alone in the play corner.

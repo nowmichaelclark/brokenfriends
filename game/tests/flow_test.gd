@@ -18,18 +18,18 @@ func _ready() -> void:
 
 
 func _run() -> void:
-	var c: CreatureView = tent.creature
+	var c: FriendView = tent.friend
 	await _wait(0.8)
 	await _shot("01_start")
 
 	# Wake them with a gentle poke on the body.
 	await _tap(_screen(c.to_global(Vector2(40, 10))))
 	await _wait(1.6)
-	_check(not Save.creature.asleep, "poke wakes the creature")
+	_check(not Save.friend.asleep, "poke wakes the friend")
 	await _shot("02_awake")
 
 	# Tickle spot.
-	var spot := Vector2(Save.creature.tickle_spot.x * c.body_scale(), Save.creature.tickle_spot.y)
+	var spot := Vector2(Save.friend.tickle_spot.x * c.body_scale(), Save.friend.tickle_spot.y)
 	await _tap(_screen(c.to_global(spot)))
 	await _wait(0.3)
 	await _shot("03_tickle")
@@ -48,7 +48,7 @@ func _run() -> void:
 			torn = true
 			break
 	_check(torn, "pulling the rotten leg tears it off")
-	_check(Save.creature.is_open("leg_l"), "leg slot is an open wound")
+	_check(Save.friend.is_open("leg_l"), "leg slot is an open wound")
 	await _wait(0.2)
 	await _shot("05_torn")
 
@@ -115,7 +115,7 @@ func _run() -> void:
 				await _shot("12_sewing")
 		await _touch(_last, false)
 	await _wait(0.8)
-	var leg: PartData = Save.creature.part("leg_l")
+	var leg: PartData = Save.friend.part("leg_l")
 	_check(leg != null and leg.attached and leg.stitched, "the spare leg is sewn on with stitches")
 	await _shot("13_leg_sewn")
 
@@ -135,24 +135,24 @@ func _run() -> void:
 			await _drag_path(_last, _screen(c.to_global(pts[i])), 5)
 		await _touch(_last, false)
 	await _wait(0.8)
-	_check(Save.creature.part("eye_r").attached, "the eye is stitched back on")
+	_check(Save.friend.part("eye_r").attached, "the eye is stitched back on")
 
 	# Wash with the sponge: scrub each mud spot.
 	await _scrub_mud(c)
-	_check(Save.creature.mud.is_empty(), "the sponge washes off all the mud")
+	_check(Save.friend.mud.is_empty(), "the sponge washes off all the mud")
 	await _shot("15_washed_wet")
 	# Dry with the towel.
 	await _use_tool(1, c, 160)
-	_check(Save.creature.wetness < 0.3, "the towel dries them")
+	_check(Save.friend.wetness < 0.3, "the towel dries them")
 	# Feed stuffing twice and oil once.
 	for i in 2:
 		await _feed(2, c)
 	await _feed(3, c)
 	await _wait(1.2)
-	_check(Save.creature.stuffing >= 0.9, "stuffing refills them")
-	_check(Save.creature.fluid > 0.9, "oil loosens the joints")
+	_check(Save.friend.stuffing >= 0.9, "stuffing refills them")
+	_check(Save.friend.fluid > 0.9, "oil loosens the joints")
 	await _shot("16_all_good")
-	print("wellbeing at end of tent: ", Save.creature.wellbeing())
+	print("wellbeing at end of tent: ", Save.friend.wellbeing())
 
 	# Play corner.
 	await _tap(tent.hud.play_rect().get_center())
@@ -165,7 +165,7 @@ func _run() -> void:
 		await _wait(1.2)
 		var b := _screen(ball.global_position)
 		await _touch(b, true)
-		var head := _screen(play.creature.to_global(play.creature.head_center()))
+		var head := _screen(play.friend.to_global(play.friend.head_center()))
 		var from := head + Vector2(260, 120)
 		await _drag_path(b, from, 6)
 		await _drag_path(from, head, 4)
@@ -175,7 +175,7 @@ func _run() -> void:
 			await _shot("18_ball")
 	await _wait(1.0)
 	await _shot("19_after_play")
-	print("catch skill after play: ", Save.creature.catch_skill)
+	print("catch skill after play: ", Save.friend.catch_skill)
 
 	if failures.is_empty():
 		print("FLOW OK")
@@ -237,7 +237,7 @@ func _tap(p: Vector2) -> void:
 	await _wait(0.12)
 
 
-func _use_tool(index: int, c: CreatureView, strokes: int) -> void:
+func _use_tool(index: int, c: FriendView, strokes: int) -> void:
 	var tc: Vector2 = tent.hud.tool_center(index)
 	await _touch(tc, true)
 	var offset := Vector2(0, 80)
@@ -248,11 +248,11 @@ func _use_tool(index: int, c: CreatureView, strokes: int) -> void:
 	await _touch(_last, false)
 
 
-func _scrub_mud(c: CreatureView) -> void:
+func _scrub_mud(c: FriendView) -> void:
 	var tc: Vector2 = tent.hud.tool_center(0)
 	await _touch(tc, true)
 	var offset := Vector2(0, 80)
-	for m in Save.creature.mud.duplicate():
+	for m in Save.friend.mud.duplicate():
 		var y := float(m["y"])
 		var at := Vector2(float(m["x"]) * (c.body_scale() if y > -110.0 else 1.0), y)
 		for i in 26:
@@ -261,7 +261,7 @@ func _scrub_mud(c: CreatureView) -> void:
 	await _touch(_last, false)
 
 
-func _feed(index: int, c: CreatureView) -> void:
+func _feed(index: int, c: FriendView) -> void:
 	var tc: Vector2 = tent.hud.tool_center(index)
 	await _touch(tc, true)
 	var mouth := _screen(c.to_global(c.mouth_pos())) + Vector2(0, 80)

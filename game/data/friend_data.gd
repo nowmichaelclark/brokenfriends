@@ -1,6 +1,6 @@
-class_name CreatureData
+class_name FriendData
 extends Resource
-## A creature, as data. Mostly fluff inside, with hydraulic ligaments,
+## A friend, as data. Mostly fluff inside, with hydraulic ligaments,
 ## a battery heart and a chip brain (Mikey's recording, 2026-10-24).
 ## The view draws whatever this says; nothing here knows about screens.
 
@@ -74,8 +74,8 @@ func to_dict() -> Dictionary:
 	}
 
 
-static func from_dict(d: Dictionary) -> CreatureData:
-	var c := CreatureData.new()
+static func from_dict(d: Dictionary) -> FriendData:
+	var c := FriendData.new()
 	c.name = d.get("name", "Friend")
 	c.look_seed = int(d.get("seed", 1))
 	c.body_fabric = Color.html(d.get("body_fabric", "b7835a"))
@@ -95,11 +95,11 @@ static func from_dict(d: Dictionary) -> CreatureData:
 	return c
 
 
-## The creature from the first five minutes: passed out, muddy, a bit
+## The friend from the first five minutes: passed out, muddy, a bit
 ## thin, dry joints, a rotting left leg torn open, and the right eye
 ## hanging by a thread.
-static func first_friend() -> CreatureData:
-	var c := CreatureData.new()
+static func first_friend() -> FriendData:
+	var c := FriendData.new()
 	c.name = "First friend"
 	c.look_seed = 1
 	c.asleep = true

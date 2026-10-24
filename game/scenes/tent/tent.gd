@@ -1,5 +1,5 @@
 extends Node2D
-## The tent at the starting camp: one creature, front-on, and the
+## The tent at the starting camp: one friend, front-on, and the
 ## first five minutes from Mikey's recording (2026-10-24). Rip off the
 ## rotting leg, toss it in the bin, sew on the spare in a layered
 ## surgery, put the dangling eye back, wash, dry, feed stuffing and oil,
@@ -7,12 +7,12 @@ extends Node2D
 
 signal go_to(place: String)
 
-const CREATURE_POS := Vector2(360, 650)
+const FRIEND_POS := Vector2(360, 650)
 const VIEW_CENTER := Vector2(360, 640)
 ## Tools are held a little above the finger so it doesn't hide them.
 const TOOL_OFFSET := Vector2(0, -80)
 
-var creature: CreatureView
+var friend: FriendView
 var fx: FxLayer
 var camera: Camera2D
 var hud: TentHud
@@ -46,17 +46,17 @@ var _cam_tween: Tween
 func _ready() -> void:
 	var bg := TentBackground.new()
 	add_child(bg)
-	creature = CreatureView.new()
-	creature.position = CREATURE_POS
-	add_child(creature)
+	friend = FriendView.new()
+	friend.position = FRIEND_POS
+	add_child(friend)
 	_parts_layer = Node2D.new()
 	add_child(_parts_layer)
 	fx = FxLayer.new()
 	add_child(fx)
-	creature.fx = fx
-	creature.setup(Save.creature)
-	fx.floor_y = CREATURE_POS.y + creature.feet_y()
-	bg.floor_y = CREATURE_POS.y + creature.feet_y() + 4.0
+	friend.fx = fx
+	friend.setup(Save.friend)
+	fx.floor_y = FRIEND_POS.y + friend.feet_y()
+	bg.floor_y = FRIEND_POS.y + friend.feet_y() + 4.0
 	camera = Camera2D.new()
 	camera.position = VIEW_CENTER
 	add_child(camera)
@@ -80,7 +80,7 @@ func _ready() -> void:
 	_update_hint()
 	# Debug: switch parts off to see what each costs (debug/flags.gd).
 	bg.visible = not Flags.has("nobg")
-	creature.visible = not Flags.has("nocreature")
+	friend.visible = not Flags.has("nofriend")
 	layer.visible = not Flags.has("nohud")
 
 
@@ -110,7 +110,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _press(sp: Vector2) -> void:
 	var w := to_world(sp)
-	var l := creature.to_local(w)
+	var l := friend.to_local(w)
 	_press_pos = sp
 	_press_time = _now
 	_touch_moved = 0.0
@@ -156,14 +156,14 @@ func _press(sp: Vector2) -> void:
 		mode = ""
 		_toggle_zoom(w)
 		return
-	var slot := creature.part_at(l)
-	if slot == "eye_r" and not Save.creature.asleep:
-		creature.grab_eye()
+	var slot := friend.part_at(l)
+	if slot == "eye_r" and not Save.friend.asleep:
+		friend.grab_eye()
 		mode = "eye"
-	elif slot != "" and not Save.creature.asleep:
-		creature.grab_limb(slot)
+	elif slot != "" and not Save.friend.asleep:
+		friend.grab_limb(slot)
 		mode = "limb"
-	elif creature.is_on_creature(l):
+	elif friend.is_on_friend(l):
 		mode = "touch"
 	else:
 		mode = "empty"
@@ -171,7 +171,7 @@ func _press(sp: Vector2) -> void:
 
 func _drag(sp: Vector2, rel: Vector2, vel: Vector2) -> void:
 	var w := to_world(sp)
-	var l := creature.to_local(w)
+	var l := friend.to_local(w)
 	var moved := (w - _last_world).length()
 	_drag_vel = vel / camera.zoom.x
 	_touch_moved += rel.length()
@@ -179,19 +179,19 @@ func _drag(sp: Vector2, rel: Vector2, vel: Vector2) -> void:
 		"surgery":
 			_surgery_drag(l, moved)
 		"limb":
-			var torn := creature.drag_limb(l, get_process_delta_time())
+			var torn := friend.drag_limb(l, get_process_delta_time())
 			if torn:
 				held = _spawn_loose(torn, w, false)
 				mode = "part"
 				hud.trash_visible = true
 		"eye":
-			creature.drag_eye(l)
+			friend.drag_eye(l)
 		"touch":
 			if _touch_moved > 30.0:
-				creature.pet(l, moved)
+				friend.pet(l, moved)
 		"tool":
 			hud.tool_pos = sp + TOOL_OFFSET
-			_use_tool(creature.to_local(to_world(hud.tool_pos)))
+			_use_tool(friend.to_local(to_world(hud.tool_pos)))
 		"part":
 			held.position = w
 			hud.trash_hover = not held.from_pocket and hud.over_trash(sp)
@@ -200,28 +200,28 @@ func _drag(sp: Vector2, rel: Vector2, vel: Vector2) -> void:
 
 func _release(sp: Vector2) -> void:
 	var w := to_world(sp)
-	var l := creature.to_local(w)
+	var l := friend.to_local(w)
 	match mode:
 		"surgery":
 			_surgery_release(l)
 			return
 		"limb":
-			creature.release_limb()
+			friend.release_limb()
 		"eye":
-			if creature.release_eye():
+			if friend.release_eye():
 				_start_eye_sew()
 				return
 		"touch":
 			if _touch_moved < 30.0 and _now - _press_time < 0.45:
-				creature.poke(l)
+				friend.poke(l)
 				_last_tap_time = _now
 				_last_tap_pos = sp
-			creature.end_pet()
+			friend.end_pet()
 		"empty":
 			_last_tap_time = _now
 			_last_tap_pos = sp
 		"tool":
-			_finish_tool(creature.to_local(to_world(hud.tool_pos)))
+			_finish_tool(friend.to_local(to_world(hud.tool_pos)))
 			hud.held_tool = ""
 		"part":
 			_release_part(sp, w)
@@ -234,32 +234,32 @@ func _release(sp: Vector2) -> void:
 func _use_tool(l: Vector2) -> void:
 	match tool:
 		"sponge":
-			if creature.sponge(l) and _sound_cd <= 0.0:
+			if friend.sponge(l) and _sound_cd <= 0.0:
 				Voice.splash()
 				_sound_cd = 0.35
 		"towel":
-			if creature.towel(l) and _sound_cd <= 0.0:
+			if friend.towel(l) and _sound_cd <= 0.0:
 				Voice.squish()
 				_sound_cd = 0.3
 		"stuffing", "oil":
-			if l.distance_to(creature.mouth_pos()) < 80.0 and not Save.creature.asleep:
-				creature.set_expression("open", "open", 0.15)
+			if l.distance_to(friend.mouth_pos()) < 80.0 and not Save.friend.asleep:
+				friend.set_expression("open", "open", 0.15)
 
 
 func _finish_tool(l: Vector2) -> void:
 	match tool:
 		"stuffing", "oil":
-			if l.distance_to(creature.mouth_pos()) < 80.0:
-				creature.wake()
+			if l.distance_to(friend.mouth_pos()) < 80.0:
+				friend.wake()
 				if tool == "stuffing":
-					creature.feed_stuffing()
+					friend.feed_stuffing()
 				else:
-					creature.feed_oil()
+					friend.feed_oil()
 		"sponge":
-			if Save.creature.mud.is_empty():
+			if Save.friend.mud.is_empty():
 				Events.cared.emit("washed")
 		"towel":
-			if Save.creature.wetness < 0.05:
+			if Save.friend.wetness < 0.05:
 				Events.cared.emit("dried")
 	tool = ""
 
@@ -269,7 +269,7 @@ func _finish_tool(l: Vector2) -> void:
 func _spawn_loose(part: PartData, w: Vector2, pocket: bool) -> LoosePart:
 	var lp := LoosePart.new()
 	lp.part = part
-	lp.trim = Save.creature.trim
+	lp.trim = Save.friend.trim
 	lp.from_pocket = pocket
 	lp.floor_y = fx.floor_y
 	lp.position = w
@@ -306,7 +306,7 @@ func _open_slot_near(w: Vector2, kind: String) -> String:
 	for slot in ["leg_l", "leg_r", "arm_l", "arm_r"]:
 		if not slot.begins_with(kind):
 			continue
-		if Save.creature.is_open(slot) and creature.to_global(creature.socket(slot)).distance_to(w) < 140.0:
+		if Save.friend.is_open(slot) and friend.to_global(friend.socket(slot)).distance_to(w) < 140.0:
 			return slot
 	return ""
 
@@ -328,7 +328,7 @@ func _offer_spare() -> void:
 	if Save.spare_available:
 		return
 	for slot in ["leg_l", "leg_r"]:
-		if Save.creature.is_open(slot):
+		if Save.friend.is_open(slot):
 			Save.spare_available = true
 			Save.mark_dirty()
 			_show_spare()
@@ -336,7 +336,7 @@ func _offer_spare() -> void:
 
 
 func _show_spare() -> void:
-	hud.spare_part = CreatureData.spare_leg()
+	hud.spare_part = FriendData.spare_leg()
 	hud.spare_visible = true
 
 
@@ -348,20 +348,20 @@ func _show_spare() -> void:
 func start_surgery(slot: String, part: PartData) -> void:
 	mode = "surgery"
 	hud.spare_visible = false
-	creature.surgery = {"slot": slot, "part": part, "step": "fluff", "points": [], "done": 0}
-	_zoom_to(creature.to_global(creature.socket(slot) + Vector2(0, 40)), 2.3)
+	friend.surgery = {"slot": slot, "part": part, "step": "fluff", "points": [], "done": 0}
+	_zoom_to(friend.to_global(friend.socket(slot) + Vector2(0, 40)), 2.3)
 	Voice.pop()
 
 
 func _start_eye_sew() -> void:
 	mode = "surgery"
-	creature.snap_eye()
-	var a := creature.eye_anchor("eye_r")
-	creature.surgery = {
+	friend.snap_eye()
+	var a := friend.eye_anchor("eye_r")
+	friend.surgery = {
 		"slot": "eye_r", "eye": true, "step": "sew", "done": 0,
 		"points": [a + Vector2(-15, -15), a + Vector2(15, 15), a + Vector2(15, -15), a + Vector2(-15, 15)],
 	}
-	_zoom_to(creature.to_global(a), 3.0)
+	_zoom_to(friend.to_global(a), 3.0)
 
 
 func _tol() -> float:
@@ -369,15 +369,15 @@ func _tol() -> float:
 
 
 func _port(slot: String) -> Vector2:
-	return creature.socket(slot) + Vector2(10, 0)
+	return friend.socket(slot) + Vector2(10, 0)
 
 
 func _tube_rest(slot: String) -> Vector2:
-	return creature.socket(slot) + Vector2(62, 70)
+	return friend.socket(slot) + Vector2(62, 70)
 
 
 func _surgery_press(l: Vector2) -> void:
-	var s := creature.surgery
+	var s := friend.surgery
 	match s["step"]:
 		"fluff":
 			_pluck(l)
@@ -392,7 +392,7 @@ func _surgery_press(l: Vector2) -> void:
 
 
 func _surgery_drag(l: Vector2, moved: float) -> void:
-	var s := creature.surgery
+	var s := friend.surgery
 	match s["step"]:
 		"fluff":
 			_pluck(l)
@@ -408,7 +408,7 @@ func _surgery_drag(l: Vector2, moved: float) -> void:
 
 
 func _surgery_release(l: Vector2) -> void:
-	var s := creature.surgery
+	var s := friend.surgery
 	if s.is_empty():
 		mode = ""
 		return
@@ -421,9 +421,9 @@ func _surgery_release(l: Vector2) -> void:
 					s["tube_end"] = _port(slot)
 					s["connected"] = true
 					s["spill"] = 1.0
-					s["spill_pos"] = creature.socket(slot) + Vector2(36, 28)
+					s["spill_pos"] = friend.socket(slot) + Vector2(36, 28)
 					s["step"] = "soak"
-					creature.fx.spawn("fluid", fx.to_local(creature.to_global(_port(slot))), 10, 6.0)
+					friend.fx.spawn("fluid", fx.to_local(friend.to_global(_port(slot))), 10, 6.0)
 					Voice.pop()
 					Events.surgery_step.emit("ligament")
 				else:
@@ -435,15 +435,15 @@ func _surgery_release(l: Vector2) -> void:
 
 
 func _pluck(l: Vector2) -> void:
-	var s := creature.surgery
+	var s := friend.surgery
 	var slot: String = s["slot"]
-	var tufts: Array = creature.wounds.get(slot, [])
-	var sock := creature.socket(slot)
+	var tufts: Array = friend.wounds.get(slot, [])
+	var sock := friend.socket(slot)
 	for i in range(tufts.size() - 1, -1, -1):
 		var p: Vector2 = sock + tufts[i]
 		if p.distance_to(l) < _tol():
 			tufts.remove_at(i)
-			fx.spawn("fluff", fx.to_local(creature.to_global(p)), 4, 6.0)
+			fx.spawn("fluff", fx.to_local(friend.to_global(p)), 4, 6.0)
 			Voice.poof()
 	if tufts.is_empty():
 		s["step"] = "tube"
@@ -452,7 +452,7 @@ func _pluck(l: Vector2) -> void:
 
 
 func _soak(l: Vector2, moved: float) -> void:
-	var s := creature.surgery
+	var s := friend.surgery
 	var sp: Vector2 = s.get("spill_pos", Vector2.ZERO)
 	if l.distance_to(sp) < 56.0:
 		s["spill"] = maxf(0.0, float(s["spill"]) - moved * 0.012)
@@ -469,7 +469,7 @@ func _soak(l: Vector2, moved: float) -> void:
 
 
 func _seam_points(slot: String) -> Array:
-	var sock := creature.socket(slot)
+	var sock := friend.socket(slot)
 	var a := sock + Vector2(-30, 10)
 	var b := sock + Vector2(30, 10)
 	var pts: Array = []
@@ -479,7 +479,7 @@ func _seam_points(slot: String) -> Array:
 
 
 func _sew(l: Vector2) -> void:
-	var s := creature.surgery
+	var s := friend.surgery
 	var pts: Array = s["points"]
 	var done: int = s["done"]
 	if done >= pts.size():
@@ -488,34 +488,34 @@ func _sew(l: Vector2) -> void:
 	if l.distance_to(target) < _tol():
 		s["done"] = done + 1
 		Voice.pip()
-		fx.spawn("sparkle", fx.to_local(creature.to_global(target)), 1, 2.0)
+		fx.spawn("sparkle", fx.to_local(friend.to_global(target)), 1, 2.0)
 		if done + 1 >= pts.size():
 			_finish_sew()
 
 
 func _finish_sew() -> void:
-	var s := creature.surgery
+	var s := friend.surgery
 	var slot: String = s["slot"]
 	if s.get("eye", false):
-		var eye: PartData = Save.creature.part("eye_r")
+		var eye: PartData = Save.friend.part("eye_r")
 		eye.attached = true
 		eye.stitched = true
 	else:
 		var part: PartData = s["part"]
 		part.attached = true
 		part.stitched = true
-		Save.creature.parts[slot] = part
-		creature.wounds.erase(slot)
+		Save.friend.parts[slot] = part
+		friend.wounds.erase(slot)
 		Save.spare_available = false
 	Events.part_changed.emit(slot, "sewn")
 	Events.surgery_step.emit("sewn")
-	creature.surgery = {}
+	friend.surgery = {}
 	mode = ""
 	_zoom_reset()
-	creature.set_expression("squint", "open", 1.6)
-	Events.creature_reacted.emit("cheer")
-	var at := creature.eye_anchor("eye_r") if slot == "eye_r" else creature.socket(slot)
-	fx.spawn("sparkle", fx.to_local(creature.to_global(at)), 8, 20.0)
+	friend.set_expression("squint", "open", 1.6)
+	Events.friend_reacted.emit("cheer")
+	var at := friend.eye_anchor("eye_r") if slot == "eye_r" else friend.socket(slot)
+	fx.spawn("sparkle", fx.to_local(friend.to_global(at)), 8, 20.0)
 	Save.save_now()
 
 
@@ -571,9 +571,9 @@ func _update_hint() -> void:
 ## Gentle guidance for the first five minutes. (Later the body alone
 ## should say all of this; pillar 1.)
 func current_hint() -> String:
-	var c := Save.creature
+	var c := Save.friend
 	if mode == "surgery":
-		var s := creature.surgery
+		var s := friend.surgery
 		if s.get("eye", false):
 			return "Stitch the eye back on: follow the glowing points."
 		match s.get("step", ""):

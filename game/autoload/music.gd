@@ -14,7 +14,7 @@ extends Node
 ##
 ## For now it plays Driftloom's golden loops in turn: the core is the
 ## synthesizer, and the part that writes new notes is still JavaScript in
-## the Driftloom app until its phase 2. Creature themes and music that
+## the Driftloom app until its phase 2. Friend themes and music that
 ## follows the camp come once it moves to Rust.
 
 ## The shortest first, so in the browser the music starts soon.
@@ -24,7 +24,7 @@ const DIR := "res://addons/driftloom/loops/"
 ## same average level (measured on the lite mix; the loudest peak stays
 ## under 0.9, so nothing clips).
 const LEVEL := {"11-haven": 1.9, "01-glade": 1.0, "10-shrine": 1.4, "03-tide": 0.75, "07-dust": 1.05, "14-bloom": 2.1}
-## The music's volume under the creatures' voices and sounds, in dB.
+## The music's volume under the friends' voices and sounds, in dB.
 const VOLUME_DB := -1.0
 
 ## True when the extension is present and music is playing.

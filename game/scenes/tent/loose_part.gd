@@ -1,6 +1,6 @@
 class_name LoosePart
 extends Node2D
-## A part that isn't on a creature: a torn-off leg in the player's hand,
+## A part that isn't on a friend: a torn-off leg in the player's hand,
 ## lying on the floor, or the spare leg being carried to a wound.
 
 var part: PartData

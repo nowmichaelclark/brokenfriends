@@ -1,7 +1,7 @@
 class_name PlushArt
 extends RefCounted
 ## Drawing helpers for stitched, stuffed things. Everything is drawn in
-## code from data, so new creatures and parts need no new image files
+## code from data, so new friends and parts need no new image files
 ## (Q-006: Mikey wants much of the art generated, like Driftloom's covers).
 
 const THREAD := Color(0.62, 0.16, 0.16)

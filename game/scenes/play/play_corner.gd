@@ -1,16 +1,16 @@
 extends Node2D
 ## The play corner inside the tent, like a child's play corner in a
-## living room (Mikey's recording). The creature walks, sits and naps.
+## living room (Mikey's recording). The friend walks, sits and naps.
 ## Throw the ball: at first it misses and laughs when the ball bonks
 ## its head; the more you play, the better it catches (decision 0017).
 
 signal go_to(place: String)
 
 const FLOOR_Y := 1000.0
-const CREATURE_SCALE := 0.74
+const FRIEND_SCALE := 0.74
 const VIEW_CENTER := Vector2(360, 640)
 
-var creature: CreatureView
+var friend: FriendView
 var fx: FxLayer
 var camera: Camera2D
 var ball: ToyBall
@@ -37,16 +37,16 @@ var _base_y := 0.0
 func _ready() -> void:
 	add_child(PlayBackground.new())
 	_build_walls()
-	creature = CreatureView.new()
-	creature.scale = Vector2(CREATURE_SCALE, CREATURE_SCALE)
-	add_child(creature)
+	friend = FriendView.new()
+	friend.scale = Vector2(FRIEND_SCALE, FRIEND_SCALE)
+	add_child(friend)
 	ball = ToyBall.new()
 	ball.position = Vector2(520, 700)
 	add_child(ball)
 	fx = FxLayer.new()
 	fx.floor_y = FLOOR_Y
 	add_child(fx)
-	creature.fx = fx
+	friend.fx = fx
 	camera = Camera2D.new()
 	camera.position = VIEW_CENTER
 	add_child(camera)
@@ -70,9 +70,9 @@ func set_active(on: bool) -> void:
 	layer.visible = on
 	process_mode = Node.PROCESS_MODE_INHERIT if on else Node.PROCESS_MODE_DISABLED
 	if on:
-		creature.setup(Save.creature)
-		_base_y = FLOOR_Y - creature.feet_y() * CREATURE_SCALE
-		creature.position = Vector2(300, _base_y)
+		friend.setup(Save.friend)
+		_base_y = FLOOR_Y - friend.feet_y() * FRIEND_SCALE
+		friend.position = Vector2(300, _base_y)
 		_idle = 0.0
 		camera.make_current()
 
@@ -120,7 +120,7 @@ func _press(sp: Vector2) -> void:
 		ball.freeze = true
 		ball.global_position = w
 		return
-	if creature.is_on_creature(creature.to_local(w)):
+	if friend.is_on_friend(friend.to_local(w)):
 		_mode = "touch"
 	else:
 		_mode = ""
@@ -135,7 +135,7 @@ func _drag(sp: Vector2, rel: Vector2, vel: Vector2) -> void:
 			_ball_vel = vel / camera.zoom.x
 		"touch":
 			if _moved > 30.0:
-				creature.pet(creature.to_local(w), (w - _last_world).length() / CREATURE_SCALE)
+				friend.pet(friend.to_local(w), (w - _last_world).length() / FRIEND_SCALE)
 	_last_world = w
 
 
@@ -148,8 +148,8 @@ func _release(sp: Vector2) -> void:
 			ball.angular_velocity = _ball_vel.x * 0.01
 		"touch":
 			if _moved < 30.0 and _now - _press_time < 0.45:
-				creature.poke(creature.to_local(w))
-			creature.end_pet()
+				friend.poke(friend.to_local(w))
+			friend.end_pet()
 	_mode = ""
 
 
@@ -157,21 +157,21 @@ func _release(sp: Vector2) -> void:
 
 func _physics_process(delta: float) -> void:
 	_cooldown -= delta
-	var data := Save.creature
+	var data := Save.friend
 	if _caught:
-		ball.global_position = creature.to_global(creature.head_center() + Vector2(0, -CreatureView.HEAD_R - 40.0))
+		ball.global_position = friend.to_global(friend.head_center() + Vector2(0, -FriendView.HEAD_R - 40.0))
 		_catch_timer -= delta
 		if _catch_timer <= 0.0:
 			_caught = false
 			ball.freeze = false
 			ball.linear_velocity = Vector2(randf_range(-280, 280), -880)
-			creature.arms_up = false
+			friend.arms_up = false
 			_cooldown = 0.6
 		return
 	if _mode == "ball" or _cooldown > 0.0 or data.asleep:
 		return
-	var head := creature.to_global(creature.head_center())
-	var reach := CreatureView.HEAD_R * CREATURE_SCALE + ToyBall.RADIUS + 8.0
+	var head := friend.to_global(friend.head_center())
+	var reach := FriendView.HEAD_R * FRIEND_SCALE + ToyBall.RADIUS + 8.0
 	if ball.global_position.distance_to(head) < reach and ball.linear_velocity.length() > 120.0:
 		var skill := data.catch_skill
 		data.catch_skill = minf(0.92, skill + 0.07)
@@ -181,25 +181,25 @@ func _physics_process(delta: float) -> void:
 			_caught = true
 			_catch_timer = 1.3
 			ball.freeze = true
-			creature.arms_up = true
-			creature.set_expression("squint", "open", 1.3)
-			Events.creature_reacted.emit("catch")
+			friend.arms_up = true
+			friend.set_expression("squint", "open", 1.3)
+			Events.friend_reacted.emit("catch")
 		else:
 			ball.linear_velocity = (ball.global_position - head).normalized() * 480.0 + Vector2(0, -160)
-			creature.bonk()
+			friend.bonk()
 			# A late grab at the ball: they're still learning.
-			creature.arms_up = true
+			friend.arms_up = true
 			_arms_timer = 0.35
 			_cooldown = 0.7
 
 
 func _process(delta: float) -> void:
 	_now += delta
-	var data := Save.creature
+	var data := Save.friend
 	if _arms_timer > 0.0:
 		_arms_timer -= delta
 		if _arms_timer <= 0.0 and not _caught:
-			creature.arms_up = false
+			friend.arms_up = false
 	_idle += delta
 	if _idle > 40.0 and not data.asleep:
 		data.asleep = true
@@ -216,23 +216,23 @@ func _process(delta: float) -> void:
 			else:
 				_walk_target = randf_range(150, 570)
 		_walk_target = clampf(_walk_target, 140, 580)
-		var dx := _walk_target - creature.position.x
+		var dx := _walk_target - friend.position.x
 		if absf(dx) > 40.0:
-			creature.position.x += signf(dx) * minf(absf(dx), 80.0 * delta)
-			creature.walk_phase += delta * 9.0
+			friend.position.x += signf(dx) * minf(absf(dx), 80.0 * delta)
+			friend.walk_phase += delta * 9.0
 			walking = true
 	if walking:
-		creature.position.y = _base_y - absf(sin(creature.walk_phase)) * 7.0
+		friend.position.y = _base_y - absf(sin(friend.walk_phase)) * 7.0
 	else:
-		creature.walk_phase = 0.0
-		creature.position.y = move_toward(creature.position.y, _base_y, delta * 60.0)
+		friend.walk_phase = 0.0
+		friend.position.y = move_toward(friend.position.y, _base_y, delta * 60.0)
 	var vs := get_viewport_rect().size
 	hint.position = Vector2(40, 118)
 	hint.size = Vector2(vs.x - 80, 120)
 	hint.text = _hint(data, legs_ok)
 
 
-func _hint(data: CreatureData, legs_ok: bool) -> String:
+func _hint(data: FriendData, legs_ok: bool) -> String:
 	if data.asleep:
 		return "Napping. Poke them to wake them up."
 	if not legs_ok:

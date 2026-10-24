@@ -1,6 +1,6 @@
-class_name CreatureView
+class_name FriendView
 extends Node2D
-## Draws a creature front-on (decision pending: front and back views
+## Draws a friend front-on (decision pending: front and back views
 ## only) and handles how its body reacts: poking, tickling, petting,
 ## tugging limbs until rotten ones tear, a button eye dangling on its
 ## thread, wounds leaking fluff, washing, drying and feeding.
@@ -13,7 +13,7 @@ const EYE_R := 21.0
 const ARM_LEN := 100.0
 const LEG_LEN := 100.0
 
-var data: CreatureData
+var data: FriendData
 var fx: FxLayer
 
 ## Arms raised, as when catching a ball.
@@ -55,8 +55,8 @@ var _beat := 0.0
 var _rng := RandomNumberGenerator.new()
 
 
-func setup(creature: CreatureData) -> void:
-	data = creature
+func setup(friend: FriendData) -> void:
+	data = friend
 	_rng.seed = data.look_seed
 	for slot in ["arm_l", "arm_r", "leg_l", "leg_r"]:
 		_limbs[slot] = {"off": Vector2.ZERO, "vel": Vector2.ZERO}
@@ -181,7 +181,7 @@ func _in_ears(p: Vector2) -> bool:
 	return p.distance_to(hc + Vector2(-72, -78)) < 34.0 or p.distance_to(hc + Vector2(72, -78)) < 34.0
 
 
-func is_on_creature(p: Vector2) -> bool:
+func is_on_friend(p: Vector2) -> bool:
 	return region_at(p) != "" or part_at(p) != ""
 
 
@@ -199,7 +199,7 @@ func wake() -> void:
 	data.asleep = false
 	set_expression("half", "flat", 1.6)
 	_squash_vel -= 2.0
-	Events.creature_reacted.emit("wake")
+	Events.friend_reacted.emit("wake")
 	Save.mark_dirty()
 
 
@@ -228,7 +228,7 @@ func poke(p: Vector2) -> String:
 	_squash_vel += 2.0
 	if data.fluid < 0.4:
 		Voice.squeak()
-	Events.creature_reacted.emit(kind)
+	Events.friend_reacted.emit(kind)
 	return kind
 
 
@@ -246,7 +246,7 @@ func pet(p: Vector2, moved: float) -> void:
 	if _pet_amount > 110.0:
 		set_expression("squint", "smile", 0.6)
 		if _pet_sound <= 0.0:
-			Events.creature_reacted.emit("purr")
+			Events.friend_reacted.emit("purr")
 			_fx("heart", head_center() + Vector2(0, -HEAD_R), 1, 20.0)
 			_pet_sound = 1.1
 
@@ -259,7 +259,7 @@ func feed_stuffing() -> void:
 	data.stuffing = minf(1.45, data.stuffing + 0.18)
 	_chew = 0.9
 	_squash_vel -= 2.5
-	Events.creature_reacted.emit("chomp")
+	Events.friend_reacted.emit("chomp")
 	Events.cared.emit("fed_stuffing")
 	Save.mark_dirty()
 
@@ -267,7 +267,7 @@ func feed_stuffing() -> void:
 func feed_oil() -> void:
 	data.fluid = 1.0
 	_chew = 0.6
-	Events.creature_reacted.emit("glug")
+	Events.friend_reacted.emit("glug")
 	Events.cared.emit("fed_oil")
 	for slot in ["arm_l", "arm_r", "leg_l", "leg_r"]:
 		if data.part(slot):
@@ -277,9 +277,9 @@ func feed_oil() -> void:
 	Save.mark_dirty()
 
 
-## Rub with a sponge at a local point. True if it touched the creature.
+## Rub with a sponge at a local point. True if it touched the friend.
 func sponge(p: Vector2) -> bool:
-	if not is_on_creature(p):
+	if not is_on_friend(p):
 		return false
 	var s := body_scale()
 	for m in data.mud:
@@ -297,7 +297,7 @@ func sponge(p: Vector2) -> bool:
 
 
 func towel(p: Vector2) -> bool:
-	if not is_on_creature(p):
+	if not is_on_friend(p):
 		return false
 	data.wetness = maxf(0.0, data.wetness - 0.02)
 	Save.mark_dirty()
@@ -333,12 +333,12 @@ func drag_limb(p: Vector2, delta: float) -> PartData:
 			if not _winced:
 				_winced = true
 				set_expression("squint", "frown", 0.8)
-				Events.creature_reacted.emit("wince")
+				Events.friend_reacted.emit("wince")
 			elif _strain > 1.2:
 				_strain = 0.0
 				_shake = 0.8
 				set_expression("open", "frown", 0.8)
-				Events.creature_reacted.emit("dislike")
+				Events.friend_reacted.emit("dislike")
 		st["off"] = want
 		return null
 	st["off"] = want
@@ -346,7 +346,7 @@ func drag_limb(p: Vector2, delta: float) -> PartData:
 	if stretch > 45.0:
 		if not _winced:
 			_winced = true
-			Events.creature_reacted.emit("wince")
+			Events.friend_reacted.emit("wince")
 		set_expression("squint", "frown", 0.3)
 		_strain_fx -= delta
 		if _strain_fx <= 0.0:
@@ -429,7 +429,7 @@ func bonk() -> void:
 	_squash_vel += 2.6
 	_shake = 0.3
 	set_expression("squint", "open", 0.9)
-	Events.creature_reacted.emit("bonk")
+	Events.friend_reacted.emit("bonk")
 
 
 func eye_position() -> Vector2:
@@ -542,7 +542,7 @@ func _mouth_kind(wb: float) -> String:
 # --- Drawing ------------------------------------------------------------
 #
 # Drawn once, moved cheaply (the Driftloom way: an idle screen paints
-# nothing). The creature is a set of part nodes. Each draws itself only
+# nothing). The friend is a set of part nodes. Each draws itself only
 # when something it shows has changed (its key); breathing, squash, sway,
 # head shakes and stretched limbs are node transforms, which cost almost
 # nothing per frame.
@@ -760,7 +760,7 @@ func _paint_face(ci: CanvasItem) -> void:
 			ci.draw_circle(Vector2(40, -12), 9.0, Color(0.12, 0.08, 0.07))
 
 
-## The eye hanging on its thread, in the creature's coordinates.
+## The eye hanging on its thread, in the friend's coordinates.
 func _paint_dangle(ci: CanvasItem) -> void:
 	var eye_r: PartData = data.part("eye_r")
 	if eye_r == null:

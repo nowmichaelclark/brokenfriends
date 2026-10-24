@@ -1,6 +1,6 @@
 extends Node
 ## Every sound in the game is synthesized here, no audio files. The
-## creatures "talk" in soft blips that sound like communication without
+## friends "talk" in soft blips that sound like communication without
 ## words (Mikey's recording: R2-D2-like, but not robotic). Driftloom's
 ## music will join later through the Events bus.
 
@@ -53,7 +53,7 @@ func _ready() -> void:
 		p.bus = "Master"
 		add_child(p)
 		_players.append(p)
-	Events.creature_reacted.connect(_on_creature_reacted)
+	Events.friend_reacted.connect(_on_friend_reacted)
 	for sound in _makers:
 		for i in int(_makers[sound][0]):
 			_to_make.append(sound)
@@ -90,7 +90,7 @@ func _say(sound: String, volume_db: float, pitch_jitter := 0.04) -> void:
 	_play(versions[_rng.randi() % versions.size()], volume_db, 1.0 + _rng.randf_range(-pitch_jitter, pitch_jitter))
 
 
-func _on_creature_reacted(kind: String) -> void:
+func _on_friend_reacted(kind: String) -> void:
 	match kind:
 		"boop": blip()
 		"giggle": giggle()
@@ -105,7 +105,7 @@ func _on_creature_reacted(kind: String) -> void:
 		"catch": cheer()
 
 
-# --- Creature voice ---------------------------------------------------
+# --- Friend voice ---------------------------------------------------
 
 ## One chirpy syllable.
 func blip() -> void:

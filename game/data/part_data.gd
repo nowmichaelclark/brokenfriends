@@ -1,6 +1,6 @@
 class_name PartData
 extends Resource
-## One piece of a creature: a limb or a button eye. Parts carry their
+## One piece of a friend: a limb or a button eye. Parts carry their
 ## own fabric and quality, and they keep the marks of what happened to
 ## them (pillar 2: the friend is never the same as before).
 

@@ -46,7 +46,7 @@ How the build stays light, borrowed from Driftloom's habits:
 - Phones and the browser use Driftloom's lite mix.
 - Measure, don't guess: `#perf` on the web address (or `--perf`)
   shows frame time, the music's cost and draw calls. Switches
-  `nobg`, `nocreature`, `nohud`, `nomusic` and `empty` show what each
+  `nobg`, `nofriend`, `nohud`, `nomusic` and `empty` show what each
   part costs.
 
 Measured 2026-10-24 in the test browser at the Moto's pixel density

@@ -6,7 +6,7 @@ extends Node
 const PATH := "user://broken_friends.json"
 const VERSION := 1
 
-var creature: CreatureData
+var friend: FriendData
 var spare_available := false
 var _dirty := false
 var _timer := 0.0
@@ -17,19 +17,19 @@ func _ready() -> void:
 
 
 func load_game() -> void:
-	creature = null
+	friend = null
 	if FileAccess.file_exists(PATH):
 		var f := FileAccess.open(PATH, FileAccess.READ)
 		var parsed = JSON.parse_string(f.get_as_text())
 		if parsed is Dictionary and int(parsed.get("version", 0)) == VERSION:
-			creature = CreatureData.from_dict(parsed.get("creature", {}))
+			friend = FriendData.from_dict(parsed.get("friend", {}))
 			spare_available = parsed.get("spare_available", false)
-	if creature == null:
+	if friend == null:
 		new_game()
 
 
 func new_game() -> void:
-	creature = CreatureData.first_friend()
+	friend = FriendData.first_friend()
 	spare_available = false
 	save_now()
 
@@ -45,7 +45,7 @@ func save_now() -> void:
 	var data := {
 		"version": VERSION,
 		"saved_at": Time.get_unix_time_from_system(),
-		"creature": creature.to_dict(),
+		"friend": friend.to_dict(),
 		"spare_available": spare_available,
 	}
 	var f := FileAccess.open(PATH, FileAccess.WRITE)
@@ -64,5 +64,5 @@ func _process(delta: float) -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST or what == NOTIFICATION_APPLICATION_PAUSED \
 			or what == NOTIFICATION_APPLICATION_FOCUS_OUT:
-		if creature:
+		if friend:
 			save_now()

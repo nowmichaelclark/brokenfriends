@@ -6,16 +6,19 @@ extends Node
 ## - Phones and computers: a `DriftloomStream` that Godot's own audio
 ##   thread pulls from, so the music never shares the screen's time
 ##   (Driftloom's first rule).
-## - The browser: Godot's web engine has no threads, so a
-##   `DriftloomPlayer` fills an AudioStreamGenerator a little each frame,
-##   with half a second of sound ready in case a frame is slow.
+## - The browser: Godot's web engine has no audio thread, and music fed
+##   to it frame by frame crackles on phones. So each loop is made whole
+##   ahead of time by a `DriftloomPlayer`, a few milliseconds each frame,
+##   and handed to the browser to play as one finished sound. Once all
+##   six are made, the music costs the game nothing.
 ##
 ## For now it plays Driftloom's golden loops in turn: the core is the
 ## synthesizer, and the part that writes new notes is still JavaScript in
 ## the Driftloom app until its phase 2. Creature themes and music that
 ## follows the camp come once it moves to Rust.
 
-const LOOPS := ["11-haven", "01-glade", "10-shrine", "03-tide", "07-dust", "14-bloom"]
+## The shortest first, so in the browser the music starts soon.
+const LOOPS := ["14-bloom", "11-haven", "01-glade", "10-shrine", "03-tide", "07-dust"]
 const DIR := "res://addons/driftloom/loops/"
 ## Each loop's loudness evened out: the gain that brings it to about the
 ## same average level (measured on the lite mix; the loudest peak stays
@@ -26,18 +29,23 @@ const VOLUME_DB := -1.0
 
 ## True when the extension is present and music is playing.
 var available := false
-## "thread" (the audio thread pulls it) or "frames" (pushed each frame).
+## "thread" (the audio thread pulls it) or "made" (loops made ahead).
 var mode := ""
-## The loop most recently loaded (each-frame way) or queued (audio thread).
+## The loop playing (made ahead) or most recently queued (audio thread).
 var current := ""
+
+## Made-ahead way: how long it may work each frame, microseconds.
+const MAKE_BUDGET_US := 3000
 
 var _out: AudioStreamPlayer
 var _index := 0
 # Audio-thread way
 var _stream: AudioStream
-# Each-frame way
+# Made-ahead way
 var _player: RefCounted
-var _playback: AudioStreamGeneratorPlayback
+var _made := {}
+var _making := ""
+var _bytes := PackedByteArray()
 var _cost_us := 0.0
 
 
@@ -49,31 +57,22 @@ func _ready() -> void:
 	var lite := OS.has_feature("web") or OS.has_feature("mobile")
 	_out = AudioStreamPlayer.new()
 	_out.volume_db = VOLUME_DB
+	add_child(_out)
 	if ClassDB.class_exists("DriftloomStream") and not OS.has_feature("web"):
 		_stream = ClassDB.instantiate("DriftloomStream")
 		_stream.set_lite(lite)
 		if not _queue_next():
 			return
 		_out.stream = _stream
+		_out.play()
 		mode = "thread"
 	elif ClassDB.class_exists("DriftloomPlayer"):
 		_player = ClassDB.instantiate("DriftloomPlayer")
 		_player.lite = lite
-		if not _load(LOOPS[0]):
-			return
-		var gen := AudioStreamGenerator.new()
-		gen.mix_rate = _player.sample_rate()
-		gen.buffer_length = 0.5 if OS.has_feature("web") else 0.25
-		_out.stream = gen
-		# The web's default "sample" playback can't stream generated audio.
-		_out.playback_type = AudioServer.PLAYBACK_TYPE_STREAM
-		mode = "frames"
+		_out.finished.connect(_play_next)
+		mode = "made"
 	else:
 		return
-	add_child(_out)
-	_out.play()
-	if mode == "frames":
-		_playback = _out.get_stream_playback()
 	available = true
 	print("Music: ", mode, " mode, starting with ", LOOPS[0])
 
@@ -86,10 +85,9 @@ func cost_ms() -> float:
 	return _cost_us / 1000.0
 
 
-## Underruns since the music started, each-frame way only: moments the
-## speakers asked for sound that wasn't ready. -1 when not counted.
-func skips() -> int:
-	return _playback.get_skips() if mode == "frames" else -1
+## How many loops are made and ready (made-ahead way).
+func loops_made() -> int:
+	return _made.size()
 
 
 func _process(_delta: float) -> void:
@@ -101,13 +99,10 @@ func _process(_delta: float) -> void:
 			_queue_next()
 		return
 	var started := Time.get_ticks_usec()
-	if _player.is_finished():
-		_index = (_index + 1) % LOOPS.size()
-		_load(LOOPS[_index])
-	var n := _playback.get_frames_available()
-	if n > 0:
-		_playback.push_buffer(_player.render_stereo(n))
+	_make_some(started + MAKE_BUDGET_US)
 	_cost_us = lerpf(_cost_us, float(Time.get_ticks_usec() - started), 0.05)
+	if not _out.playing and _made.has(LOOPS[_index]):
+		_play_next()
 
 
 func _text(loop_name: String) -> String:
@@ -129,13 +124,61 @@ func _queue_next() -> bool:
 	return true
 
 
-## Each-frame way: load a loop into the player.
-func _load(loop_name: String) -> bool:
-	var err: String = _player.load_notes(_text(loop_name))
-	if err != "":
-		push_warning("Music: " + loop_name + ": " + err)
-		return false
-	_player.looping = false
-	_player.gain = LEVEL.get(loop_name, 1.0)
+## Made-ahead way: play the next loop if it is made (if not, _process
+## starts it as soon as it is).
+func _play_next() -> void:
+	# Pass over any loop that failed to load.
+	for i in LOOPS.size():
+		if _made.get(LOOPS[_index], 0) != null:
+			break
+		_index = (_index + 1) % LOOPS.size()
+	var loop_name: String = LOOPS[_index]
+	if _made.get(loop_name) == null:
+		# Not made yet (a slow phone): play the last one again meanwhile.
+		if _out.stream:
+			_out.play()
+		return
+	_out.stream = _made[loop_name]
+	_out.play()
 	current = loop_name
-	return true
+	print("Music: playing ", loop_name)
+	_index = (_index + 1) % LOOPS.size()
+
+
+## Made-ahead way: work on the loops in the order they play until `until`.
+func _make_some(until: int) -> void:
+	while Time.get_ticks_usec() < until:
+		if _making == "":
+			_making = _next_to_make()
+			if _making == "":
+				return
+			var err: String = _player.load_notes(_text(_making))
+			if err != "":
+				push_warning("Music: " + _making + ": " + err)
+				_made[_making] = null
+				_making = ""
+				continue
+			_player.looping = false
+			_player.gain = LEVEL.get(_making, 1.0)
+			_bytes = PackedByteArray()
+			continue
+		var piece: PackedByteArray = _player.render_pcm16(512)
+		if piece.is_empty():
+			var wav := AudioStreamWAV.new()
+			wav.format = AudioStreamWAV.FORMAT_16_BITS
+			wav.mix_rate = int(_player.sample_rate())
+			wav.stereo = false
+			wav.data = _bytes
+			_made[_making] = wav
+			_bytes = PackedByteArray()
+			_making = ""
+		else:
+			_bytes.append_array(piece)
+
+
+func _next_to_make() -> String:
+	for i in LOOPS.size():
+		var loop_name: String = LOOPS[(_index + i) % LOOPS.size()]
+		if not _made.has(loop_name):
+			return loop_name
+	return ""

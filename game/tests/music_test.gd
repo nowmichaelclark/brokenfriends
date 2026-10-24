@@ -36,19 +36,22 @@ func _ready() -> void:
 			print("       expected ", expected.get(loop_name, "(none)"))
 			failures.append(loop_name)
 	print("render speed: %.1fx real time (%.1f s of audio in %.0f ms)" % [audio_s * 1000.0 / maxf(render_ms, 1.0), audio_s, render_ms])
-	# Now check the game's music keeps up while the game runs normally.
-	await get_tree().create_timer(1.0).timeout
-	var before: int = Music.skips()
-	await get_tree().create_timer(4.0).timeout
-	var after: int = Music.skips()
+	# Now check the game's music keeps going while the game runs.
 	if Music.mode == "thread":
+		await get_tree().create_timer(5.0).timeout
 		print("music on the audio thread: %.2f ms of work per 60 fps frame (%s)" % [Music.cost_ms(), Music.current])
 		if not Music.available or Music.cost_ms() <= 0.0:
 			failures.append("the audio thread isn't playing")
 	else:
-		print("stream underruns in 4 s of play: ", after - before, " (", Music.current, ")")
-		if after - before > 0:
-			failures.append("streaming underran")
+		# Made ahead: the first loop should be made and playing soon.
+		var waited := 0.0
+		while Music.loops_made() == 0 and waited < 20.0:
+			await get_tree().create_timer(0.5).timeout
+			waited += 0.5
+		await get_tree().create_timer(1.0).timeout
+		print("music made ahead: %d loop(s) ready after %.1f s, playing %s, %.2f ms of work per frame while making" % [Music.loops_made(), waited, Music.current, Music.cost_ms()])
+		if Music.loops_made() == 0 or Music.current == "":
+			failures.append("no loop was made and played")
 	if failures.is_empty():
 		print("MUSIC OK")
 		_done(0)

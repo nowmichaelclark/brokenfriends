@@ -141,6 +141,45 @@ impl DriftloomPlayer {
         out
     }
 
+    /// The next `frames` frames as 16-bit mono samples (little-endian
+    /// bytes, `gain` applied), the format `AudioStreamWAV.data` takes. Stops
+    /// at the list's end, so the last piece may be shorter, and empty once
+    /// it has all been made (with `looping` off).
+    ///
+    /// The browser uses this to make each loop whole, a little each frame,
+    /// and hand it to the browser to play as one sound: Godot's web engine
+    /// has no audio thread, so audio fed to it frame by frame crackles on
+    /// phones.
+    #[func]
+    fn render_pcm16(&mut self, frames: i64) -> PackedByteArray {
+        let wanted = usize::try_from(frames.max(0)).unwrap_or(0);
+        let mut bytes: Vec<u8> = Vec::with_capacity(wanted * 2);
+        let Some(list) = self.list.take() else {
+            return PackedByteArray::new();
+        };
+        {
+            let mut core = CORE.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+            for _ in 0..wanted {
+                if self.used >= self.pending.len() {
+                    if self.frame >= list.frames {
+                        break;
+                    }
+                    core.process(self.frame);
+                    self.pending.clear();
+                    self.pending.extend_from_slice(&core.output()[0]);
+                    self.used = 0;
+                    self.frame += QUANTUM as u64;
+                }
+                let s = (self.pending[self.used] * self.gain).clamp(-1.0, 1.0);
+                self.used += 1;
+                #[allow(clippy::cast_possible_truncation)]
+                bytes.extend_from_slice(&((s * 32767.0) as i16).to_le_bytes());
+            }
+        }
+        self.list = Some(list);
+        PackedByteArray::from(bytes.as_slice())
+    }
+
     /// Render a whole note list at once and return the line Driftloom's
     /// `dlrender` prints for it (frame count and FNV-1a hashes of every
     /// signal), plus how long it took. Compare with

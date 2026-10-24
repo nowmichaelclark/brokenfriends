@@ -64,8 +64,9 @@ steady 60 fps, 16.7 ms every frame, music 0.7 ms a frame, 65 draw calls,
 on the tent's first screen.
 
 In the Android app and on computers the music runs on Godot's audio
-thread, not the screen's; the browser can't do that (no threads), so
-there it is still filled each frame.
+thread, not the screen's. The browser has no audio thread, and music
+fed to it frame by frame crackled on Mikey's phone even at 60 fps, so
+there each loop is made whole ahead of time and played as one sound.
 
 ## First questions
 

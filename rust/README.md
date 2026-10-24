@@ -14,12 +14,16 @@ on a laptop, more on a phone), too slow for the audio thread, so the
 stream keeps two cores: a helper thread readies the next list on the one
 not playing, and the audio thread just switches (`src/stream.rs`).
 
-**`DriftloomPlayer`** (the browser, and the tests) is filled a little each
-frame into an `AudioStreamGenerator`: Godot's web engine has no threads.
+**`DriftloomPlayer`** (the browser, and the tests). Godot's web engine
+has no audio thread, and music fed to it frame by frame crackles on
+phones (it did on Mikey's). So the game makes each loop whole with
+`render_pcm16`, a few milliseconds a frame, and the browser plays it as
+one finished sound.
 
 | Method | What it does |
 |---|---|
 | `load_notes(text)` | Load a Driftloom note list (`.dlnotes`); returns "" or an error |
+| `render_pcm16(frames)` | The next frames as 16-bit samples for `AudioStreamWAV.data`; empty at the end |
 | `render_stereo(frames)` | The next frames, for `AudioStreamGeneratorPlayback.push_buffer` |
 | `is_finished()`, `sample_rate()`, `length_seconds()` | About the loaded list |
 | `golden_line(text)` | Render a whole list and return Driftloom's hash line, to check builds |

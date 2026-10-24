@@ -48,8 +48,16 @@ Built from Mikey's recording of 2026-10-24
 together. The one being looked after stands in front; the others sit
 further back, and tapping one brings them forward. A couple of minutes
 after the first friend is patched up, a second, muddy friend walks in.
-Time passes while the game is closed: on opening, the camp catches up
-(slowly, for now: a little stuffing and oil a day).
+Time passes while the game is closed: on opening, the camp catches up.
+
+**Change over time** (step B2, decisions 0028 and 0029): rot needs a
+source (a tear, mold, mud, soaking, an open wound, a part already
+rotting) and grows faster in a dirty camp and in a hungry friend. Mold
+creeps across a friend and on to other friends. When the body falls
+far enough apart the chip brain fails, and the friend dies: grey,
+still, slumped, for good. Rot draws bugs (tap them to chase them off);
+muddy friends track footprints across the floor (scrub them with the
+sponge). A healthy, clean friend never rots, however long you're away.
 
 The game saves on its own. **Start over** (tap twice) begins again.
 
@@ -161,6 +169,12 @@ planning chat). Each is easy to change.
   16; 0031 moves surgery to its own table, lying down).
 - The friend naps after about 40 seconds alone in the play corner.
 - A friend loses about a tenth of its stuffing and a bit more oil each
-  day; wet friends stay wet until dried (step B1, for B2 to refine).
+  day; open wounds leak stuffing fast; wet friends stay wet until dried.
+- How fast things go (step B2): left alone, the first friend dies in
+  about two and a half weeks; one muddy and soaked, or with its rotten
+  leg torn off and the wound left open, in about two. A dead friend
+  stays at camp until parts can be taken (step B4).
+- The sponge also scrubs the floor; bugs leave when tapped. (Step B3
+  will make cleaning use supplies, decision 0042.)
 - The second friend of the first day arrives two minutes after the
   first is patched up; up to four friends sit at the back.

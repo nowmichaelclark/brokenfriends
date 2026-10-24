@@ -488,21 +488,18 @@ func _process(delta: float) -> void:
 	var target := _lid_target(wb)
 	_lid = move_toward(_lid, target, delta * (2.0 if data.asleep else 8.0))
 	# Open wounds leak stuffing; wet fabric drips; sleepers snore.
-	if not wounds.is_empty() and surgery.is_empty():
+	if not wounds.is_empty() and surgery.is_empty() and not data.dead:
 		_leak -= delta
 		if _leak <= 0.0:
 			_leak = 1.6
 			var slot: String = wounds.keys()[0]
 			_fx("fluff", socket(slot) + Vector2(0, 8), 1, 6.0)
-			data.stuffing = maxf(0.35, data.stuffing - 0.006)
-			Save.mark_dirty()
 	if data.wetness > 0.12:
 		_drip -= delta
 		if _drip <= 0.0:
 			_drip = lerpf(0.6, 0.12, data.wetness)
 			var x := _rng.randf_range(-90, 90) * body_scale()
 			_fx("drip", Vector2(x, 110), 1, 4.0)
-		data.wetness = maxf(0.0, data.wetness - delta * 0.004)
 	if data.asleep:
 		_zzz -= delta
 		if _zzz <= 0.0:
@@ -512,7 +509,7 @@ func _process(delta: float) -> void:
 
 
 func _lid_target(wb: float) -> float:
-	if data.asleep:
+	if data.asleep or data.dead:
 		return 1.0
 	if _blink > 0.0:
 		return 1.0
@@ -533,7 +530,7 @@ func _lid_target(wb: float) -> float:
 func _mouth_kind(wb: float) -> String:
 	if _chew > 0.0:
 		return "o" if int(_chew * 10.0) % 2 == 0 else "flat"
-	if data.asleep:
+	if data.asleep or data.dead:
 		return "flat"
 	if _expr_timer > 0.0 and _expr_mouth != "":
 		return _expr_mouth
@@ -627,8 +624,12 @@ func _update_parts(wb: float) -> void:
 	elif data.asleep and sick > 0.0:
 		jitter = Vector2(sin(_t * 31.0) * sick * 2.5, 0)
 	var breathe := 1.0 + sin(_t * (1.2 if data.asleep else 2.2)) * 0.012
-	_rig.position = jitter + Vector2(0, _squash * feet_y())
-	_rig.rotation = sin(_t * 18.0) * 0.08 * _wiggle
+	if data.dead:
+		# Still, slumped to one side.
+		jitter = Vector2.ZERO
+		breathe = 1.0
+	_rig.position = jitter + Vector2(0, _squash * feet_y()) + (Vector2(6, 22) if data.dead else Vector2.ZERO)
+	_rig.rotation = sin(_t * 18.0) * 0.08 * _wiggle + (0.12 if data.dead else 0.0)
 	_rig.scale = Vector2(1.0 + _squash, (1.0 - _squash) * breathe)
 	_shadow.position = jitter
 	_shadow.refresh([_q(s, 0.02)])
@@ -688,7 +689,8 @@ func _update_parts(wb: float) -> void:
 
 func _fabric(wb: float) -> Color:
 	var pale := Color(0.6, 0.58, 0.54)
-	return PlushArt.fabric_color(data.body_fabric.lerp(pale, (1.0 - wb) * 0.3), data.wetness)
+	var fade := 0.6 if data.dead else (1.0 - wb) * 0.3
+	return PlushArt.fabric_color(data.body_fabric.lerp(pale, fade), data.wetness)
 
 
 func _trim() -> Color:

@@ -196,7 +196,7 @@ func _camp_steps() -> void:
 	# The second friend of the first day is on the way once the first
 	# is patched up; bring the moment forward instead of waiting.
 	_check(camp.next_arrival > 0.0, "a second friend is on the way after the first is patched up")
-	camp.advance(1.0, camp.next_arrival + 1.0)
+	Save.advance_to(camp.next_arrival + 1.0)
 	await _wait(2.0)
 	_check(camp.friends.size() == 2, "the second friend arrives")
 	_check(tent.bench.size() == 1, "the second friend sits further back")
@@ -227,6 +227,72 @@ func _camp_steps() -> void:
 	await _wait(0.6)
 	_check(tent.bench.size() == 2, "both other friends sit further back")
 	await _shot("22_three_friends")
+	await _change_steps()
+
+
+# --- B2: change over time ---------------------------------------------
+
+func _alone(f: FriendData, days: float) -> CampData:
+	var c := CampData.new()
+	c.friends.append(f)
+	c.clock = 1000000.0
+	c.advance(days * 86400.0, c.clock + days * 86400.0)
+	return c
+
+
+func _change_steps() -> void:
+	var healthy := FriendData.test_friend(5)
+	_alone(healthy, 60.0)
+	_check(not healthy.dead and healthy.brain == 1.0, "a healthy friend left alone for 60 days lives")
+	var wounded := FriendData.first_friend()
+	_alone(wounded, 30.0)
+	_check(wounded.dead, "a friend left alone with a rotting, torn leg dies within a month")
+
+	# Two weeks and a half away from a camp where the first friend was
+	# never helped: the camp shows it.
+	var camp := CampData.new()
+	camp.friends.append(FriendData.first_friend())
+	camp.friends.append(FriendData.second_friend())
+	camp.clock = 2000000.0
+	camp.advance(17.0 * 86400.0, camp.clock + 17.0 * 86400.0)
+	_check(camp.friends[0].dead, "the friend never helped has died")
+	_check(not camp.friends[1].dead, "the muddy friend is still alive")
+	_check(camp.bugs > 0 and not camp.tracks.is_empty(), "rot drew bugs and mud was tracked in")
+	var moldy := false
+	for slot in FriendData.SLOTS:
+		var part: PartData = camp.friends[1].parts.get(slot)
+		if part and not part.mold.is_empty():
+			moldy = true
+	_check(moldy, "mold spread to the other friend")
+	camp.current = 1
+	Save.camp = camp
+	tent.traces.setup(camp)
+	tent.friend.setup(Save.friend)
+	tent._build_bench()
+	await _wait(1.0)
+	await _shot("23_after_weeks_away")
+
+	# Chase a bug off; scrub a footprint.
+	var bugs := camp.bugs
+	var bug: Sprite2D = tent.traces._bugs[0]
+	await _tap(_screen(bug.global_position))
+	_check(camp.bugs == bugs - 1, "a tapped bug scurries off")
+	var t: Dictionary = camp.tracks[0]
+	var at := _screen(Vector2(float(t["x"]), float(t["y"])))
+	var tracks := camp.tracks.size()
+	var tc: Vector2 = tent.hud.tool_center(0)
+	await _touch(tc, true)
+	for i in 40:
+		await _drag_to(at + Vector2(sin(i * 1.3) * 20.0, cos(i * 0.9) * 12.0) + Vector2(0, 80))
+	await _touch(_last, false)
+	_check(camp.tracks.size() < tracks, "the sponge scrubs footprints off the floor")
+
+	# The friend who died, brought forward: still, grey, no answer.
+	tent.choose_friend(0)
+	await _wait(0.8)
+	await _tap(_screen(tent.friend.to_global(Vector2(40, 10))))
+	_check(Save.friend.dead and not Save.friend.asleep, "a friend who died stays still")
+	await _shot("24_a_friend_died")
 
 
 # --- Helpers ------------------------------------------------------------

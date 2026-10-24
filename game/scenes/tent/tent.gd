@@ -18,6 +18,8 @@ var friend: FriendView
 ## The camp's other friends, sitting further back: index in
 ## Save.camp.friends -> BenchFriend.
 var bench: Dictionary = {}
+## Footprints and bugs on the floor: what happened at camp (0029).
+var traces: CampTraces
 var fx: FxLayer
 var camera: Camera2D
 var hud: TentHud
@@ -52,6 +54,9 @@ var _cam_tween: Tween
 func _ready() -> void:
 	var bg := TentBackground.new()
 	add_child(bg)
+	traces = CampTraces.new()
+	add_child(traces)
+	traces.setup(Save.camp)
 	_bench_layer = Node2D.new()
 	add_child(_bench_layer)
 	friend = FriendView.new()
@@ -130,7 +135,8 @@ func _press(sp: Vector2) -> void:
 		return
 	var h: String = hud.hit(sp)
 	if h == "play":
-		go_to.emit("play_corner")
+		if not Save.friend.dead:
+			go_to.emit("play_corner")
 		return
 	if h == "reset":
 		if hud.reset_armed:
@@ -156,6 +162,15 @@ func _press(sp: Vector2) -> void:
 	var sitting := _bench_at(w)
 	if sitting >= 0 and not friend.is_on_friend(l) and held == null:
 		choose_friend(sitting)
+		return
+	if held == null and traces.shoo(w):
+		Voice.squish()
+		Save.mark_dirty()
+		mode = "empty"
+		return
+	if Save.friend.dead and held == null:
+		# A friend who has died doesn't answer any more (0011).
+		mode = "empty"
 		return
 	for lp in loose_parts:
 		if lp.hits(w):
@@ -322,6 +337,15 @@ func _maybe_schedule_arrival() -> void:
 # --- Tools --------------------------------------------------------------
 
 func _use_tool(l: Vector2) -> void:
+	if tool == "sponge" and not friend.is_on_friend(l):
+		# Scrub footprints off the floor.
+		if traces.scrub(friend.to_global(l), 0.08) and _sound_cd <= 0.0:
+			Voice.squish()
+			_sound_cd = 0.35
+			Save.mark_dirty()
+		return
+	if Save.friend.dead:
+		return
 	match tool:
 		"sponge":
 			if friend.sponge(l) and _sound_cd <= 0.0:
@@ -337,6 +361,9 @@ func _use_tool(l: Vector2) -> void:
 
 
 func _finish_tool(l: Vector2) -> void:
+	if Save.friend.dead:
+		tool = ""
+		return
 	match tool:
 		"stuffing", "oil":
 			if l.distance_to(friend.mouth_pos()) < 80.0:
@@ -653,6 +680,7 @@ func _process(delta: float) -> void:
 	if _hint_timer <= 0.0:
 		_hint_timer = 0.25
 		_update_hint()
+		traces.refresh()
 	var vs := get_viewport_rect().size
 	hint.position = Vector2(40, 118)
 	hint.size = Vector2(vs.x - 80, 120)
@@ -667,6 +695,12 @@ func _update_hint() -> void:
 ## should say all of this; pillar 1.)
 func current_hint() -> String:
 	var c := Save.friend
+	if c.dead:
+		return "This friend has died. Nothing can bring them back."
+	if Save.camp.bugs > 0:
+		return "Bugs! Tap them to chase them off."
+	if not Save.camp.tracks.is_empty() and mode != "surgery" and c.part("leg_l") and c.part("leg_l").rot < 0.5:
+		return "Muddy footprints. Scrub the floor with the sponge."
 	if mode == "surgery":
 		var s := friend.surgery
 		if s.get("eye", false):

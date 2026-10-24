@@ -44,6 +44,23 @@ func setup(rect: Rect2, paint: Callable, resolution := 2.0) -> Baked:
 	return self
 
 
+## The picture, to show elsewhere too: sprites that share it are drawn
+## together in one draw call.
+func picture() -> Texture2D:
+	return _vp.get_texture()
+
+
+## The blend the picture needs (its colours are premultiplied by alpha).
+func picture_material() -> Material:
+	return _sprite.material
+
+
+## Hide this node's own copy of the picture (when it is only a stamp
+## for other sprites).
+func hide_picture() -> void:
+	_sprite.visible = false
+
+
 ## Draw again only if what this shows has changed.
 func refresh(new_key) -> void:
 	if new_key != key:

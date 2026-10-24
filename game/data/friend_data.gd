@@ -26,6 +26,11 @@ const SLOTS := ["leg_l", "leg_r", "arm_l", "arm_r", "eye_l", "eye_r"]
 ## Grows by playing with the ball (decision 0017: play, not train).
 @export var catch_skill := 0.05
 @export var parts: Dictionary = {}
+## The chip brain, the friend's personality (decision 0026). 1 is
+## well; it fails only when the body is falling apart (0028).
+@export var brain := 1.0
+## Death is final (0011).
+@export var dead := false
 
 
 func part(slot: String) -> PartData:
@@ -56,18 +61,109 @@ func wellbeing() -> float:
 	w -= clampf(1.0 - stuffing, 0.0, 1.0) * 0.25
 	w -= clampf(1.0 - fluid, 0.0, 1.0) * 0.12
 	w -= wetness * 0.08
+	w -= (1.0 - brain) * 0.5
+	if dead:
+		return 0.0
 	return clampf(w, 0.0, 1.0)
 
 
-## Time passing for this friend (`CampData.advance`). For now only
-## slow needs: stuffing settles and joints dry out over days. Rot,
-## mold and death come with step B2 (decisions 0011, 0028).
-## Assumed, waiting on Mikey: about a tenth of the stuffing a day, a
-## little more oil than that; wet friends stay wet until dried.
-func advance(seconds: float) -> void:
-	var days := seconds / 86400.0
+## How far gone the body is, 0 (whole) to about 1 (falling apart):
+## rot, missing limbs, lost stuffing, soaking. The brain fails only
+## above about half (decision 0028).
+func decay() -> float:
+	var d := 0.0
+	for slot in SLOTS:
+		var part: PartData = parts.get(slot)
+		var weight := 0.5 if slot.begins_with("eye") else 1.0
+		if part == null:
+			d += 0.25 if weight == 1.0 else 0.05
+		else:
+			d += part.rot * weight / 5.0
+	d += clampf(0.8 - stuffing, 0.0, 0.8) * 0.5
+	d += wetness * 0.15
+	return d
+
+
+func mud_amount() -> float:
+	var total := 0.0
+	for m in mud:
+		total += float(m["a"])
+	return total
+
+
+## True if this friend can pass mold on: a rotting part with mold on it.
+func spreads_mold() -> bool:
+	for slot in SLOTS:
+		var part: PartData = parts.get(slot)
+		if part and part.rot > 0.6 and not part.mold.is_empty():
+			return true
+	return false
+
+
+## Mold lands on one of this friend's parts and starts it rotting.
+func catch_mold(rng: RandomNumberGenerator) -> void:
+	var limbs: Array = []
+	for slot in ["arm_l", "arm_r", "leg_l", "leg_r"]:
+		if parts.get(slot) != null:
+			limbs.append(slot)
+	if limbs.is_empty():
+		return
+	var part: PartData = parts[limbs[rng.randi() % limbs.size()]]
+	part.rot = minf(1.0, part.rot + 0.15)
+	part.mold.append([rng.randf_range(0.25, 0.85), rng.randf_range(-0.4, 0.4), rng.randf_range(0.1, 0.18)])
+
+
+## Time passing for this friend, `hours` at a time (`CampData.advance`).
+## Rot needs a source (0011): a tear, mold, soaking, mud, a rotting part
+## feeding itself, an open wound nearby; a dirty camp and hunger speed
+## it up (0028). A healthy, clean friend doesn't rot at all. Rates are
+## guesses (game/README, "Assumed in this build").
+func step(hours: float, dirt: float, rng: RandomNumberGenerator) -> void:
+	var days := hours / 24.0
+	if dead:
+		for slot in SLOTS:
+			var part: PartData = parts.get(slot)
+			if part:
+				part.rot = minf(1.0, part.rot + 0.004 * hours)
+		return
 	stuffing = maxf(0.35, stuffing - days * 0.1)
 	fluid = maxf(0.2, fluid - days * 0.12)
+	var open := 0
+	for slot in ["arm_l", "arm_r", "leg_l", "leg_r"]:
+		if parts.get(slot) == null:
+			open += 1
+	# Open wounds leak stuffing.
+	stuffing = maxf(0.2, stuffing - open * 0.02 * hours)
+	var hunger := clampf((0.7 - stuffing) / 0.35, 0.0, 1.0)
+	var speed := (1.0 + 0.5 * dirt) * (1.0 + 0.5 * hunger)
+	var mud_src := minf(mud_amount(), 3.0) / 3.0
+	for slot in SLOTS:
+		var part: PartData = parts.get(slot)
+		if part == null or not part.attached and not slot.begins_with("eye"):
+			continue
+		var src := 0.0
+		if part.torn:
+			src += 0.004
+		if not part.mold.is_empty():
+			src += 0.004
+		if part.rot > 0.4:
+			src += 0.0015
+		src += 0.0015 * maxf(0.0, wetness - 0.3)
+		src += 0.001 * mud_src
+		src += 0.001 * open
+		part.rot = minf(1.0, part.rot + src * speed * hours)
+		if part.rot > 0.5 and part.mold.size() < 6 and rng.randf() < 0.02 * hours:
+			part.mold.append([rng.randf_range(0.2, 0.9), rng.randf_range(-0.4, 0.4), rng.randf_range(0.1, 0.2)])
+	# Mold creeps from a rotting part to another part of the same friend.
+	if spreads_mold() and rng.randf() < 0.01 * hours:
+		catch_mold(rng)
+	# The brain fails only when the body is falling apart.
+	var d := decay()
+	if d > 0.55:
+		brain = maxf(0.0, brain - 0.004 * (d - 0.55) * speed * hours)
+		if brain <= 0.0:
+			dead = true
+			asleep = false
 
 
 func to_dict() -> Dictionary:
@@ -82,6 +178,7 @@ func to_dict() -> Dictionary:
 		"mud": mud, "asleep": asleep,
 		"tickle_spot": [tickle_spot.x, tickle_spot.y],
 		"catch_skill": catch_skill, "parts": pd,
+		"brain": brain, "dead": dead,
 	}
 
 
@@ -99,6 +196,8 @@ static func from_dict(d: Dictionary) -> FriendData:
 	var ts: Array = d.get("tickle_spot", [-35, 45])
 	c.tickle_spot = Vector2(ts[0], ts[1])
 	c.catch_skill = d.get("catch_skill", 0.05)
+	c.brain = d.get("brain", 1.0)
+	c.dead = d.get("dead", false)
 	var pd: Dictionary = d.get("parts", {})
 	for slot in SLOTS:
 		var v = pd.get(slot)

@@ -32,7 +32,7 @@ this build" in `game/README.md` and are asked, never decided.
   tapping; saved and reloaded; time passes while away. The code says
   "friend", not "creature" (0022). *Done when:* three friends survive
   a quit and reopen, and a debug clock (`#days=N`) moves time on.
-- [ ] **B2. Change over time** (0028, 0029). Rot needs a source;
+- [x] **B2. Change over time** (0028, 0029). Rot needs a source;
   untended wounds worsen; mold spreads; hunger speeds rot; a lost brain
   is death. Time away leaves traces: mud tracks, bugs, mold, a soaked
   friend sitting weakly. *Done when:* a test shows a wounded friend left alone dies

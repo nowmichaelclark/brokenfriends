@@ -51,8 +51,7 @@ func load_game() -> void:
 		new_game()
 		return
 	# Time away: the camp catches up on everything it missed.
-	var t := now()
-	camp.advance(t - camp.clock, t)
+	advance_to(now())
 
 
 func _from_save(d: Dictionary) -> CampData:
@@ -78,6 +77,14 @@ func new_game() -> void:
 	save_now()
 
 
+## Move the camp on to time `t` and announce what happened.
+func advance_to(t: float) -> void:
+	camp.advance(t - camp.clock, t)
+	for i in camp.just_arrived:
+		Events.friend_arrived.emit.call_deferred(i)
+	camp.just_arrived.clear()
+
+
 ## Ask for a save; it happens within a second, so rapid changes
 ## (rubbing mud off) don't write every frame.
 func mark_dirty() -> void:
@@ -100,8 +107,7 @@ func _process(delta: float) -> void:
 	_tick += delta
 	if _tick >= TICK and camp:
 		_tick = 0.0
-		var t := now()
-		camp.advance(t - camp.clock, t)
+		advance_to(now())
 		mark_dirty()
 	if _dirty:
 		_timer += delta

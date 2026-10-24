@@ -84,15 +84,11 @@ func _paint(ci: CanvasItem) -> void:
 	PlushArt.ellipse(ci, Vector2(360, floor_y + 18), 320.0, 58.0, Color(0.55, 0.28, 0.24), false)
 	PlushArt.ellipse(ci, Vector2(360, floor_y + 18), 270.0, 44.0, Color(0.68, 0.48, 0.3), false)
 	PlushArt.ellipse(ci, Vector2(360, floor_y + 18), 210.0, 32.0, Color(0.55, 0.28, 0.24), false)
-	# A crate of thread spools: the doctor's supplies
+	# A crate (the supplies themselves are on the shelf)
 	ci.draw_rect(Rect2(40, floor_y - 120, 130, 120), Color(0.5, 0.36, 0.22))
 	ci.draw_rect(Rect2(40, floor_y - 120, 130, 120), Color(0.3, 0.2, 0.12), false, 3.0)
 	ci.draw_line(Vector2(40, floor_y - 60), Vector2(170, floor_y - 60), Color(0.3, 0.2, 0.12), 3.0)
-	for i in 3:
-		var sx := 66.0 + i * 38.0
-		ci.draw_rect(Rect2(sx - 12, floor_y - 160, 24, 40), [Color(0.75, 0.2, 0.2), Color(0.25, 0.45, 0.7), Color(0.85, 0.7, 0.25)][i])
-		ci.draw_rect(Rect2(sx - 15, floor_y - 164, 30, 7), Color(0.6, 0.45, 0.3))
-		ci.draw_rect(Rect2(sx - 15, floor_y - 127, 30, 7), Color(0.6, 0.45, 0.3))
+	ci.draw_rect(Rect2(34, floor_y - 128, 142, 10), Color(0.42, 0.3, 0.18))
 	# Lantern and its glow
 	var lp := LANTERN
 	ci.draw_line(Vector2(585, 150), lp + Vector2(0, -30), Color(0.25, 0.2, 0.15), 3.0)

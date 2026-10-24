@@ -9,6 +9,11 @@ var friends: Array[FriendData] = []
 var current := 0
 ## Spare parts waiting in the pocket (scarce, decision 0027).
 var spares: Array[PartData] = []
+## Supplies on the shelf, counted (decisions 0027, 0042): handfuls of
+## stuffing, doses of oil, lengths of thread (one per sewing), squirts of
+## mold spray (one per moldy part cleaned). They run out; more comes
+## from quests and newcomers (steps B5, B6).
+var supplies := {"stuffing": 6, "oil": 3, "thread": 4, "spray": 2}
 ## The first-five-minutes spare leg has been given (it comes once).
 var spare_given := false
 ## The camp's clock: the moment, in seconds since 1970, it last moved on.
@@ -91,6 +96,18 @@ func _step(hours: float) -> void:
 
 
 ## The friends still alive.
+func has(supply: String) -> bool:
+	return int(supplies.get(supply, 0)) > 0
+
+
+## Use one of a supply. False if there is none left.
+func use(supply: String) -> bool:
+	if not has(supply):
+		return false
+	supplies[supply] = int(supplies[supply]) - 1
+	return true
+
+
 func living() -> Array[FriendData]:
 	var out: Array[FriendData] = []
 	for f in friends:
@@ -116,7 +133,7 @@ func to_dict() -> Dictionary:
 		"friends": fl, "current": current, "spares": sp,
 		"spare_given": spare_given, "clock": clock,
 		"next_arrival": next_arrival, "arrivals": arrivals,
-		"tracks": tracks, "bugs": bugs,
+		"tracks": tracks, "bugs": bugs, "supplies": supplies,
 	}
 
 
@@ -135,6 +152,9 @@ static func from_dict(d: Dictionary) -> CampData:
 	c.arrivals = int(d.get("arrivals", 0))
 	c.tracks = d.get("tracks", [])
 	c.bugs = int(d.get("bugs", 0))
+	var sup: Dictionary = d.get("supplies", {})
+	for k in c.supplies:
+		c.supplies[k] = int(sup.get(k, c.supplies[k]))
 	return c
 
 

@@ -5,8 +5,18 @@ extends Node2D
 ## in the player's hand. Not an inventory screen (pillar 1): things sit
 ## on the side of the view, ready to grab.
 
-const TOOLS := ["sponge", "towel", "stuffing", "oil"]
-const LABELS := {"sponge": "Sponge", "towel": "Towel", "stuffing": "Stuffing", "oil": "Oil"}
+const TOOLS := ["sponge", "towel", "stuffing", "oil", "spray"]
+## On the shelf but not picked up: used up by sewing.
+const SHOWN := ["thread"]
+const LABELS := {"sponge": "Sponge", "towel": "Towel", "stuffing": "Stuffing", "oil": "Oil", "spray": "Mold spray", "thread": "Thread"}
+## Water is free; these are counted (decision 0027).
+const COUNTED := ["stuffing", "oil", "spray", "thread"]
+
+## The camp's supplies, shown by how full each thing on the shelf looks.
+var supplies: Dictionary = {}
+## A shelf item to shake (tapped or needed when empty).
+var shake_item := ""
+var _shake := 0.0
 
 var spare_visible := false
 var spare_part: PartData
@@ -26,7 +36,19 @@ func screen_size() -> Vector2:
 
 func tool_center(i: int) -> Vector2:
 	var s := screen_size()
-	return Vector2(s.x * 0.5 + (i - 1.5) * 160.0, s.y - 100.0)
+	var n := TOOLS.size() + SHOWN.size()
+	return Vector2(s.x * 0.5 + (i - (n - 1) * 0.5) * 112.0, s.y - 100.0)
+
+
+## How much of a supply is left (water-based tools: always 1).
+func amount(item: String) -> int:
+	return int(supplies.get(item, 0)) if item in COUNTED else 1
+
+
+## Shake something on the shelf: it's empty.
+func shake(item: String) -> void:
+	shake_item = item
+	_shake = 0.5
 
 
 func pocket_center() -> Vector2:
@@ -72,7 +94,8 @@ var _key = null
 ## Redraw only when something shown has changed (an idle shelf costs nothing).
 func _process(delta: float) -> void:
 	_trash_pop = move_toward(_trash_pop, 1.0 if trash_visible else 0.0, delta * 5.0)
-	var key := [spare_visible, spare_part.get_instance_id() if spare_part else 0, trash_visible,
+	_shake = maxf(0.0, _shake - delta)
+	var key := [supplies.duplicate(), shake_item if _shake > 0.0 else "", int(_shake * 30.0), spare_visible, spare_part.get_instance_id() if spare_part else 0, trash_visible,
 		trash_hover, held_tool, Vector2i(tool_pos) if held_tool != "" else Vector2i.ZERO,
 		reset_armed, play_label, screen_size(), int(_trash_pop * 20.0)]
 	if key != _key:
@@ -86,14 +109,17 @@ func _draw() -> void:
 	# Tray: a wooden shelf along the bottom
 	draw_rect(Rect2(0, s.y - 190.0, s.x, 190.0), Color(0.33, 0.22, 0.14))
 	draw_rect(Rect2(0, s.y - 196.0, s.x, 10.0), Color(0.48, 0.33, 0.2))
-	for i in TOOLS.size():
-		var tool_name: String = TOOLS[i]
+	var items: Array = TOOLS + SHOWN
+	for i in items.size():
+		var tool_name: String = items[i]
 		var c := tool_center(i)
+		if tool_name == shake_item and _shake > 0.0:
+			c.x += sin(_shake * 40.0) * 8.0
 		if held_tool == tool_name:
-			draw_arc(c, 54.0, 0, TAU, 24, Color(1, 1, 1, 0.25), 3.0, true)
+			draw_arc(c, 48.0, 0, TAU, 24, Color(1, 1, 1, 0.25), 3.0, true)
 		else:
-			draw_tool(tool_name, c + Vector2(0, -12), 1.0)
-		draw_string(font, c + Vector2(-70, 62), LABELS[tool_name], HORIZONTAL_ALIGNMENT_CENTER, 140, 22, Color(0.95, 0.88, 0.75, 0.9))
+			draw_tool(tool_name, c + Vector2(0, -12), 0.85, amount(tool_name))
+		draw_string(font, c + Vector2(-56, 62), LABELS[tool_name], HORIZONTAL_ALIGNMENT_CENTER, 112, 19, Color(0.95, 0.88, 0.75, 0.9))
 	# Buttons
 	_button(play_rect(), play_label, Color(0.42, 0.55, 0.38))
 	_button(reset_rect(), "Tap again" if reset_armed else "Start over", Color(0.55, 0.3, 0.27) if reset_armed else Color(0.3, 0.24, 0.2, 0.85))
@@ -126,7 +152,7 @@ func _draw() -> void:
 		draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
 	# The tool in hand
 	if held_tool != "":
-		draw_tool(held_tool, tool_pos, 1.25)
+		draw_tool(held_tool, tool_pos, 1.1, amount(held_tool))
 
 
 func _button(r: Rect2, text: String, col: Color) -> void:
@@ -136,7 +162,8 @@ func _button(r: Rect2, text: String, col: Color) -> void:
 	draw_string(font, Vector2(r.position.x, r.position.y + r.size.y * 0.5 + 9.0), text, HORIZONTAL_ALIGNMENT_CENTER, r.size.x, 26, Color(1, 0.96, 0.88))
 
 
-func draw_tool(tool_name: String, c: Vector2, k: float) -> void:
+## Draw a shelf item; `left` shows how much of it remains (0 is empty).
+func draw_tool(tool_name: String, c: Vector2, k: float, left := 1) -> void:
 	draw_set_transform(c, 0, Vector2(k, k))
 	match tool_name:
 		"sponge":
@@ -150,13 +177,41 @@ func draw_tool(tool_name: String, c: Vector2, k: float) -> void:
 				draw_line(Vector2(-42, y), Vector2(42, y), Color(0.97, 0.9, 0.9), 4.0)
 			draw_rect(Rect2(-42, -30, 84, 60), Color(0.6, 0.38, 0.42), false, 3.0)
 		"stuffing":
+			# A box with as many tufts as handfuls left (up to six shown).
+			for t in mini(left, 6):
+				PlushArt.fluff(self, Vector2(-22 + (t % 3) * 22, -12 - (t / 3) * 14), 13.0)
 			draw_colored_polygon(PackedVector2Array([Vector2(-34, -6), Vector2(34, -6), Vector2(40, 34), Vector2(-40, 34)]), Color(0.66, 0.53, 0.36))
 			draw_line(Vector2(-36, -2), Vector2(36, -2), Color(0.45, 0.34, 0.22), 4.0)
-			PlushArt.fluff(self, Vector2(0, -14), 22.0)
 		"oil":
 			draw_rect(Rect2(-28, -14, 56, 46), Color(0.55, 0.58, 0.6))
+			# A window showing how much oil is left.
+			draw_rect(Rect2(-14, -6, 12, 32), Color(0.2, 0.2, 0.22))
+			var lvl := clampf(left / 3.0, 0.0, 1.0) * 30.0
+			draw_rect(Rect2(-13, 25 - lvl, 10, lvl), Color(0.9, 0.72, 0.25))
 			draw_rect(Rect2(-28, -14, 56, 46), Color(0.3, 0.32, 0.35), false, 3.0)
 			draw_line(Vector2(20, -10), Vector2(46, -38), Color(0.45, 0.48, 0.5), 7.0)
 			draw_arc(Vector2(-28, 8), 16.0, PI * 0.5, PI * 1.5, 10, Color(0.3, 0.32, 0.35), 5.0)
 			draw_circle(Vector2(48, -36), 4.0, Color(0.9, 0.75, 0.3))
+		"spray":
+			# A green spray bottle; the liquid shows how much is left.
+			draw_rect(Rect2(-20, -16, 40, 50), Color(0.82, 0.9, 0.84))
+			var lvl := clampf(left / 3.0, 0.0, 1.0) * 46.0
+			draw_rect(Rect2(-18, 32 - lvl, 36, lvl), Color(0.42, 0.7, 0.42))
+			draw_rect(Rect2(-20, -16, 40, 50), Color(0.3, 0.42, 0.32), false, 3.0)
+			draw_rect(Rect2(-8, -32, 16, 16), Color(0.3, 0.42, 0.32))
+			draw_rect(Rect2(8, -30, 18, 6), Color(0.3, 0.42, 0.32))
+		"thread":
+			# One spool per two lengths of thread; the last may be half wound.
+			var spools := ceili(left / 2.0)
+			for t in mini(spools, 3):
+				var x := -30.0 + t * 30.0
+				var full := 1.0 if (t < spools - 1 or left % 2 == 0) else 0.5
+				draw_rect(Rect2(x - 12, -18, 24, 40), Color(0.6, 0.45, 0.3))
+				draw_rect(Rect2(x - 10 * full, -12, 20 * full, 28), [Color(0.75, 0.2, 0.2), Color(0.25, 0.45, 0.7), Color(0.85, 0.7, 0.25)][t])
+				draw_rect(Rect2(x - 14, -22, 28, 6), Color(0.5, 0.36, 0.22))
+				draw_rect(Rect2(x - 14, 20, 28, 6), Color(0.5, 0.36, 0.22))
+			if spools == 0:
+				draw_rect(Rect2(-14, -22, 28, 6), Color(0.5, 0.36, 0.22, 0.5))
+				draw_rect(Rect2(-14, 20, 28, 6), Color(0.5, 0.36, 0.22, 0.5))
+				draw_rect(Rect2(-5, -16, 10, 36), Color(0.6, 0.45, 0.3, 0.5))
 	draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)

@@ -48,6 +48,7 @@ var _sound_cd := 0.0
 var _reset_timer := 0.0
 var _hint_timer := 0.0
 var _tube_drag := false
+var _sprayed := false
 var _cam_tween: Tween
 
 
@@ -88,6 +89,7 @@ func _ready() -> void:
 	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(hint)
 
+	hud.supplies = Save.camp.supplies
 	_show_spare()
 	_build_bench()
 	Events.friend_arrived.connect(_on_friend_arrived)
@@ -147,6 +149,11 @@ func _press(sp: Vector2) -> void:
 			_reset_timer = 3.0
 		return
 	if h.begins_with("tool:"):
+		if hud.amount(h.substr(5)) <= 0:
+			# Nothing left: the empty thing on the shelf shakes (0042).
+			hud.shake(h.substr(5))
+			Voice.thud()
+			return
 		mode = "tool"
 		tool = h.substr(5)
 		hud.held_tool = tool
@@ -237,8 +244,12 @@ func _release(sp: Vector2) -> void:
 			friend.release_limb()
 		"eye":
 			if friend.release_eye():
-				_start_eye_sew()
-				return
+				if Save.camp.use("thread"):
+					Save.mark_dirty()
+					_start_eye_sew()
+					return
+				hud.shake("thread")
+				Voice.thud()
 		"touch":
 			if _touch_moved < 30.0 and _now - _press_time < 0.45:
 				friend.poke(l)
@@ -347,6 +358,10 @@ func _use_tool(l: Vector2) -> void:
 	if Save.friend.dead:
 		return
 	match tool:
+		"spray":
+			if friend.spray(l):
+				_sprayed = true
+				Voice.poof()
 		"sponge":
 			if friend.sponge(l) and _sound_cd <= 0.0:
 				Voice.splash()
@@ -368,10 +383,17 @@ func _finish_tool(l: Vector2) -> void:
 		"stuffing", "oil":
 			if l.distance_to(friend.mouth_pos()) < 80.0:
 				friend.wake()
-				if tool == "stuffing":
+				if not Save.camp.use(tool):
+					hud.shake(tool)
+				elif tool == "stuffing":
 					friend.feed_stuffing()
 				else:
 					friend.feed_oil()
+		"spray":
+			if _sprayed:
+				Save.camp.use("spray")
+				Save.mark_dirty()
+			_sprayed = false
 		"sponge":
 			if Save.friend.mud.is_empty():
 				Events.cared.emit("washed")
@@ -406,8 +428,14 @@ func _release_part(sp: Vector2, w: Vector2) -> void:
 	if lp.from_pocket:
 		var slot := _open_slot_near(w, lp.part.kind)
 		lp.queue_free()
-		if slot != "":
+		if slot != "" and Save.camp.use("thread"):
+			Save.mark_dirty()
 			start_surgery(slot, lp.part)
+		elif slot != "":
+			# No thread: the spare goes back to the pocket (0042).
+			hud.shake("thread")
+			_show_spare()
+			Voice.thud()
 		else:
 			_show_spare()
 			Voice.pop()
@@ -681,6 +709,7 @@ func _process(delta: float) -> void:
 		_hint_timer = 0.25
 		_update_hint()
 		traces.refresh()
+		hud.supplies = Save.camp.supplies
 	var vs := get_viewport_rect().size
 	hint.position = Vector2(40, 118)
 	hint.size = Vector2(vs.x - 80, 120)

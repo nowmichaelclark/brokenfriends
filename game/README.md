@@ -59,6 +59,14 @@ still, slumped, for good. Rot draws bugs (tap them to chase them off);
 muddy friends track footprints across the floor (scrub them with the
 sponge). A healthy, clean friend never rots, however long you're away.
 
+**Supplies run out** (step B3, decisions 0027 and 0042): stuffing,
+oil, thread and mold spray are counted, and the shelf shows how much is
+left (tufts in the box, oil and spray levels, spools of thread). Each
+feeding uses a handful or a dose, each sewing a length of thread, each
+spraying a squirt. With none left the thing on the shelf shakes and the
+treatment can't be done. Water (sponge, towel) is free. More will come
+from quests and newcomers (steps B5, B6).
+
 The game saves on its own. **Start over** (tap twice) begins again.
 
 **Music** (when the Driftloom extension is built): Driftloom's own core
@@ -174,7 +182,10 @@ planning chat). Each is easy to change.
   about two and a half weeks; one muddy and soaked, or with its rotten
   leg torn off and the wound left open, in about two. A dead friend
   stays at camp until parts can be taken (step B4).
-- The sponge also scrubs the floor; bugs leave when tapped. (Step B3
-  will make cleaning use supplies, decision 0042.)
+- The sponge also scrubs the floor; bugs leave when tapped.
+- A new camp starts with 6 handfuls of stuffing, 3 doses of oil, 4
+  lengths of thread and 2 squirts of mold spray (`#supplies=N` sets all
+  four on a new game). One squirt cleans every moldy part touched in
+  one stroke. Spray clears mold but not the rot already in a part.
 - The second friend of the first day arrives two minutes after the
   first is patched up; up to four friends sit at the back.

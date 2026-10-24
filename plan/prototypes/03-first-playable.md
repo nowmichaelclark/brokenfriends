@@ -37,7 +37,7 @@ this build" in `game/README.md` and are asked, never decided.
   is death. Time away leaves traces: mud tracks, bugs, mold, a soaked
   friend sitting weakly. *Done when:* a test shows a wounded friend left alone dies
   and a healthy one lives, and screenshots show the traces.
-- [ ] **B3. Supplies run out** (0027). Stuffing, oil, thread and spare
+- [x] **B3. Supplies run out** (0027). Stuffing, oil, thread and spare
   parts are counted and shown as things on a shelf, not numbers.
   Without them, the treatment that needs them can't be done (0042).
   *Done when:* using them up empties the shelf and blocks that

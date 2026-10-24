@@ -74,6 +74,9 @@ func new_game() -> void:
 	camp = CampData.first_camp(now())
 	for i in int(Flags.value("friends", "1")) - 1:
 		camp.friends.append(FriendData.test_friend(100 + i))
+	if Flags.value("supplies") != "":
+		for k in camp.supplies:
+			camp.supplies[k] = int(Flags.value("supplies"))
 	save_now()
 
 

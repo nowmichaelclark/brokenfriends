@@ -152,6 +152,9 @@ func _run() -> void:
 	_check(Save.friend.stuffing >= 0.9, "stuffing refills them")
 	_check(Save.friend.fluid > 0.9, "oil loosens the joints")
 	await _shot("16_all_good")
+	var sup: Dictionary = Save.camp.supplies
+	_check(sup["thread"] == 2 and sup["stuffing"] == 4 and sup["oil"] == 2,
+		"two sewings, two handfuls of stuffing and one dose of oil came off the shelf")
 	print("wellbeing at end of tent: ", Save.friend.wellbeing())
 
 	# Play corner.
@@ -253,8 +256,9 @@ func _change_steps() -> void:
 	var camp := CampData.new()
 	camp.friends.append(FriendData.first_friend())
 	camp.friends.append(FriendData.second_friend())
-	camp.clock = 2000000.0
-	camp.advance(17.0 * 86400.0, camp.clock + 17.0 * 86400.0)
+	# (Ending at the game's own now, so the camp's clock carries on from there.)
+	camp.clock = Save.now() - 17.0 * 86400.0
+	camp.advance(17.0 * 86400.0, Save.now())
 	_check(camp.friends[0].dead, "the friend never helped has died")
 	_check(not camp.friends[1].dead, "the muddy friend is still alive")
 	_check(camp.bugs > 0 and not camp.tracks.is_empty(), "rot drew bugs and mud was tracked in")
@@ -293,6 +297,51 @@ func _change_steps() -> void:
 	await _tap(_screen(tent.friend.to_global(Vector2(40, 10))))
 	_check(Save.friend.dead and not Save.friend.asleep, "a friend who died stays still")
 	await _shot("24_a_friend_died")
+	await _supply_steps()
+
+
+# --- B3: supplies run out ---------------------------------------------
+
+func _supply_steps() -> void:
+	var camp := Save.camp
+	tent.choose_friend(1)
+	await _wait(0.6)
+	var c: FriendView = tent.friend
+	# Spray the mold off one limb.
+	var slot := ""
+	for s in ["arm_l", "arm_r", "leg_l", "leg_r"]:
+		var part: PartData = Save.friend.part(s)
+		if part and not part.mold.is_empty():
+			slot = s
+			break
+	var spray: int = camp.supplies["spray"]
+	var tc: Vector2 = tent.hud.tool_center(4)
+	await _touch(tc, true)
+	var mid := c.socket(slot).lerp(c.tip(slot), 0.5)
+	for i in 8:
+		await _drag_to(_screen(c.to_global(mid + Vector2(sin(i) * 8.0, 0))) + Vector2(0, 80))
+	await _touch(_last, false)
+	_check(Save.friend.part(slot).mold.is_empty(), "mold spray clears the mold off a limb")
+	_check(camp.supplies["spray"] == spray - 1, "one squirt of spray is used")
+
+	# Nothing left: the shelf shows it, and the empty spray won't come off it.
+	for k in camp.supplies:
+		camp.supplies[k] = 0
+	await _wait(0.4)
+	await _touch(tc, true)
+	await _touch(tc, false)
+	_check(tent.hud.held_tool == "" and tent.mode == "", "an empty spray stays on the shelf")
+	# No thread: a dangling eye can't be sewn back on (decision 0042).
+	Save.friend.part("eye_r").attached = false
+	await _wait(1.0)
+	var eye_at := _screen(c.to_global(c.eye_position()))
+	await _touch(eye_at, true)
+	var anchor := _screen(c.to_global(c.eye_anchor("eye_r")))
+	await _drag_path(eye_at, anchor, 10)
+	await _touch(anchor, false)
+	await _wait(0.4)
+	_check(tent.mode != "surgery", "with no thread, sewing can't start")
+	await _shot("25_empty_shelf")
 
 
 # --- Helpers ------------------------------------------------------------

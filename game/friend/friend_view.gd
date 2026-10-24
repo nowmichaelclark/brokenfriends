@@ -423,6 +423,28 @@ func release_eye() -> bool:
 	return _eye_pos.distance_to(eye_anchor("eye_r")) < 34.0
 
 
+## Mold spray: clears the mold off the part under `p`. Rot already in
+## the fabric stays; it just has no mold feeding it. True if any came off.
+func spray(p: Vector2) -> bool:
+	var best := ""
+	var best_d := 70.0
+	for slot in ["arm_l", "arm_r", "leg_l", "leg_r"]:
+		var part: PartData = data.part(slot)
+		if part == null or part.mold.is_empty() or not part.attached:
+			continue
+		var q := Geometry2D.get_closest_point_to_segment(p, socket(slot), tip(slot))
+		if q.distance_to(p) < best_d:
+			best_d = q.distance_to(p)
+			best = slot
+	if best == "":
+		return false
+	var part: PartData = data.part(best)
+	_fx("bubble", p, 4, 20.0)
+	part.mold.clear()
+	Save.mark_dirty()
+	return true
+
+
 ## Hold the eye in its place while it is stitched on.
 func snap_eye() -> void:
 	_eye_pos = eye_anchor("eye_r")
@@ -666,7 +688,7 @@ func _update_parts(wb: float) -> void:
 		node.position = a
 		node.rotation = d.angle() - PI * 0.5
 		node.scale = Vector2(1.0, maxf(0.2, d.length() / limb_len(slot)))
-		node.refresh([part.get_instance_id(), _q(part.rot, 0.05), part.torn, part.stitched, wet, _q(limb_width(slot), 0.5)])
+		node.refresh([part.get_instance_id(), _q(part.rot, 0.05), part.mold.size(), part.torn, part.stitched, wet, _q(limb_width(slot), 0.5)])
 
 	_head.position = head_center()
 	_head_art.refresh([wq, wet, mud_head])

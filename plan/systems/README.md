@@ -15,7 +15,7 @@ boundaries are, so ideas land in the right place from the start.
 | `needs-growth` | Hunger, feeding, weight, energy, mood, growing up |
 | `care-touch` | Everything the player does with a finger: poke, drag, feed, wash, dry, sew |
 | `species-habitats` | Kinds of creature, land and water, and what each place does to them |
-| `training-minigames` | Minigames and the stats they train |
+| `play` | Toys, minigames, and the skills creatures grow by playing |
 | `expeditions` | Delivery quests: carrying, terrain, time away, rewards |
 | `time-save` | The clock, catching up after time away, saving and loading |
 | `progression` | Goals, unlocks and whatever the player earns or spends |

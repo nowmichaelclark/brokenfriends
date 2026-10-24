@@ -22,8 +22,12 @@ animated, and how wetness, mold and tears show.
 - Claude's suggestions: 2D cut-out parts on a skeleton; a fabric and
   stitch look like LittleBigPlanet or Kirby's Epic Yarn.
 
+- Mikey (2026-10-24): at least some, maybe a lot, of the art
+  procedurally generated, the way Driftloom generates its music and
+  cover art (Q-006).
+
 ## First questions
 
-- Who makes the art? (Mikey, generated, hired, or a mix)
+- Which art is generated, and which is drawn? (Q-006)
 - Cute, eerie, or both?
 - How much of the look can come from shaders instead of drawings?

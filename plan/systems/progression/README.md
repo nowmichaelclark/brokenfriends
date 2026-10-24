@@ -1,7 +1,7 @@
 ---
 status: idea
 last_reviewed: 2026-10-23
-depends_on: [expeditions, training-minigames]
+depends_on: [expeditions, play]
 feeds: [species-habitats, care-touch, ui-ux]
 ---
 # Progression
@@ -14,7 +14,7 @@ new places, and anything earned or spent.
 ## Not in charge of
 
 - An individual creature's growth: `needs-growth`.
-- An individual creature's skills: `training-minigames`.
+- An individual creature's skills: `play`.
 
 ## Seed notes
 

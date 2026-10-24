@@ -2,7 +2,7 @@
 status: idea
 last_reviewed: 2026-10-23
 depends_on: []
-feeds: [creature-body, condition, needs-growth, training-minigames, expeditions, audio-music]
+feeds: [creature-body, condition, needs-growth, play, expeditions, audio-music]
 ---
 # Species and habitats
 

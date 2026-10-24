@@ -18,18 +18,17 @@ budgets, the development workflow and the test scenes.
 ## Seed notes (from the first chat, unconfirmed)
 
 - 2D. Mobile first, browser too, maybe native Windows, Linux and Mac.
-- Godot proposed (decision 0004); built-in physics first, Rapier only
-  if needed (decision 0005).
+- Godot (decision 0004); built-in physics first, Rapier only if
+  needed (decision 0005).
 - Developed on Fedora 44; tested on Mikey's Android phone.
 - Gym, zoo and museum test scenes as hidden debug scenes.
+- No iPhone for now (decision 0015): Android and the browser first.
 - One repo, `brokenfriends`: plans in `plan/`, the Godot project in
   `game/` (decision 0007).
 - Claude's notes: web builds need Godot's Compatibility renderer
-  [unverified]; iOS builds need a Mac with Xcode [unverified]; running
-  Driftloom's core in a Godot web build is a risk to test early
-  [unverified].
+  [unverified]; running Driftloom's core in a Godot web build is a
+  risk to test early [unverified] (decision 0016).
 
 ## First questions
 
-- How important is iPhone at first playable?
 - Performance target: which cheapest phone must run it well?

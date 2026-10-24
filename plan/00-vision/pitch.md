@@ -23,7 +23,7 @@ Two play patterns, both supported:
 - **Longer sessions:** more creatures, more minigames, quests, and the
   overarching goals behind the quest system.
 
-Nothing is gated. No microtransactions. The game is not trying to hold
+It's free. Nothing is gated. No microtransactions. The game is not trying to hold
 the player to something. Players come back more often because they
 grow attached to a particular creature or a particular goal.
 

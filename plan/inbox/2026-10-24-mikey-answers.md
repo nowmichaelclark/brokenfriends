@@ -18,3 +18,16 @@ creatures are all well taken care of, then loss is very unlikely."
 "Yes, creatures should be fun to poke and listen to. I'm picturing
 something like Nintendogs where the player can use toys and things like
 that with the creatures."
+
+## On the open questions (later the same day)
+
+- Q-002: "Up to the player. A camp can only hold so many, but there can
+  be multiple camps." (decision 0013)
+- Q-005: "free" (decision 0014)
+- Q-006: "Not sure, but I would like at least some if not a lot of it to
+  be procedurally generated the same way music and cover art is
+  procedurally generated in Driftloom."
+- Q-003: "No, let's forget about iPhone for now entirely." (0015)
+- Q-009: "Yes, in fact it should be considered the most important, it's
+  the only one that really matters to me." (0016)
+- Play, not train (0017).

@@ -27,9 +27,11 @@ that follows the game's state, and sound effects.
   "music for games" is on its roadmap; this game could be one of the
   charter's "three real games".
 
+- Mikey (2026-10-24): Broken Friends is the most important of
+  Driftloom's "three real games" (decision 0016).
+
 ## First questions
 
 - Which game states map to which music settings?
 - When two creatures are on screen, whose theme plays?
-- Does the music system need to be designed in Phase 2 even if built
-  late? (Likely yes: the Driftloom lesson about architecture.)
+- Which spike proves the core runs in a Godot build, browser included?

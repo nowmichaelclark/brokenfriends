@@ -1,7 +1,7 @@
 ---
 status: idea
 last_reviewed: 2026-10-23
-depends_on: [training-minigames, needs-growth, condition, creature-body, species-habitats, time-save]
+depends_on: [play, needs-growth, condition, creature-body, species-habitats, time-save]
 feeds: [progression, condition, needs-growth, audio-music]
 ---
 # Expeditions
@@ -13,7 +13,7 @@ terrain, carrying, what can go wrong, time away and the rewards.
 
 ## Not in charge of
 
-- The stats that affect success: `training-minigames`.
+- The stats that affect success: `play`.
 - Damage and wetness picked up on the way: `condition` applies them.
 - What rewards buy: `progression`.
 

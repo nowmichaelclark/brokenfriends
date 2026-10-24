@@ -75,7 +75,7 @@ model can.
 Repeat Phase 3's pattern (deep pass, verify, Gate C, prototype) for:
 
 1. `needs-growth` and `time-save` (the pet layer)
-2. `training-minigames`
+2. `play`
 3. `expeditions`
 4. `audio-music` (Driftloom), `progression`, `ui-ux`
 

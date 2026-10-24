@@ -52,6 +52,15 @@ plays six of its golden loops in turn, quietly. See `rust/README.md`.
   switched on; see below).
 - **Laptop:** open this folder in Godot 4.7.1 and press F5. The mouse
   acts as a finger.
+- **Android app:** every push builds it. On the phone, open
+  https://github.com/nowmichaelclark/brokenfriends/releases/tag/android-latest
+  and tap `broken-friends.apk` (allow installs from the browser when
+  Android asks). Each new build installs over the last. It is signed
+  with a test key kept in `.github/android-test.keystore`, fine for
+  testing; before the game is shared, make a private key and add it as
+  the repository secrets `ANDROID_KEYSTORE_BASE64`,
+  `ANDROID_KEYSTORE_USER` and `ANDROID_KEYSTORE_PASSWORD` (players would
+  then reinstall once).
 - **Android, from the laptop:** set up the Android SDK once (Godot docs,
   "Exporting for Android"), plug in the phone with USB debugging on,
   then press the Android button at the top right of the editor

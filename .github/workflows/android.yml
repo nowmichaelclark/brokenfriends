@@ -1,0 +1,113 @@
+name: android
+
+# Builds the Android app on every push to main that touches the game, and
+# puts it on the "android-latest" release, so it can be downloaded on the
+# phone from one address that never changes:
+# https://github.com/nowmichaelclark/brokenfriends/releases/download/android-latest/broken-friends.apk
+
+on:
+  push:
+    branches: [main]
+    paths: ["game/**", "rust/**", ".github/workflows/android.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android
+  cancel-in-progress: true
+
+env:
+  GODOT_VERSION: "4.7.1"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Godot and its Android templates
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/godot
+            ~/.local/share/godot/export_templates
+          key: godot-${{ env.GODOT_VERSION }}-android
+
+      - name: Download Godot and its Android templates
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          base=https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable
+          mkdir -p ~/godot
+          curl -sSL -o godot.zip "$base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip -q godot.zip -d ~/godot
+          mv ~/godot/Godot_v${GODOT_VERSION}-stable_linux.x86_64 ~/godot/godot
+          curl -sSL -o templates.tpz "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          dest=~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+          mkdir -p "$dest"
+          unzip -q -j templates.tpz 'templates/android_release.apk' 'templates/version.txt' -d "$dest"
+          rm templates.tpz
+
+      # Driftloom's core as a Godot extension, for phones (rust/README.md).
+      # The app still builds, without music, if this fails.
+      - name: Install Rust for Android
+        continue-on-error: true
+        run: |
+          rustup target add aarch64-linux-android armv7-linux-androideabi
+          cargo install cargo-ndk --locked
+
+      - uses: Swatinem/rust-cache@v2
+        continue-on-error: true
+        with:
+          workspaces: rust/driftloom-godot
+
+      - name: Build the Driftloom extension for Android
+        continue-on-error: true
+        run: ANDROID_NDK_HOME="$ANDROID_NDK_LATEST_HOME" rust/build.sh android
+
+      - name: Export the app
+        env:
+          # A real signing key, if Mikey has added one as repository
+          # secrets; otherwise the test key in .github (see game/README.md).
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_USER: ${{ secrets.ANDROID_KEYSTORE_USER }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          if [ ! -f game/addons/driftloom/bin/android/arm64/libdriftloom_godot.so ]; then
+            echo "::warning::Driftloom extension missing; building without music"
+            rm game/addons/driftloom/driftloom.gdextension
+          fi
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+            export GODOT_ANDROID_KEYSTORE_RELEASE_PATH="$RUNNER_TEMP/release.keystore"
+            export GODOT_ANDROID_KEYSTORE_RELEASE_USER="$KEYSTORE_USER"
+            export GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD="$KEYSTORE_PASSWORD"
+          else
+            export GODOT_ANDROID_KEYSTORE_RELEASE_PATH="$PWD/.github/android-test.keystore"
+            export GODOT_ANDROID_KEYSTORE_RELEASE_USER=brokenfriends
+            export GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD=testpass
+          fi
+          # Where Godot finds the Android SDK and Java on GitHub's machines.
+          mkdir -p ~/.config/godot
+          printf '[gd_resource type="EditorSettings" format=3]\n\n[resource]\nexport/android/android_sdk_path = "%s"\nexport/android/java_sdk_path = "%s"\n' \
+            "$ANDROID_HOME" "$JAVA_HOME_17_X64" > ~/.config/godot/editor_settings-4.7.tres
+          # Each build a higher version number, so it installs over the last.
+          sed -i "s/^version\/code=.*/version\/code=${GITHUB_RUN_NUMBER}/" game/export_presets.cfg
+          mkdir -p build/android
+          ~/godot/godot --headless --path game --import || true
+          ~/godot/godot --headless --path game --export-release "Android" ../build/android/broken-friends.apk
+          test -f build/android/broken-friends.apk
+          ls -la build/android
+
+      - name: Put it on the android-latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          notes="Built from $(git rev-parse --short HEAD) on $(date -u +%Y-%m-%d\ %H:%M) UTC. Open this page on the phone and tap broken-friends.apk to install."
+          if ! gh release view android-latest >/dev/null 2>&1; then
+            gh release create android-latest --prerelease --title "Broken Friends for Android (latest build)" --notes "$notes"
+          fi
+          gh release upload android-latest build/android/broken-friends.apk --clobber
+          gh release edit android-latest --notes "$notes"

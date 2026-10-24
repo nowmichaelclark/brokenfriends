@@ -12,9 +12,17 @@ name = "driftloom_godot"
 
 [dependencies]
 godot = "=0.5.5"
+# Only for `RawPtr`, which the audio callback's signature names and `godot`
+# does not re-export. Same version as `godot` uses.
+godot-core = "=0.5.5"
 # Driftloom's core, pinned to one commit so the golden hashes below stay
 # comparable. "wide" (192 kHz room) is off: games run at 44.1 or 48 kHz.
 dlcore = { git = "https://github.com/nowmichaelclark/driftloom", rev = "f654fdb767b77bbd5845dafe8d42d2e3a0ba8647", default-features = false }
+
+# Phones and computers: Godot calls the music from its audio thread
+# (src/stream.rs), which needs godot-rust's thread support.
+[target.'cfg(not(target_os = "emscripten"))'.dependencies]
+godot = { version = "=0.5.5", features = ["experimental-threads"] }
 
 # The browser build: Godot's single-threaded web engine with extension
 # support (the web_dlink templates). See rust/README.md.

@@ -59,9 +59,13 @@ software, so the numbers are only good for comparing):
 | Frame time | 130 ms (7 fps) | 60–70 ms (15 fps) |
 | An empty page, same machine | 34 ms | 34 ms |
 
-Not done yet: the music still runs on the screen's thread (it moves
-to the audio thread with the Android build), and the real numbers must
-come from Mikey's phone.
+On Mikey's Moto G Power in Chrome (2026-10-24, after the changes): a
+steady 60 fps, 16.7 ms every frame, music 0.7 ms a frame, 65 draw calls,
+on the tent's first screen.
+
+In the Android app and on computers the music runs on Godot's audio
+thread, not the screen's; the browser can't do that (no threads), so
+there it is still filled each frame.
 
 ## First questions
 

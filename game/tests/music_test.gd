@@ -36,15 +36,19 @@ func _ready() -> void:
 			print("       expected ", expected.get(loop_name, "(none)"))
 			failures.append(loop_name)
 	print("render speed: %.1fx real time (%.1f s of audio in %.0f ms)" % [audio_s * 1000.0 / maxf(render_ms, 1.0), audio_s, render_ms])
-	# The golden renders above block the game for seconds, so the stream
-	# underran then. Now check it keeps up while the game runs normally.
+	# Now check the game's music keeps up while the game runs normally.
 	await get_tree().create_timer(1.0).timeout
 	var before: int = Music.skips()
 	await get_tree().create_timer(4.0).timeout
 	var after: int = Music.skips()
-	print("stream underruns in 4 s of play: ", after - before, " (playing ", Music.current, ")")
-	if after - before > 0:
-		failures.append("streaming underran")
+	if Music.mode == "thread":
+		print("music on the audio thread: %.2f ms of work per 60 fps frame (%s)" % [Music.cost_ms(), Music.current])
+		if not Music.available or Music.cost_ms() <= 0.0:
+			failures.append("the audio thread isn't playing")
+	else:
+		print("stream underruns in 4 s of play: ", after - before, " (", Music.current, ")")
+		if after - before > 0:
+			failures.append("streaming underran")
 	if failures.is_empty():
 		print("MUSIC OK")
 		_done(0)

@@ -13,6 +13,9 @@
 
 #[allow(dead_code)]
 mod notelist;
+// Not in the browser: its engine has no threads (see src/stream.rs).
+#[cfg(not(target_os = "emscripten"))]
+mod stream;
 
 use std::sync::Mutex;
 use std::time::Instant;
@@ -28,7 +31,8 @@ unsafe impl ExtensionLibrary for DriftloomExtension {}
 
 /// The core is megabytes of state, built at compile time and never on the
 /// stack. One core for the whole game: its six channels are the music's
-/// layers, and every call comes from Godot's main thread.
+/// layers. This one is `DriftloomPlayer`'s (the browser, and the tests);
+/// `DriftloomStream` has its own two (src/stream.rs).
 static CORE: Mutex<Core> = Mutex::new(Core::new());
 
 /// Plays one note list through Driftloom's core.

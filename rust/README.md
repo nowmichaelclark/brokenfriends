@@ -3,7 +3,19 @@
 `driftloom-godot/` is a Godot extension, written in Rust with
 [godot-rust](https://godot-rust.github.io), that links Driftloom's audio
 core (`github.com/nowmichaelclark/driftloom`, `core/`, pinned to one
-commit in `Cargo.toml`). It gives Godot one class, `DriftloomPlayer`:
+commit in `Cargo.toml`). It gives Godot two ways to play.
+
+**`DriftloomStream`** (phones and computers) is an `AudioStream`. Godot's
+own audio thread pulls the music from it, so the music never takes time
+from the screen. Lists queued with `queue_notes(text, gain)` play one
+after another with no gap; `has_queued()`, `is_idle()`, `set_lite(on)`
+and `cost_ms()` go with it. Starting a list resets the core (about 15 ms
+on a laptop, more on a phone), too slow for the audio thread, so the
+stream keeps two cores: a helper thread readies the next list on the one
+not playing, and the audio thread just switches (`src/stream.rs`).
+
+**`DriftloomPlayer`** (the browser, and the tests) is filled a little each
+frame into an `AudioStreamGenerator`: Godot's web engine has no threads.
 
 | Method | What it does |
 |---|---|
@@ -11,7 +23,7 @@ commit in `Cargo.toml`). It gives Godot one class, `DriftloomPlayer`:
 | `render_stereo(frames)` | The next frames, for `AudioStreamGeneratorPlayback.push_buffer` |
 | `is_finished()`, `sample_rate()`, `length_seconds()` | About the loaded list |
 | `golden_line(text)` | Render a whole list and return Driftloom's hash line, to check builds |
-| `looping`, `gain` | Properties |
+| `looping`, `gain`, `lite` | Properties (`lite`: Driftloom's lite mix) |
 
 The game's `Music` autoload (`game/autoload/music.gd`) uses it, and is
 silent when the library isn't built.
@@ -26,11 +38,21 @@ game plays note lists: six of Driftloom's golden loops, in
 ```bash
 rust/build.sh linux     # for the laptop: needs Rust (rustup)
 rust/build.sh web       # for the browser: see below
+rust/build.sh android   # for phones: needs the Android NDK and cargo-ndk
 ```
 
 Each copies the library into `game/addons/driftloom/bin/`, which is not
 committed. CI builds the web library on every push
-(`.github/workflows/web.yml`).
+(`.github/workflows/web.yml`) and the Android ones with the app
+(`.github/workflows/android.yml`).
+
+### The Android build
+
+`cargo install cargo-ndk`, `rustup target add aarch64-linux-android
+armv7-linux-androideabi`, and `ANDROID_NDK_HOME` set to an NDK (r28 was
+used). It builds 64-bit and 32-bit ARM libraries for Android 7 and up.
+Off the browser, godot-rust's `experimental-threads` feature is on,
+because Godot calls `DriftloomStream` from its audio thread.
 
 ### The browser build
 
@@ -69,4 +91,5 @@ Linux and in Chromium; Linux about 22-32x real time, the browser about
 19x; no stream underruns in either while the game runs. Not yet measured
 on a phone.
 
-Not built yet: Android (needs the Android NDK) and Windows libraries.
+Not built yet: Windows. The Android library is built, but not yet
+heard on a phone.

@@ -57,9 +57,10 @@ this build" in `game/README.md` and are asked, never decided.
 - [x] **B6. Arrivals** (0034). New friends turn up with problems, now
   and then bringing a gift; the camp has a limit (0013). *Done when:*
   a simulated month brings arrivals and respects the limit.
-- [ ] **B7. The surgery table** (0031). Surgery lying down in its own
+- [x] **B7. The surgery table** (0031). Surgery lying down in its own
   place, close enough to see stitches, front and back. *Done when:*
-  reached from the tent, and sharp at full zoom.
+  reached from the tent, and sharp at full zoom. (Done for the front;
+  the back view comes with B8.)
 - [ ] **B8. Generated friends, first cut** (0037). A few body plans
   with generated heads, ears, colours, fabric and proportions; front
   and back; thin friends wobble, plump ones bounce; a voice per

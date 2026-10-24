@@ -10,6 +10,8 @@ extends Node2D
 signal go_to(place: String)
 
 const FRIEND_POS := Vector2(360, 650)
+## Where a friend lies on the surgery table (decision 0031).
+const TABLE_POS := Vector2(360, 640)
 const VIEW_CENTER := Vector2(360, 640)
 ## Tools are held a little above the finger so it doesn't hide them.
 const TOOL_OFFSET := Vector2(0, -80)
@@ -37,6 +39,10 @@ var loose_parts: Array = []
 var zoomed := false
 
 var _parts_layer: Node2D
+var _bg: Node2D
+var _table: Node2D
+var _fade: ColorRect
+var on_table := false
 var _bench_layer: Node2D
 var _now := 0.0
 var _press_pos := Vector2.ZERO
@@ -60,6 +66,10 @@ var _cam_tween: Tween
 func _ready() -> void:
 	var bg := TentBackground.new()
 	add_child(bg)
+	_bg = bg
+	_table = SurgeryTable.new()
+	_table.visible = false
+	add_child(_table)
 	traces = CampTraces.new()
 	add_child(traces)
 	traces.setup(Save.camp)
@@ -93,6 +103,11 @@ func _ready() -> void:
 	hint.add_theme_constant_override("outline_size", 12)
 	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(hint)
+	_fade = ColorRect.new()
+	_fade.color = Color(0.08, 0.05, 0.04, 0.0)
+	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_fade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	layer.add_child(_fade)
 
 	hud.supplies = Save.camp.supplies
 	_show_spare()
@@ -642,7 +657,7 @@ func start_head_surgery(head: FriendData) -> void:
 	mode = "surgery"
 	var neck := friend.socket("neck")
 	friend.surgery = {"slot": "neck", "neck": true, "step": "sew", "done": 0, "points": _seam_points("neck")}
-	_zoom_to(friend.to_global(neck), 2.2)
+	_to_table(neck, 3.2)
 	_show_spare()
 	_build_bench()
 	Save.mark_dirty()
@@ -668,7 +683,7 @@ func start_surgery(slot: String, part: PartData) -> void:
 	mode = "surgery"
 	hud.spare_visible = false
 	friend.surgery = {"slot": slot, "part": part, "step": "fluff", "points": [], "done": 0}
-	_zoom_to(friend.to_global(friend.socket(slot) + Vector2(0, 40)), 2.3)
+	_to_table(friend.socket(slot) + Vector2(0, 40), 3.2)
 	Voice.pop()
 
 
@@ -680,7 +695,7 @@ func _start_eye_sew() -> void:
 		"slot": "eye_r", "eye": true, "step": "sew", "done": 0,
 		"points": [a + Vector2(-15, -15), a + Vector2(15, 15), a + Vector2(15, -15), a + Vector2(-15, 15)],
 	}
-	_zoom_to(friend.to_global(a), 3.0)
+	_to_table(a, 4.0)
 
 
 func _tol() -> float:
@@ -833,7 +848,7 @@ func _finish_sew() -> void:
 	Events.surgery_step.emit("sewn")
 	friend.surgery = {}
 	mode = ""
-	_zoom_reset()
+	_off_table()
 	friend.set_expression("squint", "open", 1.6)
 	Events.friend_reacted.emit("cheer")
 	var at := friend.eye_anchor("eye_r") if slot == "eye_r" else friend.socket(slot)
@@ -841,6 +856,50 @@ func _finish_sew() -> void:
 		at = friend.socket("neck")
 	fx.spawn("sparkle", fx.to_local(friend.to_global(at)), 8, 20.0)
 	Save.save_now()
+
+
+# --- The surgery table (decision 0031) ----------------------------------
+
+## Lay the friend on the surgery table, in its own place, and come in
+## close on `focus` (a point on the friend). A quick fade, as Trauma
+## Center does between views.
+func _to_table(focus: Vector2, z: float) -> void:
+	_fade_through(func():
+		on_table = true
+		_table.visible = true
+		for n in [_bg, traces, _bench_layer, _parts_layer]:
+			n.visible = false
+		friend.position = TABLE_POS
+		friend.rotation = -PI * 0.5
+		friend.set_detail(4.0)
+		zoomed = true
+		if _cam_tween:
+			_cam_tween.kill()
+		camera.position = friend.to_global(focus)
+		camera.zoom = Vector2(z, z))
+
+
+func _off_table() -> void:
+	_fade_through(func():
+		on_table = false
+		_table.visible = false
+		for n in [_bg, traces, _bench_layer, _parts_layer]:
+			n.visible = true
+		friend.position = FRIEND_POS
+		friend.rotation = 0.0
+		friend.set_detail(2.0)
+		zoomed = false
+		if _cam_tween:
+			_cam_tween.kill()
+		camera.position = VIEW_CENTER
+		camera.zoom = Vector2.ONE)
+
+
+func _fade_through(swap: Callable) -> void:
+	var tw := create_tween()
+	tw.tween_property(_fade, "color:a", 1.0, 0.12)
+	tw.tween_callback(swap)
+	tw.tween_property(_fade, "color:a", 0.0, 0.22)
 
 
 # --- Camera -------------------------------------------------------------

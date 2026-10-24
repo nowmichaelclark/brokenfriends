@@ -91,6 +91,12 @@ changed: soaked, muddy, torn, missing a limb, or a little fitter, with
 supplies for the shelf, parts for the pocket, sometimes a new friend.
 A friend can die out there; then only a part or two comes back.
 
+**The surgery table** (step B7, decision 0031): sewing happens with
+the friend lying on its own table, under a lamp, after a quick fade;
+the camera comes in close enough to see each stitch, and the friend is
+drawn twice as sharp while it's there. (Surgery on the back, for tails,
+brains and capes, comes with the back view, step B8.)
+
 **Newcomers** (step B6, decision 0034): after the first day's second
 friend, others turn up now and then, each with something wrong (mud,
 too little stuffing, soaked, a rotting limb, a missing limb, a dangling

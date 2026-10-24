@@ -687,6 +687,18 @@ var _dangle: Part
 var _surgery_art: Part
 
 
+## Bake every part again at another sharpness: more on the surgery
+## table, where the camera comes in close (decision 0031).
+func set_detail(d: float) -> void:
+	bake_detail = d
+	# Lying on the table (more detail), the floor shadow would show.
+	_shadow.visible = d <= 2.0
+	for b in [_shadow, _body, _heart, _head_art, _face]:
+		b.set_resolution(d)
+	for slot in _limb_nodes:
+		_limb_nodes[slot].set_resolution(d)
+
+
 ## A part that changes every frame while shown: drawn directly.
 func _part(parent: Node, painter: Callable) -> Part:
 	var n := Part.new()

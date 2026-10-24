@@ -15,10 +15,14 @@ var key = null
 var _vp: SubViewport
 var _canvas: Canvas
 var _sprite: Sprite2D
+var _rect: Rect2
+var _res := 2.0
 
 
 func setup(rect: Rect2, paint: Callable, resolution := 2.0) -> Baked:
 	painter = paint
+	_rect = rect
+	_res = resolution
 	_vp = SubViewport.new()
 	_vp.transparent_bg = true
 	_vp.disable_3d = true
@@ -42,6 +46,21 @@ func setup(rect: Rect2, paint: Callable, resolution := 2.0) -> Baked:
 	_sprite.material = mat
 	add_child(_sprite)
 	return self
+
+
+## Draw the picture again at another sharpness (texture pixels per
+## unit), e.g. more when the camera comes in close. Costs memory while
+## it lasts.
+func set_resolution(resolution: float) -> void:
+	if is_equal_approx(resolution, _res):
+		return
+	_res = resolution
+	_vp.size = Vector2i(ceili(_rect.size.x * resolution), ceili(_rect.size.y * resolution))
+	_canvas.position = -_rect.position * resolution
+	_canvas.scale = Vector2(resolution, resolution)
+	_sprite.scale = Vector2.ONE / resolution
+	_canvas.queue_redraw()
+	_vp.render_target_update_mode = SubViewport.UPDATE_ONCE
 
 
 ## The picture, to show elsewhere too: sprites that share it are drawn

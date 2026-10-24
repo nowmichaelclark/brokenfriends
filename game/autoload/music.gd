@@ -21,8 +21,16 @@ var _playback: AudioStreamGeneratorPlayback
 var _index := 0
 
 
+var _cost_us := 0.0
+
+
+## Average time the music takes per frame, ms (for the perf overlay).
+func cost_ms() -> float:
+	return _cost_us / 1000.0
+
+
 func _ready() -> void:
-	if not ClassDB.class_exists("DriftloomPlayer"):
+	if not ClassDB.class_exists("DriftloomPlayer") or Flags.has("nomusic"):
 		return
 	player = ClassDB.instantiate("DriftloomPlayer")
 	if not _load(LOOPS[0]):
@@ -66,9 +74,11 @@ func skips() -> int:
 func _process(_delta: float) -> void:
 	if not available:
 		return
+	var started := Time.get_ticks_usec()
 	if player.is_finished():
 		_index = (_index + 1) % LOOPS.size()
 		_load(LOOPS[_index])
 	var n := _playback.get_frames_available()
 	if n > 0:
 		_playback.push_buffer(player.render_stereo(n))
+	_cost_us = lerpf(_cost_us, float(Time.get_ticks_usec() - started), 0.05)

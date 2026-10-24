@@ -20,6 +20,8 @@ func _ready() -> void:
 		add_child(play)
 		play.go_to.connect(go_to)
 	go_to("tent")
+	if Flags.has("perf"):
+		add_child(load("res://debug/perf_overlay.gd").new())
 	var music_test := "--music-test" in OS.get_cmdline_user_args()
 	if OS.has_feature("web"):
 		var page_hash = JavaScriptBridge.eval("window.location.hash", true)

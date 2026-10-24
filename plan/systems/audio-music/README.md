@@ -35,6 +35,15 @@ that follows the game's state, and sound effects.
   Driftloom's golden loops. Writing new music waits on Driftloom's
   phase 2 (its generator moving to Rust).
 
+- Mikey (2026-10-24): "I hope eventually that Driftloom will be used to
+  its full potential: music can be randomly generated, change depending
+  upon events and time of day, what creature we're working on, a
+  creature's mood, etc. There are many variables we could tie to the
+  generation of loops." Needs Driftloom's phase 2 (its songwriting part
+  moving into the Rust core), then its promise 11 (asking for music).
+- Before that, the game must run smoothly on weak phones (Moto G Power
+  2022 and weaker), or live music would make it worse.
+
 ## First questions
 
 - Which game states map to which music settings?

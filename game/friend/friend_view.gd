@@ -56,11 +56,20 @@ var _zzz := 0.0
 var _chew := 0.0
 var _beat := 0.0
 var _rng := RandomNumberGenerator.new()
+## Pulling the head (decision 0026): how far it's stretched from the
+## neck, hard pulls so far, and whether this grab counted one.
+var _head_pull := Vector2.ZERO
+var _head_grabbed := false
+var _neck_pulls := 0
+var _pull_time := 0.0
+var _pull_counted := false
 
 
 func setup(friend: FriendData) -> void:
 	if friend != data:
 		wounds = {}
+		_neck_pulls = 0
+		_head_pull = Vector2.ZERO
 	data = friend
 	_rng.seed = data.look_seed
 	for slot in ["arm_l", "arm_r", "leg_l", "leg_r"]:
@@ -68,6 +77,8 @@ func setup(friend: FriendData) -> void:
 	for slot in ["arm_l", "arm_r", "leg_l", "leg_r"]:
 		if data.is_open(slot) and not wounds.has(slot):
 			wounds[slot] = make_tufts()
+	if data.headless and not wounds.has("neck"):
+		wounds["neck"] = make_tufts()
 	_eye_pos = eye_anchor("eye_r") + Vector2(0, 58)
 	_lid = 1.0 if data.asleep else 0.0
 	_build_parts()
@@ -84,7 +95,7 @@ func body_scale() -> float:
 
 
 func head_offset() -> Vector2:
-	return Vector2(sin(_t * 30.0) * 10.0 * _shake, 0)
+	return Vector2(sin(_t * 30.0) * 10.0 * _shake, 0) + _head_pull
 
 
 func head_center() -> Vector2:
@@ -107,6 +118,7 @@ func socket(slot: String) -> Vector2:
 		"arm_r": return Vector2(98.0 * s, -62.0)
 		"leg_l": return Vector2(-46.0 * s, 108.0)
 		"leg_r": return Vector2(46.0 * s, 108.0)
+		"neck": return Vector2(0, -128.0)
 	return Vector2.ZERO
 
 
@@ -130,6 +142,10 @@ func limb_width(slot: String) -> float:
 
 func rest_tip(slot: String) -> Vector2:
 	var tip := socket(slot) + limb_dir(slot) * limb_len(slot)
+	# A part loosened by hard pulls hangs a little lower (0025).
+	var part: PartData = data.part(slot) if data else null
+	if part:
+		tip += limb_dir(slot) * part.pulls * 5.0
 	if slot.begins_with("leg") and walk_phase != 0.0:
 		var side := -1.0 if slot == "leg_l" else 1.0
 		tip.y -= maxf(0.0, sin(walk_phase) * side) * 18.0
@@ -315,6 +331,14 @@ func grab_limb(slot: String) -> void:
 	_grabbed = slot
 	_strain = 0.0
 	_winced = false
+	_pull_time = 0.0
+	_pull_counted = false
+
+
+## Hard pulls a part needs before it comes off. A friend who has died,
+## or a body without a head, gives its parts up at the first pull.
+func pulls_needed(part: PartData) -> int:
+	return 1 if data.dead or data.headless else part.pulls_needed()
 
 
 ## Pull a grabbed limb toward a local point. Healthy limbs stretch a
@@ -335,6 +359,20 @@ func drag_limb(p: Vector2, delta: float) -> PartData:
 		if l > cap:
 			want = want.normalized() * (cap + (l - cap) * 0.12)
 			_strain += delta
+			# A hard pull, held: it counts once per grab. Enough of them
+			# and even a healthy part comes off (decision 0025).
+			_pull_time += delta
+			if l > 120.0 and _pull_time > 0.3 and not _pull_counted:
+				_pull_counted = true
+				part.pulls += 1
+				_fx("fluff", socket(slot), 3, 10.0)
+				Voice.tear(0.15)
+				Save.mark_dirty()
+				if part.pulls >= pulls_needed(part):
+					return tear(slot)
+			if data.dead or data.headless:
+				st["off"] = want
+				return null
 			if not _winced:
 				_winced = true
 				set_expression("squint", "frown", 0.8)
@@ -368,6 +406,53 @@ func drag_limb(p: Vector2, delta: float) -> PartData:
 
 func release_limb() -> void:
 	_grabbed = ""
+
+
+# --- Pulling the head (0026) ----------------------------------------------
+
+func grab_head() -> void:
+	_head_grabbed = true
+	_pull_time = 0.0
+	_pull_counted = false
+	set_expression("open", "frown", 0.6)
+	Events.friend_reacted.emit("wince")
+
+
+## Pull the head toward a local point. The neck stretches; a hard pull
+## held counts once per grab, and after about three the head comes off.
+## True when it does.
+func drag_head(p: Vector2, delta: float) -> bool:
+	if not _head_grabbed:
+		return false
+	var want := p - HEAD_C
+	var l := want.length()
+	var cap := 46.0
+	if l > cap:
+		want = want.normalized() * (cap + (l - cap) * 0.1)
+		_pull_time += delta
+		if l > 130.0 and _pull_time > 0.3 and not _pull_counted:
+			_pull_counted = true
+			_neck_pulls += 1
+			_fx("fluff", HEAD_C + Vector2(0, HEAD_R * 0.8), 4, 16.0)
+			Voice.tear(0.3)
+			_shake = 0.6
+			if _neck_pulls >= 3:
+				_head_grabbed = false
+				_head_pull = Vector2.ZERO
+				return true
+	_head_pull = want
+	return false
+
+
+func release_head() -> void:
+	_head_grabbed = false
+	_head_pull = Vector2.ZERO
+	_pull_time = 0.0
+	_pull_counted = false
+
+
+func is_pulling_head() -> bool:
+	return _head_grabbed
 
 
 func is_grabbing() -> bool:
@@ -513,9 +598,13 @@ func _process(delta: float) -> void:
 	if not wounds.is_empty() and surgery.is_empty() and not data.dead:
 		_leak -= delta
 		if _leak <= 0.0:
-			_leak = 1.6
-			var slot: String = wounds.keys()[0]
+			_leak = 0.9
+			var slot: String = wounds.keys()[_rng.randi() % wounds.size()]
 			_fx("fluff", socket(slot) + Vector2(0, 8), 1, 6.0)
+			# Hydraulic fluid drips from where the part tore (Mikey: the
+			# leak should show).
+			if not data.dead and not data.headless and slot != "neck":
+				_fx("fluid", socket(slot) + Vector2(4, 12), 2, 4.0)
 	if data.wetness > 0.12:
 		_drip -= delta
 		if _drip <= 0.0:
@@ -650,8 +739,20 @@ func _update_parts(wb: float) -> void:
 		# Still, slumped to one side.
 		jitter = Vector2.ZERO
 		breathe = 1.0
-	_rig.position = jitter + Vector2(0, _squash * feet_y()) + (Vector2(6, 22) if data.dead else Vector2.ZERO)
-	_rig.rotation = sin(_t * 18.0) * 0.08 * _wiggle + (0.12 if data.dead else 0.0)
+	# Without legs a friend sits on the floor; with one, it leans (0025).
+	var legs := 0
+	var lean := 0.0
+	for slot in ["leg_l", "leg_r"]:
+		var leg: PartData = data.part(slot)
+		if leg != null and leg.attached:
+			legs += 1
+		else:
+			lean += -0.07 if slot == "leg_l" else 0.07
+	var sit := Vector2(0, LEG_LEN * 0.85) if legs == 0 else Vector2.ZERO
+	if legs == 0:
+		lean = 0.0
+	_rig.position = jitter + Vector2(0, _squash * feet_y()) + (Vector2(6, 22) if data.dead else Vector2.ZERO) + sit
+	_rig.rotation = sin(_t * 18.0) * 0.08 * _wiggle + (0.12 if data.dead else 0.0) + lean
 	_rig.scale = Vector2(1.0 + _squash, (1.0 - _squash) * breathe)
 	_shadow.position = jitter
 	_shadow.refresh([_q(s, 0.02)])
@@ -690,8 +791,9 @@ func _update_parts(wb: float) -> void:
 		node.scale = Vector2(1.0, maxf(0.2, d.length() / limb_len(slot)))
 		node.refresh([part.get_instance_id(), _q(part.rot, 0.05), part.mold.size(), part.torn, part.stitched, wet, _q(limb_width(slot), 0.5)])
 
+	_head.visible = not data.headless
 	_head.position = head_center()
-	_head_art.refresh([wq, wet, mud_head])
+	_head_art.refresh([wq, wet, mud_head, data.head_color()])
 	var mouth := _mouth_kind(wb)
 	var happy := _lid > 0.5 and _lid < 0.8 and (_expr_eyes == "squint" or _pet_amount > 110.0)
 	var eye_l: PartData = data.part("eye_l")
@@ -713,6 +815,12 @@ func _fabric(wb: float) -> Color:
 	var pale := Color(0.6, 0.58, 0.54)
 	var fade := 0.6 if data.dead else (1.0 - wb) * 0.3
 	return PlushArt.fabric_color(data.body_fabric.lerp(pale, fade), data.wetness)
+
+
+func _head_fabric(wb: float) -> Color:
+	var pale := Color(0.6, 0.58, 0.54)
+	var fade := 0.6 if data.dead else (1.0 - wb) * 0.3
+	return PlushArt.fabric_color(data.head_color().lerp(pale, fade), data.wetness)
 
 
 func _trim() -> Color:
@@ -759,7 +867,7 @@ func _paint_limb(ci: CanvasItem, slot: String) -> void:
 
 ## The head, centered on its node.
 func _paint_head(ci: CanvasItem) -> void:
-	var fabric := _fabric(data.wellbeing())
+	var fabric := _head_fabric(data.wellbeing())
 	var trim := _trim()
 	for side in [-1.0, 1.0]:
 		var ear := Vector2(72.0 * side, -78.0)
@@ -775,7 +883,7 @@ func _paint_head(ci: CanvasItem) -> void:
 ## Eyes and mouth, in the head's coordinates.
 func _paint_face(ci: CanvasItem) -> void:
 	var wb := data.wellbeing()
-	var fabric := _fabric(wb)
+	var fabric := _head_fabric(wb)
 	_paint_mouth(ci, _mouth_kind(wb), Vector2(0, 50))
 	var happy := _lid > 0.5 and _lid < 0.8 and (_expr_eyes == "squint" or _pet_amount > 110.0)
 	var eye_l: PartData = data.part("eye_l")

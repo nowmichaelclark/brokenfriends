@@ -67,6 +67,18 @@ spraying a squirt. With none left the thing on the shelf shakes and the
 treatment can't be done. Water (sponge, towel) is free. More will come
 from quests and newcomers (steps B5, B6).
 
+**Parts** (step B4, decisions 0025 and 0026): any arm or leg comes off,
+healthy ones too: each hard pull, held, loosens it (it hangs lower),
+and the third pull takes it off. Drop a part in the pocket to keep it
+and sew it onto another friend later; the friend who gave it hops on
+one leg or crawls with none. A part rotted past repair only goes in the
+bin. Pull a friend's head hard upward three times and it comes off: the
+friend lives on in the head. Keep it in the pocket, bin it, or sew it
+onto a body without a head; then the game carries straight on with the
+other head and the other body. A friend who has died, or a body without
+a head, gives up its parts at the first pull, and is laid to rest once
+nothing is left to take. Torn wounds drip hydraulic fluid.
+
 The game saves on its own. **Start over** (tap twice) begins again.
 
 **Music** (when the Driftloom extension is built): Driftloom's own core
@@ -183,6 +195,13 @@ planning chat). Each is easy to change.
   leg torn off and the wound left open, in about two. A dead friend
   stays at camp until parts can be taken (step B4).
 - The sponge also scrubs the floor; bugs leave when tapped.
+- Healthy parts take 3 hard pulls (4 for good parts, 5 for the best);
+  a head takes 3. Pulling a head means dragging up and away from it;
+  stroking it is petting.
+- A head without a body dies after a day of game time. The pocket
+  offers the oldest head first.
+- A friend who has died stays until all four limbs are taken, then is
+  laid to rest.
 - A new camp starts with 6 handfuls of stuffing, 3 doses of oil, 4
   lengths of thread and 2 squirts of mold spray (`#supplies=N` sets all
   four on a new game). One squirt cleans every moldy part touched in

@@ -31,6 +31,8 @@ var hint: Label
 var mode := ""
 var tool := ""
 var held: LoosePart
+## A head in the player's hand (0026).
+var held_head: LooseHead
 var loose_parts: Array = []
 var zoomed := false
 
@@ -49,6 +51,9 @@ var _reset_timer := 0.0
 var _hint_timer := 0.0
 var _tube_drag := false
 var _sprayed := false
+var _press_region := ""
+var _press_world := Vector2.ZERO
+var _friend_count := 0
 var _cam_tween: Tween
 
 
@@ -137,7 +142,7 @@ func _press(sp: Vector2) -> void:
 		return
 	var h: String = hud.hit(sp)
 	if h == "play":
-		if not Save.friend.dead:
+		if not Save.friend.dead and not Save.friend.headless:
 			go_to.emit("play_corner")
 		return
 	if h == "reset":
@@ -160,6 +165,12 @@ func _press(sp: Vector2) -> void:
 		hud.tool_pos = sp + TOOL_OFFSET
 		Voice.pop()
 		return
+	if h == "head":
+		held_head = _spawn_head(Save.camp.heads[0], w)
+		mode = "head_held"
+		hud.trash_visible = true
+		Voice.pop()
+		return
 	if h == "spare":
 		held = _spawn_loose(hud.spare_part, w, true)
 		hud.spare_visible = false
@@ -175,9 +186,16 @@ func _press(sp: Vector2) -> void:
 		Save.mark_dirty()
 		mode = "empty"
 		return
-	if Save.friend.dead and held == null:
-		# A friend who has died doesn't answer any more (0011).
-		mode = "empty"
+	if (Save.friend.dead or Save.friend.headless) and held == null:
+		# A friend who has died doesn't answer any more (0011), and a body
+		# without a head is only a body; their parts can still be taken
+		# (0026).
+		var part_slot := friend.part_at(l)
+		if part_slot.begins_with("arm") or part_slot.begins_with("leg"):
+			friend.grab_limb(part_slot)
+			mode = "limb"
+		else:
+			mode = "empty"
 		return
 	for lp in loose_parts:
 		if lp.hits(w):
@@ -200,6 +218,8 @@ func _press(sp: Vector2) -> void:
 		mode = "limb"
 	elif friend.is_on_friend(l):
 		mode = "touch"
+		_press_region = friend.region_at(l)
+		_press_world = w
 	else:
 		mode = "empty"
 
@@ -222,14 +242,28 @@ func _drag(sp: Vector2, rel: Vector2, vel: Vector2) -> void:
 		"eye":
 			friend.drag_eye(l)
 		"touch":
-			if _touch_moved > 30.0:
+			# Pulling hard on the head, away from the body: the neck
+			# takes the strain (0026). Otherwise it's petting.
+			if _press_region in ["head", "head_top"] and not Save.friend.asleep \
+					and (w - _press_world).length() > 90.0 and (w - _press_world).y < 0.0:
+				friend.end_pet()
+				friend.grab_head()
+				mode = "neck"
+			elif _touch_moved > 30.0:
 				friend.pet(l, moved)
+		"neck":
+			if friend.drag_head(l, get_process_delta_time()):
+				_head_off(w)
+		"head_held":
+			held_head.position = w
+			hud.trash_hover = hud.over_trash(sp)
 		"tool":
 			hud.tool_pos = sp + TOOL_OFFSET
 			_use_tool(friend.to_local(to_world(hud.tool_pos)))
 		"part":
 			held.position = w
 			hud.trash_hover = not held.from_pocket and hud.over_trash(sp)
+			hud.pocket_open = not held.from_pocket
 	_last_world = w
 
 
@@ -242,6 +276,10 @@ func _release(sp: Vector2) -> void:
 			return
 		"limb":
 			friend.release_limb()
+		"neck":
+			friend.release_head()
+		"head_held":
+			_release_head(sp, w)
 		"eye":
 			if friend.release_eye():
 				if Save.camp.use("thread"):
@@ -423,7 +461,24 @@ func _release_part(sp: Vector2, w: Vector2) -> void:
 	held = null
 	hud.trash_hover = false
 	hud.trash_visible = false
+	hud.pocket_open = false
 	if lp == null:
+		return
+	if not lp.from_pocket and hud.over_pocket(sp):
+		if lp.part.is_dead():
+			# Past repair (0025): only the bin will take it.
+			hud.shake("")
+			lp.drop(Vector2.ZERO)
+			Voice.thud()
+			return
+		# Keep it for another friend (donation, 0025).
+		loose_parts.erase(lp)
+		lp.part.pulls = 0
+		Save.camp.spares.push_front(lp.part)
+		lp.queue_free()
+		Save.mark_dirty()
+		_show_spare()
+		Voice.pop()
 		return
 	if lp.from_pocket:
 		var slot := _open_slot_near(w, lp.part.kind)
@@ -482,11 +537,104 @@ func _offer_spare() -> void:
 			return
 
 
-## Show the first spare part in the pocket, if there is one.
+## Show the first spare part in the pocket, if there is one, and any
+## head kept there.
 func _show_spare() -> void:
 	var spares := Save.camp.spares
 	hud.spare_part = spares[0] if not spares.is_empty() else null
 	hud.spare_visible = not spares.is_empty()
+	hud.spare_count = spares.size()
+	hud.pocket_head = Save.camp.heads[0] if not Save.camp.heads.is_empty() else null
+
+
+# --- Heads (decision 0026) ----------------------------------------------
+
+func _spawn_head(f: FriendData, w: Vector2) -> LooseHead:
+	var lh := LooseHead.new()
+	lh.friend = f
+	lh.position = w
+	_parts_layer.add_child(lh)
+	return lh
+
+
+## The head has come off: the friend lives on in the head, now in the
+## player's hand; what stays is a body without a head.
+func _head_off(w: Vector2) -> void:
+	var head := Save.friend
+	var body := head.take_head(Save.now())
+	Save.camp.friends[Save.camp.current] = body
+	friend.setup(body)
+	fx.spawn("fluff", fx.to_local(friend.to_global(friend.socket("neck"))), 20, 22.0)
+	Voice.tear(1.0)
+	Events.part_changed.emit("head", "torn")
+	held_head = _spawn_head(head, w)
+	mode = "head_held"
+	hud.trash_visible = true
+	hud.pocket_open = true
+	_build_bench()
+	Save.mark_dirty()
+
+
+func _release_head(sp: Vector2, w: Vector2) -> void:
+	var lh := held_head
+	held_head = null
+	hud.trash_hover = false
+	hud.trash_visible = false
+	hud.pocket_open = false
+	mode = ""
+	if lh == null:
+		return
+	var head := lh.friend
+	lh.queue_free()
+	var heads := Save.camp.heads
+	if hud.over_trash(sp) or sp.distance_to(hud.trash_center()) < 120.0:
+		# Thrown away: that friend is gone (0026).
+		heads.erase(head)
+		Voice.clunk()
+		Events.part_changed.emit("head", "trashed")
+	elif Save.friend.headless and w.distance_to(friend.to_global(friend.socket("neck"))) < 150.0:
+		start_head_surgery(head)
+	elif not head in heads:
+		heads.append(head)
+		Voice.pop()
+	Save.mark_dirty()
+	_show_spare()
+
+
+## Sew a head onto the body without one in front: the friend lives on
+## with this body (0026). Takes a length of thread.
+func start_head_surgery(head: FriendData) -> void:
+	if not Save.camp.use("thread"):
+		hud.shake("thread")
+		Voice.thud()
+		if not head in Save.camp.heads:
+			Save.camp.heads.append(head)
+		_show_spare()
+		return
+	Save.camp.heads.erase(head)
+	var body := Save.friend
+	head.join_body(body)
+	Save.camp.friends[Save.camp.current] = head
+	friend.setup(head)
+	friend.wounds.erase("neck")
+	mode = "surgery"
+	var neck := friend.socket("neck")
+	friend.surgery = {"slot": "neck", "neck": true, "step": "sew", "done": 0, "points": _seam_points("neck")}
+	_zoom_to(friend.to_global(neck), 2.2)
+	_show_spare()
+	_build_bench()
+	Save.mark_dirty()
+	Voice.pop()
+
+
+## After one head goes on, the other head and the other body are taken
+## through the same way (Mikey, 2026-10-25).
+func _continue_swap() -> void:
+	var bodies := Save.camp.headless_bodies()
+	if Save.camp.heads.is_empty() or bodies.is_empty():
+		return
+	choose_friend(bodies[0])
+	start_head_surgery(Save.camp.heads.back())
 
 
 # --- Surgery ------------------------------------------------------------
@@ -649,6 +797,9 @@ func _finish_sew() -> void:
 		var eye: PartData = Save.friend.part("eye_r")
 		eye.attached = true
 		eye.stitched = true
+	elif s.get("neck", false):
+		Events.part_changed.emit("head", "sewn")
+		_continue_swap.call_deferred()
 	else:
 		var part: PartData = s["part"]
 		part.attached = true
@@ -664,6 +815,8 @@ func _finish_sew() -> void:
 	friend.set_expression("squint", "open", 1.6)
 	Events.friend_reacted.emit("cheer")
 	var at := friend.eye_anchor("eye_r") if slot == "eye_r" else friend.socket(slot)
+	if slot == "neck":
+		at = friend.socket("neck")
 	fx.spawn("sparkle", fx.to_local(friend.to_global(at)), 8, 20.0)
 	Save.save_now()
 
@@ -710,6 +863,13 @@ func _process(delta: float) -> void:
 		_update_hint()
 		traces.refresh()
 		hud.supplies = Save.camp.supplies
+		# A friend laid to rest (CampData) leaves the tent.
+		if Save.camp.friends.size() != _friend_count or friend.data != Save.friend:
+			_friend_count = Save.camp.friends.size()
+			if friend.data != Save.friend and mode != "surgery":
+				friend.setup(Save.friend)
+			_build_bench()
+			_show_spare()
 	var vs := get_viewport_rect().size
 	hint.position = Vector2(40, 118)
 	hint.size = Vector2(vs.x - 80, 120)
@@ -724,8 +884,14 @@ func _update_hint() -> void:
 ## should say all of this; pillar 1.)
 func current_hint() -> String:
 	var c := Save.friend
+	if held_head:
+		return "Put the head on a body without one, keep it in the pocket, or bin it."
 	if c.dead:
-		return "This friend has died. Nothing can bring them back."
+		return "This friend has died. Pull off any parts worth keeping and drop them in the pocket."
+	if c.headless:
+		return "A body without a head. Sew a head on, or take its parts."
+	if held and not held.from_pocket and held.part and not held.part.is_dead() and held.part.rot < 0.5:
+		return "Drop it in the pocket to keep it for another friend, or bin it."
 	if Save.camp.bugs > 0:
 		return "Bugs! Tap them to chase them off."
 	if not Save.camp.tracks.is_empty() and mode != "surgery" and c.part("leg_l") and c.part("leg_l").rot < 0.5:

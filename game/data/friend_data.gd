@@ -31,6 +31,20 @@ const SLOTS := ["leg_l", "leg_r", "arm_l", "arm_r", "eye_l", "eye_r"]
 @export var brain := 1.0
 ## Death is final (0011).
 @export var dead := false
+## The head's own fabric (it can end up on a body of another colour,
+## decision 0026).
+@export var head_fabric := Color(0, 0, 0, 0)
+## A body whose head has been taken off: not a friend any more, only a
+## body waiting for a head (0026).
+@export var headless := false
+## A head without a body, kept in the pocket: the friend lives on in it
+## for about a day (0026). `off_at` is when it came off (game time).
+@export var head_only := false
+@export var off_at := 0.0
+
+
+func head_color() -> Color:
+	return head_fabric if head_fabric.a > 0.0 else body_fabric
 
 
 func part(slot: String) -> PartData:
@@ -65,6 +79,50 @@ func wellbeing() -> float:
 	if dead:
 		return 0.0
 	return clampf(w, 0.0, 1.0)
+
+
+## Take this friend's head off (0026). This friend becomes the head
+## (`head_only`); the returned data is the body left behind, headless.
+## The eyes stay with the head; arms, legs, stuffing and the rest stay
+## with the body.
+func take_head(now: float) -> FriendData:
+	var body := FriendData.new()
+	body.name = "Body"
+	body.headless = true
+	body.look_seed = look_seed
+	body.body_fabric = body_fabric
+	body.trim = trim
+	body.stuffing = stuffing
+	body.fluid = fluid
+	body.wetness = wetness
+	body.mud = mud.filter(func(m): return float(m["y"]) > -110.0)
+	for slot in ["arm_l", "arm_r", "leg_l", "leg_r"]:
+		body.parts[slot] = parts.get(slot)
+		parts[slot] = null
+	body.parts["eye_l"] = null
+	body.parts["eye_r"] = null
+	head_fabric = head_color()
+	mud = mud.filter(func(m): return float(m["y"]) <= -110.0)
+	head_only = true
+	off_at = now
+	asleep = false
+	return body
+
+
+## Sew this head onto a headless body: the friend (this) lives on with
+## the body's arms, legs, stuffing and fabric (0026). The body's data is
+## used up.
+func join_body(body: FriendData) -> void:
+	for slot in ["arm_l", "arm_r", "leg_l", "leg_r"]:
+		parts[slot] = body.parts.get(slot)
+	body_fabric = body.body_fabric
+	trim = body.trim
+	stuffing = body.stuffing
+	fluid = body.fluid
+	wetness = body.wetness
+	mud = mud + body.mud
+	head_only = false
+	off_at = 0.0
 
 
 ## How far gone the body is, 0 (whole) to about 1 (falling apart):
@@ -120,7 +178,7 @@ func catch_mold(rng: RandomNumberGenerator) -> void:
 ## guesses (game/README, "Assumed in this build").
 func step(hours: float, dirt: float, rng: RandomNumberGenerator) -> void:
 	var days := hours / 24.0
-	if dead:
+	if dead or headless:
 		for slot in SLOTS:
 			var part: PartData = parts.get(slot)
 			if part:
@@ -178,7 +236,8 @@ func to_dict() -> Dictionary:
 		"mud": mud, "asleep": asleep,
 		"tickle_spot": [tickle_spot.x, tickle_spot.y],
 		"catch_skill": catch_skill, "parts": pd,
-		"brain": brain, "dead": dead,
+		"brain": brain, "dead": dead, "head_fabric": head_color().to_html(),
+		"headless": headless, "head_only": head_only, "off_at": off_at,
 	}
 
 
@@ -198,6 +257,10 @@ static func from_dict(d: Dictionary) -> FriendData:
 	c.catch_skill = d.get("catch_skill", 0.05)
 	c.brain = d.get("brain", 1.0)
 	c.dead = d.get("dead", false)
+	c.head_fabric = Color.html(d.get("head_fabric", c.body_fabric.to_html()))
+	c.headless = d.get("headless", false)
+	c.head_only = d.get("head_only", false)
+	c.off_at = float(d.get("off_at", 0.0))
 	var pd: Dictionary = d.get("parts", {})
 	for slot in SLOTS:
 		var v = pd.get(slot)

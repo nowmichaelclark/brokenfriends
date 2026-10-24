@@ -42,7 +42,7 @@ this build" in `game/README.md` and are asked, never decided.
   Without them, the treatment that needs them can't be done (0042).
   *Done when:* using them up empties the shelf and blocks that
   treatment.
-- [ ] **B4. Parts** (0025, 0026). Any part comes off after several
+- [x] **B4. Parts** (0025, 0026). Any part comes off after several
   pulls; a donor hops or crawls; parts can die; fluid leaks where a
   part tore; head swap leads into sewing; a dead friend's parts go to
   a box. *Done when:* the playthrough tears a healthy arm off, gives it

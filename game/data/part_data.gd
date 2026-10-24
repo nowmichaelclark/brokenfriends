@@ -23,6 +23,19 @@ extends Resource
 @export var attached := true
 ## True once sewn on in surgery: the stitches stay for good.
 @export var stitched := false
+## Hard pulls it has taken. A healthy part holds for a few, then comes
+## off (decision 0025); a loosened part hangs a little lower.
+@export var pulls := 0
+
+
+## Rotted or worn past repair (0025): it can only go in the bin.
+func is_dead() -> bool:
+	return rot >= 0.95
+
+
+## Hard pulls it takes to come off: about three, more for a strong part.
+func pulls_needed() -> int:
+	return 3 + (1 if quality >= 0.6 else 0) + (1 if quality >= 0.85 else 0)
 
 
 func to_dict() -> Dictionary:
@@ -30,6 +43,7 @@ func to_dict() -> Dictionary:
 		"slot": slot, "kind": kind, "quality": quality,
 		"fabric": fabric.to_html(), "pattern": pattern, "rot": rot,
 		"mold": mold, "torn": torn, "attached": attached, "stitched": stitched,
+		"pulls": pulls,
 	}
 
 
@@ -45,6 +59,7 @@ static func from_dict(d: Dictionary) -> PartData:
 	p.torn = d.get("torn", false)
 	p.attached = d.get("attached", true)
 	p.stitched = d.get("stitched", false)
+	p.pulls = int(d.get("pulls", 0))
 	return p
 
 

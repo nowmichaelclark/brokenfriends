@@ -20,6 +20,12 @@ var _shake := 0.0
 
 var spare_visible := false
 var spare_part: PartData
+## How many parts wait in the pocket (they stack).
+var spare_count := 0
+## A head waiting in the pocket, shown before any part (0026).
+var pocket_head: FriendData
+## The pocket shows open while a part or head is carried, to drop it in.
+var pocket_open := false
 var trash_visible := false
 var trash_hover := false
 var held_tool := ""
@@ -69,13 +75,19 @@ func reset_rect() -> Rect2:
 	return Rect2(28.0, 28.0, 188.0, 56.0)
 
 
-## What's under a screen point: "tool:<name>", "spare", "play",
+func over_pocket(p: Vector2) -> bool:
+	return p.distance_to(pocket_center()) < 90.0
+
+
+## What's under a screen point: "tool:<name>", "head", "spare", "play",
 ## "reset" or "".
 func hit(p: Vector2) -> String:
 	if play_rect().grow(10).has_point(p):
 		return "play"
 	if reset_rect().grow(10).has_point(p):
 		return "reset"
+	if pocket_head and p.distance_to(pocket_center()) < 70.0:
+		return "head"
 	if spare_visible and p.distance_to(pocket_center()) < 70.0:
 		return "spare"
 	for i in TOOLS.size():
@@ -95,7 +107,7 @@ var _key = null
 func _process(delta: float) -> void:
 	_trash_pop = move_toward(_trash_pop, 1.0 if trash_visible else 0.0, delta * 5.0)
 	_shake = maxf(0.0, _shake - delta)
-	var key := [supplies.duplicate(), shake_item if _shake > 0.0 else "", int(_shake * 30.0), spare_visible, spare_part.get_instance_id() if spare_part else 0, trash_visible,
+	var key := [pocket_head.get_instance_id() if pocket_head else 0, pocket_open, spare_count, supplies.duplicate(), shake_item if _shake > 0.0 else "", int(_shake * 30.0), spare_visible, spare_part.get_instance_id() if spare_part else 0, trash_visible,
 		trash_hover, held_tool, Vector2i(tool_pos) if held_tool != "" else Vector2i.ZERO,
 		reset_armed, play_label, screen_size(), int(_trash_pop * 20.0)]
 	if key != _key:
@@ -123,16 +135,22 @@ func _draw() -> void:
 	# Buttons
 	_button(play_rect(), play_label, Color(0.42, 0.55, 0.38))
 	_button(reset_rect(), "Tap again" if reset_armed else "Start over", Color(0.55, 0.3, 0.27) if reset_armed else Color(0.3, 0.24, 0.2, 0.85))
-	# Pocket with the spare part
-	if spare_visible and spare_part:
+	# Pocket with spare parts and heads in it
+	if (spare_visible and spare_part) or pocket_head or pocket_open:
 		var pc := pocket_center()
-		var glow := 0.6
+		var glow := 1.4 if pocket_open else 0.6
 		draw_circle(pc, 76.0, Color(1.0, 0.9, 0.6, 0.12 * glow))
 		var pocket := PackedVector2Array([pc + Vector2(-56, -10), pc + Vector2(56, -10), pc + Vector2(48, 66), pc + Vector2(-48, 66)])
 		var trim := Color(0.94, 0.86, 0.75)
-		draw_set_transform(pc + Vector2(0, -6), 0.15, Vector2(0.7, 0.7))
-		PlushArt.limb(self, Vector2(0, -50), Vector2(0, 50), 50.0, spare_part, trim, 0.0)
-		draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
+		if pocket_head:
+			draw_set_transform(pc + Vector2(0, -30), 0.0, Vector2(0.42, 0.42))
+			LooseHead.draw_head(self, pocket_head, Vector2.ZERO)
+			draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
+		elif spare_visible and spare_part:
+			for k in range(mini(spare_count, 3) - 1, -1, -1):
+				draw_set_transform(pc + Vector2(-10 * k, -6 - 4 * k), 0.15 - 0.2 * k, Vector2(0.7, 0.7))
+				PlushArt.limb(self, Vector2(0, -50), Vector2(0, 50), 50.0, spare_part, trim, 0.0)
+			draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
 		draw_colored_polygon(pocket, Color(0.55, 0.43, 0.3))
 		draw_polyline(PackedVector2Array([pocket[0], pocket[1], pocket[2], pocket[3], pocket[0]]), Color(0.3, 0.22, 0.14), 3.0, true)
 		PlushArt.seam(self, PackedVector2Array([pocket[0] + Vector2(6, 8), pocket[1] + Vector2(-6, 8)]), Color(0.85, 0.75, 0.55))

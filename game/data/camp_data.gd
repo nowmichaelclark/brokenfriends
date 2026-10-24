@@ -23,11 +23,16 @@ var clock := 0.0
 ## of the first day is scripted.)
 var next_arrival := 0.0
 var arrivals := 0
+## Heads kept in the pocket (0026), each a friend without a body. A head
+## left a day without one dies.
+var heads: Array[FriendData] = []
 ## Muddy footprints on the tent floor: [{x, y, a, r}] in tent units.
 var tracks: Array = []
 ## Bugs crawling around the tent, drawn to rot.
 var bugs := 0
 
+## How long a head lasts without a body, seconds (0026: about a day).
+const HEAD_LIFE := 86400.0
 const MAX_TRACKS := 12
 const MAX_BUGS := 8
 
@@ -56,6 +61,7 @@ func dirt() -> float:
 func advance(seconds: float, now: float) -> void:
 	if seconds > 0.0:
 		_rng.seed = hash(int(clock))
+		_step_clock = clock
 		var steps := int(ceil(seconds / 3600.0))
 		var hours := seconds / 3600.0 / steps
 		for i in steps:
@@ -66,7 +72,15 @@ func advance(seconds: float, now: float) -> void:
 		arrive(FriendData.second_friend())
 
 
+var _step_clock := 0.0
+
+
+func clock_now() -> float:
+	return _step_clock
+
+
 func _step(hours: float) -> void:
+	_step_clock += hours * 3600.0
 	var d := dirt()
 	var rotting := false
 	var muddy := false
@@ -80,6 +94,14 @@ func _step(hours: float) -> void:
 				rotting = true
 		if not f.dead and f.mud_amount() > 0.5:
 			muddy = true
+	# A head without a body lasts about a day (0026).
+	for h in heads:
+		if not h.dead and clock_now() - h.off_at > HEAD_LIFE:
+			h.dead = true
+	heads = heads.filter(func(h): return not h.dead)
+	# A dead friend or a headless body with nothing left to give is laid
+	# to rest.
+	_lay_to_rest()
 	# Mold left on a rotting part spreads to other friends (0028).
 	for f in friends:
 		if f.dead or not f.spreads_mold():
@@ -93,6 +115,36 @@ func _step(hours: float) -> void:
 	if muddy and tracks.size() < MAX_TRACKS and _rng.randf() < 0.03 * hours:
 		tracks.append({"x": _rng.randf_range(60, 660), "y": _rng.randf_range(900, 1060),
 			"a": _rng.randf_range(-0.6, 0.6), "r": 1.0})
+
+
+## A dead friend or headless body with no arms or legs left is laid to
+## rest: there is nothing more to take from it.
+func _lay_to_rest() -> void:
+	for i in range(friends.size() - 1, -1, -1):
+		var f := friends[i]
+		if not (f.dead or f.headless) or friends.size() == 1:
+			continue
+		var left := 0
+		for slot in ["arm_l", "arm_r", "leg_l", "leg_r"]:
+			if f.parts.get(slot) != null:
+				left += 1
+		if left == 0:
+			remove_friend(i)
+
+
+func remove_friend(i: int) -> void:
+	friends.remove_at(i)
+	if current >= i and current > 0:
+		current -= 1
+
+
+## Headless bodies at camp (indexes).
+func headless_bodies() -> Array[int]:
+	var out: Array[int] = []
+	for i in friends.size():
+		if friends[i].headless:
+			out.append(i)
+	return out
 
 
 ## The friends still alive.
@@ -134,6 +186,7 @@ func to_dict() -> Dictionary:
 		"spare_given": spare_given, "clock": clock,
 		"next_arrival": next_arrival, "arrivals": arrivals,
 		"tracks": tracks, "bugs": bugs, "supplies": supplies,
+		"heads": heads.map(func(h): return h.to_dict()),
 	}
 
 
@@ -152,6 +205,9 @@ static func from_dict(d: Dictionary) -> CampData:
 	c.arrivals = int(d.get("arrivals", 0))
 	c.tracks = d.get("tracks", [])
 	c.bugs = int(d.get("bugs", 0))
+	for hd in d.get("heads", []):
+		if hd is Dictionary:
+			c.heads.append(FriendData.from_dict(hd))
 	var sup: Dictionary = d.get("supplies", {})
 	for k in c.supplies:
 		c.supplies[k] = int(sup.get(k, c.supplies[k]))

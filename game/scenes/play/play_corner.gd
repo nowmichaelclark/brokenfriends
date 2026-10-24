@@ -204,10 +204,15 @@ func _process(delta: float) -> void:
 	if _idle > 40.0 and not data.asleep:
 		data.asleep = true
 		Save.mark_dirty()
-	var legs_ok := data.part("leg_l") != null and data.part("leg_r") != null \
-		and data.part("leg_l").attached and data.part("leg_r").attached
+	var legs := 0
+	for slot in ["leg_l", "leg_r"]:
+		if data.part(slot) != null and data.part(slot).attached:
+			legs += 1
+	var legs_ok := legs == 2
+	# Two legs walk; one leg hops; none, and they crawl (decision 0025).
+	var speed: float = [30.0, 55.0, 80.0][legs]
 	var walking := false
-	if legs_ok and not data.asleep and not _caught:
+	if not data.asleep and not _caught:
 		_walk_timer -= delta
 		if _walk_timer <= 0.0:
 			_walk_timer = randf_range(2.5, 5.0)
@@ -218,11 +223,14 @@ func _process(delta: float) -> void:
 		_walk_target = clampf(_walk_target, 140, 580)
 		var dx := _walk_target - friend.position.x
 		if absf(dx) > 40.0:
-			friend.position.x += signf(dx) * minf(absf(dx), 80.0 * delta)
-			friend.walk_phase += delta * 9.0
+			friend.position.x += signf(dx) * minf(absf(dx), speed * delta)
+			friend.walk_phase += delta * (9.0 if legs == 2 else 5.0)
 			walking = true
 	if walking:
-		friend.position.y = _base_y - absf(sin(friend.walk_phase)) * 7.0
+		match legs:
+			2: friend.position.y = _base_y - absf(sin(friend.walk_phase)) * 7.0
+			1: friend.position.y = _base_y - absf(sin(friend.walk_phase)) * 30.0
+			_: friend.position.y = _base_y - absf(sin(friend.walk_phase * 2.0)) * 3.0
 	else:
 		friend.walk_phase = 0.0
 		friend.position.y = move_toward(friend.position.y, _base_y, delta * 60.0)
@@ -236,7 +244,7 @@ func _hint(data: FriendData, legs_ok: bool) -> String:
 	if data.asleep:
 		return "Napping. Poke them to wake them up."
 	if not legs_ok:
-		return "With a leg missing, they can't walk. Sew one on in the tent."
+		return "Missing a leg, they hop; with none, they crawl. A leg can be sewn on in the tent."
 	if data.catch_skill < 0.3:
 		return "Throw the ball to them. They'll catch better the more you play."
 	if data.catch_skill < 0.6:

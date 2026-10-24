@@ -256,9 +256,11 @@ func _change_steps() -> void:
 	var camp := CampData.new()
 	camp.friends.append(FriendData.first_friend())
 	camp.friends.append(FriendData.second_friend())
-	# (Ending at the game's own now, so the camp's clock carries on from there.)
-	camp.clock = Save.now() - 17.0 * 86400.0
-	camp.advance(17.0 * 86400.0, Save.now())
+	# A fixed start, so the same things happen every run; then the camp's
+	# clock carries on from the game's own now.
+	camp.clock = 2000000.0
+	camp.advance(17.0 * 86400.0, camp.clock + 17.0 * 86400.0)
+	camp.clock = Save.now()
 	_check(camp.friends[0].dead, "the friend never helped has died")
 	_check(not camp.friends[1].dead, "the muddy friend is still alive")
 	_check(camp.bugs > 0 and not camp.tracks.is_empty(), "rot drew bugs and mud was tracked in")
@@ -342,6 +344,145 @@ func _supply_steps() -> void:
 	await _wait(0.4)
 	_check(tent.mode != "surgery", "with no thread, sewing can't start")
 	await _shot("25_empty_shelf")
+	await _parts_steps()
+
+
+# --- B4: parts and heads ----------------------------------------------
+
+## Grab at `at` (screen) and pull toward `dir` hard enough, holding,
+## then let go: one hard pull.
+func _hard_pull(at: Vector2, dir: Vector2) -> void:
+	await _touch(at, true)
+	for i in 10:
+		await _drag_to(at + dir * (30.0 * (i + 1)))
+	for i in 25:
+		await _drag_to(at + dir * 300.0 + Vector2(sin(i) * 2.0, 0))
+		if tent.mode == "part" or tent.mode == "head_held":
+			return
+	await _touch(_last, false)
+	await _wait(0.2)
+
+
+## The four steps of sewing a part on (fluff, tube, soak, sew).
+func _do_surgery(c: FriendView, slot: String) -> void:
+	for t in c.wounds.get(slot, []).duplicate():
+		await _tap(_screen(c.to_global(c.socket(slot) + t)))
+	await _wait(0.2)
+	var end: Vector2 = c.surgery.get("tube_end", Vector2.ZERO)
+	var port: Vector2 = c.socket(slot) + Vector2(10, 0)
+	await _touch(_screen(c.to_global(end)), true)
+	await _drag_path(_screen(c.to_global(end)), _screen(c.to_global(port)), 10)
+	await _touch(_screen(c.to_global(port)), false)
+	await _wait(0.3)
+	var spill_s := _screen(c.to_global(c.surgery.get("spill_pos", Vector2.ZERO)))
+	await _touch(spill_s, true)
+	for i in 60:
+		await _drag_to(spill_s + Vector2(sin(i * 0.7) * 40.0, cos(i * 0.5) * 14.0))
+		if c.surgery.get("step", "") != "soak":
+			break
+	await _touch(_last, false)
+	await _sew_points(c)
+
+
+func _sew_points(c: FriendView) -> void:
+	await _wait(0.2)
+	var pts: Array = c.surgery.get("points", [])
+	if pts.size() > 0:
+		await _touch(_screen(c.to_global(pts[0])), true)
+		for i in range(1, pts.size()):
+			await _drag_path(_last, _screen(c.to_global(pts[i])), 5)
+		await _touch(_last, false)
+	await _wait(0.8)
+
+
+func _parts_steps() -> void:
+	var camp := CampData.new()
+	var a := FriendData.test_friend(11)
+	var b := FriendData.test_friend(12)
+	b.parts["arm_r"] = null
+	camp.friends.append(a)
+	camp.friends.append(b)
+	camp.clock = Save.now()
+	Save.camp = camp
+	tent.traces.setup(camp)
+	tent.friend.setup(Save.friend)
+	tent._build_bench()
+	tent._show_spare()
+	tent._zoom_reset()
+	await _wait(0.8)
+	var c: FriendView = tent.friend
+
+	# A healthy arm holds for a few hard pulls, then comes off (0025).
+	var pulls := 0
+	while tent.mode != "part" and pulls < 6:
+		var mid := _screen(c.to_global(c.socket("arm_l").lerp(c.tip("arm_l"), 0.6)))
+		await _hard_pull(mid, Vector2(-0.7, 0.7))
+		pulls += 1
+	_check(tent.mode == "part" and pulls == 3, "a healthy arm comes off on the third hard pull")
+	await _shot("26_healthy_arm_off")
+	# Into the pocket, to give to the other friend.
+	var pocket: Vector2 = tent.hud.pocket_center()
+	await _drag_path(_last, pocket, 12)
+	await _touch(pocket, false)
+	await _wait(0.3)
+	_check(camp.spares.size() == 1, "the arm is kept in the pocket")
+
+	# The other friend, missing an arm, gets it.
+	tent.choose_friend(1)
+	await _wait(0.6)
+	c = tent.friend
+	await _touch(pocket, true)
+	var wound := _screen(c.to_global(c.socket("arm_r") + Vector2(0, 30)))
+	await _drag_path(pocket, wound, 14)
+	await _touch(wound, false)
+	await _wait(0.7)
+	_check(tent.mode == "surgery", "the kept arm starts surgery on the other friend")
+	await _do_surgery(c, "arm_r")
+	_check(b.part("arm_r") != null and b.part("arm_r").stitched, "the arm is sewn onto the other friend")
+	await _shot("27_arm_given")
+
+	# Head swap (0026): the first friend's head onto the second's body.
+	tent.choose_friend(0)
+	await _wait(0.6)
+	c = tent.friend
+	var tries := 0
+	while tent.mode != "head_held" and tries < 6:
+		await _hard_pull(_screen(c.to_global(c.head_center() + Vector2(0, -30))), Vector2(0, -1))
+		tries += 1
+	_check(tent.mode == "head_held", "three hard pulls take the head off")
+	await _shot("28_head_off")
+	await _drag_path(_last, pocket, 12)
+	await _touch(pocket, false)
+	await _wait(0.4)
+	_check(camp.heads.size() == 1 and camp.friends[0].headless, "the head waits in the pocket; a body without a head is left")
+	tent.choose_friend(1)
+	await _wait(0.6)
+	c = tent.friend
+	tries = 0
+	while tent.mode != "head_held" and tries < 6:
+		await _hard_pull(_screen(c.to_global(c.head_center() + Vector2(0, -30))), Vector2(0, -1))
+		tries += 1
+	await _drag_path(_last, pocket, 12)
+	await _touch(pocket, false)
+	await _wait(0.4)
+	_check(camp.heads.size() == 2, "both heads wait in the pocket")
+	# The first head from the pocket onto the second body.
+	await _touch(pocket, true)
+	var neck := _screen(c.to_global(c.socket("neck")))
+	await _drag_path(pocket, neck, 12)
+	await _touch(neck, false)
+	await _wait(0.8)
+	_check(tent.mode == "surgery" and Save.friend == a, "the first friend's head goes onto the second body")
+	await _shot("29_head_surgery")
+	await _sew_points(tent.friend)
+	await _wait(0.6)
+	# The game carries on with the other head and the other body.
+	_check(tent.mode == "surgery" and Save.friend == b, "the other head is taken to the other body")
+	await _sew_points(tent.friend)
+	await _wait(0.6)
+	_check(camp.headless_bodies().is_empty() and camp.heads.is_empty(), "two friends, each on the other's body")
+	_check(a.body_fabric != a.head_color(), "the first friend now has the second's body")
+	await _shot("30_swapped")
 
 
 # --- Helpers ------------------------------------------------------------

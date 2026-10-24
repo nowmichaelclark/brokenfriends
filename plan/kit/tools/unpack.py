@@ -34,7 +34,7 @@ RENDERED_BULLET_RE = re.compile(r"^\s*[·•●▪◦] ", re.M)
 TRUNCATION_RE = re.compile(
     r"(rest of (the )?(file|doc|document|section)|remaining sections?|"
     r"(stays|remains|is|are) (the same|unchanged)|\(unchanged\)|\[unchanged\]|"
-    r"same as before|as before\)|no changes below)",
+    r"as before\)|no changes below)",
     re.IGNORECASE,
 )
 ALWAYS_REFUSED = {"MIKEY.md"}

@@ -24,5 +24,10 @@ signal place_changed(place: String)
 ## A new friend came to camp (its index in `Save.camp.friends`).
 signal friend_arrived(index: int)
 
+## A friend set off on a quest, or came back from one (`result`:
+## "well", "hurt" or "died").
+signal quest_started(place: String)
+signal quest_ended(place: String, result: String)
+
 ## The player chose a different friend to look after in the tent.
 signal friend_chosen(index: int)

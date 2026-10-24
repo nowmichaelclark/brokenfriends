@@ -79,6 +79,18 @@ other head and the other body. A friend who has died, or a body without
 a head, gives up its parts at the first pull, and is laid to rest once
 nothing is left to take. Torn wounds drip hydraulic fluid.
 
+**Quests** (step B5, decisions 0034 and 0035): **Map** in the tent
+opens a map of the first camp's surroundings: a meadow, the woods, the
+river, the ruins of an old toy shop. Tap a place to see its two routes,
+with their dangers drawn on them (water, mud, thorns, wolves, a
+cliff); tap a route to choose it. At the bottom: who goes (the friend
+who was in front in the tent), a pie for the chance of coming back
+well (green), and a clock for how long it takes. The footprints send
+them. They walk the route on the map in real time, then come home
+changed: soaked, muddy, torn, missing a limb, or a little fitter, with
+supplies for the shelf, parts for the pocket, sometimes a new friend.
+A friend can die out there; then only a part or two comes back.
+
 The game saves on its own. **Start over** (tap twice) begins again.
 
 **Music** (when the Driftloom extension is built): Driftloom's own core
@@ -200,6 +212,12 @@ planning chat). Each is easy to change.
   stroking it is petting.
 - A head without a body dies after a day of game time. The pocket
   offers the oldest head first.
+- Quests take 3 minutes (the meadow's short way) to 4 hours (the
+  ruins' long way). The chance comes from the route and the friend's
+  shape: missing legs, hunger, stiff joints and a sick body lower it;
+  trips that went well raise it a little. Only routes with wolves or a
+  cliff can kill. What happens is decided as the friend leaves.
+- Someone must stay at camp: the last friend at camp can't be sent.
 - A friend who has died stays until all four limbs are taken, then is
   laid to rest.
 - A new camp starts with 6 handfuls of stuffing, 3 doses of oil, 4

@@ -98,6 +98,7 @@ func _ready() -> void:
 	_show_spare()
 	_build_bench()
 	Events.friend_arrived.connect(_on_friend_arrived)
+	Events.quest_ended.connect(_on_quest_ended)
 	_update_hint()
 	# Debug: switch parts off to see what each costs (debug/flags.gd).
 	bg.visible = not Flags.has("nobg")
@@ -144,6 +145,9 @@ func _press(sp: Vector2) -> void:
 	if h == "play":
 		if not Save.friend.dead and not Save.friend.headless:
 			go_to.emit("play_corner")
+		return
+	if h == "map":
+		go_to.emit("map")
 		return
 	if h == "reset":
 		if hud.reset_armed:
@@ -371,6 +375,20 @@ func _on_friend_arrived(i: int) -> void:
 		create_tween().tween_property(v, "position", to, 1.6).set_trans(Tween.TRANS_SINE)
 	Events.friend_reacted.emit("wake")
 	Save.mark_dirty()
+
+
+## Someone came back from a quest (or didn't): the camp shows it. Their
+## body shows what happened; what they found is on the shelf and in the
+## pocket (0034).
+func _on_quest_ended(_place: String, result: String) -> void:
+	_build_bench()
+	_show_spare()
+	hud.supplies = Save.camp.supplies
+	fx.spawn("sparkle", fx.to_local(to_world(hud.tool_center(2))), 8, 30.0)
+	match result:
+		"well": Events.friend_reacted.emit("cheer")
+		"hurt": Events.friend_reacted.emit("wince")
+		_: Voice.thud()
 
 
 ## The second friend of the first day turns up a couple of minutes

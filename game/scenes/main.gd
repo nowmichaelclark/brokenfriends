@@ -4,6 +4,7 @@ extends Node
 
 var tent: Node2D
 var play: Node2D
+var map: Node2D
 
 
 func _ready() -> void:
@@ -23,6 +24,9 @@ func _ready() -> void:
 		play = load("res://scenes/play/play_corner.gd").new()
 		add_child(play)
 		play.go_to.connect(go_to)
+	map = load("res://scenes/map/map.gd").new()
+	add_child(map)
+	map.go_to.connect(go_to)
 	go_to("tent")
 	if Flags.has("perf"):
 		add_child(load("res://debug/perf_overlay.gd").new())
@@ -42,4 +46,5 @@ func go_to(place: String) -> void:
 	tent.set_active(place == "tent")
 	if play:
 		play.set_active(place == "play_corner")
+	map.set_active(place == "map")
 	Events.place_changed.emit(place)

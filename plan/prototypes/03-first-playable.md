@@ -47,7 +47,7 @@ this build" in `game/README.md` and are asked, never decided.
   part tore; head swap leads into sewing; a dead friend's parts go to
   a box. *Done when:* the playthrough tears a healthy arm off, gives it
   to another friend, and swaps a head.
-- [ ] **B5. Quests** (0034). A map: camp, a few places, two or three
+- [x] **B5. Quests** (0034). A map: camp, a few places, two or three
   preset routes each, danger drawn on the map, the chance shown as a
   picture. A friend leaves for real minutes or hours and comes back
   changed: supplies, parts, wounds, sometimes a new friend; or dies out

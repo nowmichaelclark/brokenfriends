@@ -23,6 +23,10 @@ var clock := 0.0
 ## of the first day is scripted.)
 var next_arrival := 0.0
 var arrivals := 0
+## Friends out on quests (0034). A friend on a quest is not at camp.
+var quests: Array[QuestData] = []
+## Quests that ended during the last `advance`, for the game to show.
+var just_returned: Array[QuestData] = []
 ## Heads kept in the pocket (0026), each a friend without a body. A head
 ## left a day without one dies.
 var heads: Array[FriendData] = []
@@ -66,7 +70,9 @@ func advance(seconds: float, now: float) -> void:
 		var hours := seconds / 3600.0 / steps
 		for i in steps:
 			_step(hours)
+			_returns(_step_clock)
 	clock = now
+	_returns(now)
 	if next_arrival > 0.0 and now >= next_arrival:
 		next_arrival = 0.0
 		arrive(FriendData.second_friend())
@@ -115,6 +121,35 @@ func _step(hours: float) -> void:
 	if muddy and tracks.size() < MAX_TRACKS and _rng.randf() < 0.03 * hours:
 		tracks.append({"x": _rng.randf_range(60, 660), "y": _rng.randf_range(900, 1060),
 			"a": _rng.randf_range(-0.6, 0.6), "r": 1.0})
+
+
+## Send the friend at `index` out on a route (0034). False if it can't go.
+func send(index: int, place: String, route: int, now: float) -> bool:
+	if index < 0 or index >= friends.size():
+		return false
+	var f := friends[index]
+	if f.dead or f.headless:
+		return false
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([int(now), index, place, route])
+	f.asleep = false
+	quests.append(QuestData.start(f, place, route, now, rng))
+	remove_friend(index)
+	return true
+
+
+## Bring home everyone whose quest has ended by `t`.
+func _returns(t: float) -> void:
+	for q in quests.duplicate():
+		if q.back_at > t:
+			continue
+		quests.erase(q)
+		var found: FriendData = q.finish(self)
+		if q.result != "died":
+			friends.append(q.friend)
+		if found:
+			arrive(found)
+		just_returned.append(q)
 
 
 ## A dead friend or headless body with no arms or legs left is laid to
@@ -187,6 +222,7 @@ func to_dict() -> Dictionary:
 		"next_arrival": next_arrival, "arrivals": arrivals,
 		"tracks": tracks, "bugs": bugs, "supplies": supplies,
 		"heads": heads.map(func(h): return h.to_dict()),
+		"quests": quests.map(func(q): return q.to_dict()),
 	}
 
 
@@ -205,6 +241,9 @@ static func from_dict(d: Dictionary) -> CampData:
 	c.arrivals = int(d.get("arrivals", 0))
 	c.tracks = d.get("tracks", [])
 	c.bugs = int(d.get("bugs", 0))
+	for qd in d.get("quests", []):
+		if qd is Dictionary:
+			c.quests.append(QuestData.from_dict(qd))
 	for hd in d.get("heads", []):
 		if hd is Dictionary:
 			c.heads.append(FriendData.from_dict(hd))

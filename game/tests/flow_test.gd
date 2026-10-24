@@ -483,6 +483,76 @@ func _parts_steps() -> void:
 	_check(camp.headless_bodies().is_empty() and camp.heads.is_empty(), "two friends, each on the other's body")
 	_check(a.body_fabric != a.head_color(), "the first friend now has the second's body")
 	await _shot("30_swapped")
+	await _quest_steps()
+
+
+# --- B5: quests ---------------------------------------------------------
+
+## Move the game's clock on, as if time had passed.
+func _jump(seconds: float) -> void:
+	Save._offset += seconds
+	Save.advance_to(Save.now())
+	await _wait(0.4)
+
+
+func _twenty(make: Callable, place: String, route: int) -> Dictionary:
+	var counts := {"well": 0, "hurt": 0, "died": 0}
+	for i in 20:
+		var camp := CampData.new()
+		camp.friends.append(make.call())
+		camp.friends.append(FriendData.test_friend(99))
+		camp.clock = 5000000.0 + i * 977.0
+		camp.send(0, place, route, camp.clock)
+		camp.advance(6 * 3600.0, camp.clock + 6 * 3600.0)
+		counts[camp.just_returned[0].result] += 1
+	return counts
+
+
+func _quest_steps() -> void:
+	var strong := _twenty(func(): return FriendData.test_friend(3), "ruins", 1)
+	var weak := _twenty(func():
+		var f := FriendData.test_friend(3)
+		f.parts["leg_r"] = null
+		f.stuffing = 0.45
+		return f, "ruins", 1)
+	print("20 quests over the ridge: strong ", strong, ", weak ", weak)
+	_check(strong["well"] > weak["well"] and weak["hurt"] + weak["died"] > strong["hurt"] + strong["died"],
+		"20 quests: a weak friend fares worse than a strong one on the same route")
+	var safe := _twenty(func(): return FriendData.test_friend(3), "ruins", 0)
+	_check(safe["died"] == 0 and strong["died"] > 0, "the safe route never kills; the ridge sometimes does")
+
+	var camp := CampData.new()
+	camp.friends.append(FriendData.test_friend(21))
+	camp.friends.append(FriendData.test_friend(40))
+	camp.clock = Save.now()
+	Save.camp = camp
+	tent.traces.setup(camp)
+	tent.friend.setup(Save.friend)
+	tent._build_bench()
+	tent._show_spare()
+	await _wait(0.5)
+	await _tap(tent.hud.map_rect().get_center())
+	await _wait(0.6)
+	var map: Node2D = main.map
+	_check(map.visible, "the map opens from the tent")
+	await _tap(_screen(Quests.PLACES["woods"]["at"]))
+	var thorny := Quests.route_points("woods", 1)
+	await _tap(_screen(Quests.along(thorny, 0.3)))
+	_check(map.place == "woods" and map.route == 1, "tapping a place and a route chooses them")
+	await _shot("31_map_route")
+	await _tap(map.hud.go_center())
+	_check(camp.quests.size() == 1 and camp.friends.size() == 1, "the footprints send the friend off")
+	await _jump(10.0 * 60.0)
+	await _shot("32_out_on_a_quest")
+	var supplies_before: int = 0
+	for k in camp.supplies:
+		supplies_before += int(camp.supplies[k])
+	await _jump(15.0 * 60.0)
+	_check(camp.quests.is_empty() and camp.friends.size() >= 2, "the friend comes home when the time is up")
+	main.go_to("tent")
+	tent.choose_friend(1)
+	await _wait(0.8)
+	await _shot("33_home_from_the_woods")
 
 
 # --- Helpers ------------------------------------------------------------

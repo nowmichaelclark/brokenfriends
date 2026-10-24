@@ -71,6 +71,10 @@ func play_rect() -> Rect2:
 	return Rect2(screen_size().x - 236.0, 28.0, 208.0, 64.0)
 
 
+func map_rect() -> Rect2:
+	return Rect2(screen_size().x - 236.0 - 150.0, 28.0, 136.0, 64.0)
+
+
 func reset_rect() -> Rect2:
 	return Rect2(28.0, 28.0, 188.0, 56.0)
 
@@ -84,6 +88,8 @@ func over_pocket(p: Vector2) -> bool:
 func hit(p: Vector2) -> String:
 	if play_rect().grow(10).has_point(p):
 		return "play"
+	if map_rect().grow(6).has_point(p):
+		return "map"
 	if reset_rect().grow(10).has_point(p):
 		return "reset"
 	if pocket_head and p.distance_to(pocket_center()) < 70.0:
@@ -134,6 +140,7 @@ func _draw() -> void:
 		draw_string(font, c + Vector2(-56, 62), LABELS[tool_name], HORIZONTAL_ALIGNMENT_CENTER, 112, 19, Color(0.95, 0.88, 0.75, 0.9))
 	# Buttons
 	_button(play_rect(), play_label, Color(0.42, 0.55, 0.38))
+	_button(map_rect(), "Map", Color(0.5, 0.42, 0.3))
 	_button(reset_rect(), "Tap again" if reset_armed else "Start over", Color(0.55, 0.3, 0.27) if reset_armed else Color(0.3, 0.24, 0.2, 0.85))
 	# Pocket with spare parts and heads in it
 	if (spare_visible and spare_part) or pocket_head or pocket_open:

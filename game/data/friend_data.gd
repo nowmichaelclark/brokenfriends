@@ -29,6 +29,9 @@ const SLOTS := ["leg_l", "leg_r", "arm_l", "arm_r", "eye_l", "eye_r"]
 ## The chip brain, the friend's personality (decision 0026). 1 is
 ## well; it fails only when the body is falling apart (0028).
 @export var brain := 1.0
+## Grows a little with each trip that goes well (0034): a friend who
+## has been out more gets about better.
+@export var stamina := 0.0
 ## Death is final (0011).
 @export var dead := false
 ## The head's own fabric (it can end up on a body of another colour,
@@ -236,6 +239,7 @@ func to_dict() -> Dictionary:
 		"mud": mud, "asleep": asleep,
 		"tickle_spot": [tickle_spot.x, tickle_spot.y],
 		"catch_skill": catch_skill, "parts": pd,
+		"stamina": stamina,
 		"brain": brain, "dead": dead, "head_fabric": head_color().to_html(),
 		"headless": headless, "head_only": head_only, "off_at": off_at,
 	}
@@ -256,6 +260,7 @@ static func from_dict(d: Dictionary) -> FriendData:
 	c.tickle_spot = Vector2(ts[0], ts[1])
 	c.catch_skill = d.get("catch_skill", 0.05)
 	c.brain = d.get("brain", 1.0)
+	c.stamina = d.get("stamina", 0.0)
 	c.dead = d.get("dead", false)
 	c.head_fabric = Color.html(d.get("head_fabric", c.body_fabric.to_html()))
 	c.headless = d.get("headless", false)
@@ -341,6 +346,27 @@ static func test_friend(seed_value: int) -> FriendData:
 		c.parts[slot] = PartData.make(slot, c.body_fabric, rng.randi_range(0, 2) if slot.begins_with("leg") or slot.begins_with("arm") else 0, 0.5)
 	c.parts["eye_l"].fabric = Color(0.12, 0.1, 0.12)
 	c.parts["eye_r"].fabric = Color(0.12, 0.1, 0.12)
+	return c
+
+
+## A friend met on a quest and brought home (0034): something is
+## usually wrong with it, as with any newcomer.
+static func found_friend(seed_value: int) -> FriendData:
+	var c := test_friend(seed_value)
+	c.name = "Found friend"
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value + 1
+	match rng.randi() % 4:
+		0:
+			c.mud = [{"x": -30.0, "y": 40.0, "r": 26.0, "a": 1.0}, {"x": 50.0, "y": -10.0, "r": 20.0, "a": 1.0}]
+		1:
+			c.stuffing = 0.55
+		2:
+			c.wetness = 0.9
+		3:
+			var part: PartData = c.parts["arm_r"]
+			part.torn = true
+			part.rot = 0.3
 	return c
 
 

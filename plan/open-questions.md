@@ -21,6 +21,6 @@ doc). Next number: Q-024.
 | Q-018 | Scope: is the map-only open world, multiple camps, and tool scavenging in the game, or later, or never? | progression, expeditions | 2026-10-24 |
 | Q-019 | The doctor is silent and lonely: does the loneliness ever resolve, and is any story wanted at all? | pitch, non-goals | 2026-10-24 |
 | Q-020 | How does a player see that a quest is risky before sending a creature? | expeditions, quests | 2026-10-24 |
-| Q-021 | A creature comes back wounded from a quest, or is wounded at camp, and the player is away for a week. Can that wound kill it before they return? If yes, pillar 4's "absence is never the cause of a loss" breaks for weekly players; if no, what limits it (wounds pause, slow down, or only start when seen)? | 0011, pillars 3 and 4, time-save, condition | 2026-10-24 |
+| Q-021 | Turn Mikey's answer into rules: how the camp is left decides how likely loss is; hunger never kills but speeds rot; mold left on a rotting part can spread through camp (inbox/2026-10-24-mikey-answers.md). Then sign 0011. | 0011, pillars 3 and 4, condition, time-save | 2026-10-24 |
 | Q-022 | Pillar 3 needs a visible history of what happened while away; pillar 4 refuses a "you were away 6 days" message. How does the player learn what happened, without guilt? | ui-ux, time-save, pillars 3 and 4 | 2026-10-24 |
-| Q-023 | Four of the five pillars are about restraint. Should one pillar test that the game is fun to play with (poking, feeding, minigames)? | pillars, Gate A | 2026-10-24 |
+| Q-023 | Mikey: yes, creatures must be fun to poke and listen to, with toys, like Nintendogs. Draft that pillar and a feature it would reject. | pillars, Gate A | 2026-10-24 |

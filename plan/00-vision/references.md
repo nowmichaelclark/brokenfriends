@@ -9,12 +9,15 @@ it. Research notes go in `research/`.
 ## Candidates from the first chat (to confirm in Phase 1)
 
 **The care, train, send-out loop**
+- Tamagotchi: the starting point (Mikey's reference).
 - Chao Garden (Sonic Adventure 1 and 2): feeding changes looks and stats; minigame training; races.
 - Monster Rancher: training drills; "errantry" trips away that change the creature.
 - Digimon World (PS1): weight, care mistakes and their consequences.
 - Fallout Shelter: exploring continues while the app is closed.
 
 **Touch and feel**
+- Nintendogs: playing with a pet through touch and toys (Mikey's reference for play).
+- Trauma Center (DS): cutting and stitching directly with the stylus (Mikey's reference for repair).
 - My Talking Tom, Pou: fast, rewarding poke-and-tickle reactions.
 - Little Inferno: the pleasure of watching toys react.
 

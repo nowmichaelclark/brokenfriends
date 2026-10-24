@@ -65,7 +65,11 @@ func setup(creature: CreatureData) -> void:
 			wounds[slot] = make_tufts()
 	_eye_pos = eye_anchor("eye_r") + Vector2(0, 58)
 	_lid = 1.0 if data.asleep else 0.0
-	queue_redraw()
+	_build_parts()
+	for child in [_shadow, _body, _heart, _head_art, _face, _dangle, _surgery_art]:
+		child.key = null
+	for slot in _limb_nodes:
+		_limb_nodes[slot].key = null
 
 
 # --- Geometry -----------------------------------------------------------
@@ -499,7 +503,7 @@ func _process(delta: float) -> void:
 		if _zzz <= 0.0:
 			_zzz = 1.5
 			_fx("z", head_center() + Vector2(70, -90), 1, 2.0)
-	queue_redraw()
+	_update_parts(wb)
 
 
 func _lid_target(wb: float) -> float:
@@ -536,204 +540,347 @@ func _mouth_kind(wb: float) -> String:
 
 
 # --- Drawing ------------------------------------------------------------
+#
+# Drawn once, moved cheaply (the Driftloom way: an idle screen paints
+# nothing). The creature is a set of part nodes. Each draws itself only
+# when something it shows has changed (its key); breathing, squash, sway,
+# head shakes and stretched limbs are node transforms, which cost almost
+# nothing per frame.
 
-func _draw() -> void:
-	if data == null:
+class Part:
+	extends Node2D
+	var painter: Callable
+	var key = null
+
+	func _draw() -> void:
+		painter.call(self)
+
+	## Redraw only if what this part shows has changed.
+	func refresh(new_key) -> void:
+		if new_key != key:
+			key = new_key
+			queue_redraw()
+
+
+var _shadow: Baked
+var _rig: Node2D
+var _body: Baked
+var _heart: Baked
+var _limb_nodes: Dictionary = {}
+var _head: Node2D
+var _head_art: Baked
+var _face: Baked
+var _dangle: Part
+var _surgery_art: Part
+
+
+## A part that changes every frame while shown: drawn directly.
+func _part(parent: Node, painter: Callable) -> Part:
+	var n := Part.new()
+	n.painter = painter
+	parent.add_child(n)
+	return n
+
+
+## A part that rarely changes: baked into a texture (one draw call).
+## `rect` must hold everything its painter draws.
+func _baked(parent: Node, rect: Rect2, painter: Callable) -> Baked:
+	var n := Baked.new()
+	parent.add_child(n)
+	return n.setup(rect, painter)
+
+
+func _build_parts() -> void:
+	if _rig:
 		return
-	var wb := data.wellbeing()
+	_shadow = _baked(self, Rect2(-150, feet_y() - 18, 300, 44), _paint_shadow)
+	_rig = Node2D.new()
+	add_child(_rig)
+	_body = _baked(_rig, Rect2(-140, -145, 280, 300), _paint_body)
+	_heart = _baked(_rig, Rect2(-16, -12, 32, 30), _paint_heart)
+	for slot in ["leg_l", "leg_r", "arm_l", "arm_r"]:
+		_limb_nodes[slot] = _baked(_rig, Rect2(-40, -40, 80, 185), _paint_limb.bind(slot))
+	_head = Node2D.new()
+	_rig.add_child(_head)
+	_head_art = _baked(_head, Rect2(-112, -118, 224, 218), _paint_head)
+	_face = _baked(_head, Rect2(-72, -44, 144, 116), _paint_face)
+	_dangle = _part(_rig, _paint_dangle)
+	_surgery_art = _part(_rig, _paint_surgery)
+
+
+func _q(v: float, step: float) -> int:
+	return int(round(v / step))
+
+
+## Called every frame: set transforms, and redraw only parts whose look changed.
+func _update_parts(wb: float) -> void:
 	var s := body_scale()
-	var jitter := Vector2.ZERO
 	var sick := maxf(0.0, 0.62 - wb)
+	var jitter := Vector2.ZERO
 	if sick > 0.0 and not data.asleep:
 		jitter = Vector2(sin(_t * 47.0) * sick * 5.0, cos(_t * 39.0) * sick * 2.0)
 	elif data.asleep and sick > 0.0:
 		jitter = Vector2(sin(_t * 31.0) * sick * 2.5, 0)
 	var breathe := 1.0 + sin(_t * (1.2 if data.asleep else 2.2)) * 0.012
-	var tilt := sin(_t * 18.0) * 0.08 * _wiggle
-	draw_set_transform(jitter + Vector2(0, _squash * feet_y()), tilt, Vector2(1.0 + _squash, (1.0 - _squash) * breathe))
+	_rig.position = jitter + Vector2(0, _squash * feet_y())
+	_rig.rotation = sin(_t * 18.0) * 0.08 * _wiggle
+	_rig.scale = Vector2(1.0 + _squash, (1.0 - _squash) * breathe)
+	_shadow.position = jitter
+	_shadow.refresh([_q(s, 0.02)])
 
-	var pale := Color(0.6, 0.58, 0.54)
-	var fabric := PlushArt.fabric_color(data.body_fabric.lerp(pale, (1.0 - wb) * 0.3), data.wetness)
-	var trim := PlushArt.fabric_color(data.trim, data.wetness)
-
-	# Floor shadow
-	draw_set_transform(jitter, 0, Vector2.ONE)
-	PlushArt.ellipse(self, Vector2(0, feet_y() + 4.0), 120.0 * s, 16.0, Color(0, 0, 0, 0.22), false)
-	draw_set_transform(jitter + Vector2(0, _squash * feet_y()), tilt, Vector2(1.0 + _squash, (1.0 - _squash) * breathe))
-
-	# Body
-	var rx := 112.0 * s
-	var ry := 132.0
-	PlushArt.ellipse(self, Vector2.ZERO, rx, ry, fabric)
-	PlushArt.ellipse(self, Vector2(0, 28), 68.0 * s, 80.0, trim, false)
-	PlushArt.seam(self, PackedVector2Array([Vector2(0, -ry + 10), Vector2(0, -60)]), fabric.darkened(0.35))
-	_draw_heart(Vector2(-42.0 * s, -52.0), wb)
-	if data.wetness > 0.1:
-		draw_arc(Vector2(30.0 * s, -40), 50.0, -1.2, -0.4, 10, Color(1, 1, 1, 0.35 * data.wetness), 4.0, true)
-	_draw_mud(false, s)
+	var wq := _q(wb, 0.05)
+	var wet := _q(data.wetness, 0.05)
+	var mud_body := 0
+	var mud_head := 0
+	for m in data.mud:
+		var a := _q(float(m["a"]), 0.1)
+		if float(m["y"]) < -110.0:
+			mud_head += a + 1000
+		else:
+			mud_body += a + 1000
+	var wound_key: Array = []
 	for slot in wounds:
-		_draw_wound(slot)
+		wound_key.append(slot)
+		wound_key.append((wounds[slot] as Array).size())
+	_body.refresh([_q(s, 0.02), wq, wet, mud_body, wound_key])
 
-	# Legs, then arms
-	for slot in ["leg_l", "leg_r", "arm_l", "arm_r"]:
+	_heart.position = Vector2(-42.0 * s, -52.0)
+	var pulse := 1.0 + maxf(0.0, sin(_beat)) * 0.12
+	_heart.scale = Vector2(pulse, pulse)
+	_heart.refresh([wq])
+
+	for slot in _limb_nodes:
+		var node: Baked = _limb_nodes[slot]
 		var part: PartData = data.part(slot)
-		if part and part.attached:
-			PlushArt.limb(self, socket(slot), tip(slot), limb_width(slot), part, trim, data.wetness)
+		node.visible = part != null and part.attached
+		if not node.visible:
+			continue
+		var a := socket(slot)
+		var d := tip(slot) - a
+		node.position = a
+		node.rotation = d.angle() - PI * 0.5
+		node.scale = Vector2(1.0, maxf(0.2, d.length() / limb_len(slot)))
+		node.refresh([part.get_instance_id(), _q(part.rot, 0.05), part.torn, part.stitched, wet, _q(limb_width(slot), 0.5)])
 
-	# Head
-	var hc := head_center()
+	_head.position = head_center()
+	_head_art.refresh([wq, wet, mud_head])
+	var mouth := _mouth_kind(wb)
+	var happy := _lid > 0.5 and _lid < 0.8 and (_expr_eyes == "squint" or _pet_amount > 110.0)
+	var eye_l: PartData = data.part("eye_l")
+	var eye_r: PartData = data.part("eye_r")
+	_face.refresh([_q(_lid, 0.04), mouth, happy, wq, wet,
+		eye_l != null and eye_l.stitched, eye_r != null and eye_r.attached, eye_r != null and eye_r.stitched,
+		int(_t * 6.0) if mouth == "wavy" else 0])
+
+	_dangle.visible = eye_r != null and not eye_r.attached
+	if _dangle.visible:
+		_dangle.refresh([_q(_eye_pos.x, 0.5), _q(_eye_pos.y, 0.5), _q(head_center().x, 0.5), wq, wet])
+
+	_surgery_art.visible = not surgery.is_empty()
+	if _surgery_art.visible:
+		_surgery_art.queue_redraw()
+
+
+func _fabric(wb: float) -> Color:
+	var pale := Color(0.6, 0.58, 0.54)
+	return PlushArt.fabric_color(data.body_fabric.lerp(pale, (1.0 - wb) * 0.3), data.wetness)
+
+
+func _trim() -> Color:
+	return PlushArt.fabric_color(data.trim, data.wetness)
+
+
+func _paint_shadow(ci: CanvasItem) -> void:
+	PlushArt.ellipse(ci, Vector2(0, feet_y() + 4.0), 120.0 * body_scale(), 16.0, Color(0, 0, 0, 0.22), false)
+
+
+func _paint_body(ci: CanvasItem) -> void:
+	var wb := data.wellbeing()
+	var s := body_scale()
+	var fabric := _fabric(wb)
+	var ry := 132.0
+	PlushArt.ellipse(ci, Vector2.ZERO, 112.0 * s, ry, fabric)
+	PlushArt.ellipse(ci, Vector2(0, 28), 68.0 * s, 80.0, _trim(), false)
+	PlushArt.seam(ci, PackedVector2Array([Vector2(0, -ry + 10), Vector2(0, -60)]), fabric.darkened(0.35))
+	if data.wetness > 0.1:
+		ci.draw_arc(Vector2(30.0 * s, -40), 50.0, -1.2, -0.4, 10, Color(1, 1, 1, 0.35 * data.wetness), 4.0, true)
+	_paint_mud(ci, false, s, Vector2.ZERO)
+	for slot in wounds:
+		_paint_wound(ci, slot)
+
+
+func _paint_heart(ci: CanvasItem) -> void:
+	var wb := data.wellbeing()
+	var r := 11.0
+	var c := Color(0.78, 0.3, 0.33).lerp(Color(0.5, 0.42, 0.42), (1.0 - wb) * 0.6)
+	ci.draw_circle(Vector2(-r * 0.5, 0), r * 0.62, c)
+	ci.draw_circle(Vector2(r * 0.5, 0), r * 0.62, c)
+	ci.draw_colored_polygon(PackedVector2Array([Vector2(-r * 1.08, r * 0.2), Vector2(r * 1.08, r * 0.2), Vector2(0, r * 1.3)]), c)
+	PlushArt.seam(ci, PackedVector2Array([Vector2(-r * 1.2, r * 0.1), Vector2(0, r * 1.45), Vector2(r * 1.2, r * 0.1)]), c.lightened(0.4), 4.0, 1.5)
+
+
+## A limb drawn straight down from its socket; the node's transform
+## points and stretches it.
+func _paint_limb(ci: CanvasItem, slot: String) -> void:
+	var part: PartData = data.part(slot)
+	if part == null:
+		return
+	PlushArt.limb(ci, Vector2.ZERO, Vector2(0, limb_len(slot)), limb_width(slot), part, _trim(), data.wetness)
+
+
+## The head, centered on its node.
+func _paint_head(ci: CanvasItem) -> void:
+	var fabric := _fabric(data.wellbeing())
+	var trim := _trim()
 	for side in [-1.0, 1.0]:
-		var ear := hc + Vector2(72.0 * side, -78.0)
-		PlushArt.ellipse(self, ear, 34.0, 34.0, fabric)
-		PlushArt.ellipse(self, ear, 19.0, 19.0, trim, false)
-	PlushArt.ellipse(self, hc, HEAD_R, HEAD_R * 0.94, fabric)
-	PlushArt.seam(self, PackedVector2Array([hc + Vector2(0, -HEAD_R + 8), hc + Vector2(0, -30)]), fabric.darkened(0.35))
-	PlushArt.ellipse(self, hc + Vector2(0, 38), 48.0, 33.0, trim, false)
-	PlushArt.ellipse(self, hc + Vector2(0, 24), 12.0, 8.0, Color(0.22, 0.15, 0.13), false)
-	_draw_mouth(_mouth_kind(wb))
-	_draw_mud(true, s)
+		var ear := Vector2(72.0 * side, -78.0)
+		PlushArt.ellipse(ci, ear, 34.0, 34.0, fabric)
+		PlushArt.ellipse(ci, ear, 19.0, 19.0, trim, false)
+	PlushArt.ellipse(ci, Vector2.ZERO, HEAD_R, HEAD_R * 0.94, fabric)
+	PlushArt.seam(ci, PackedVector2Array([Vector2(0, -HEAD_R + 8), Vector2(0, -30)]), fabric.darkened(0.35))
+	PlushArt.ellipse(ci, Vector2(0, 38), 48.0, 33.0, trim, false)
+	PlushArt.ellipse(ci, Vector2(0, 24), 12.0, 8.0, Color(0.22, 0.15, 0.13), false)
+	_paint_mud(ci, true, 1.0, -HEAD_C)
 
-	# Eyes
+
+## Eyes and mouth, in the head's coordinates.
+func _paint_face(ci: CanvasItem) -> void:
+	var wb := data.wellbeing()
+	var fabric := _fabric(wb)
+	_paint_mouth(ci, _mouth_kind(wb), Vector2(0, 50))
 	var happy := _lid > 0.5 and _lid < 0.8 and (_expr_eyes == "squint" or _pet_amount > 110.0)
 	var eye_l: PartData = data.part("eye_l")
 	if eye_l:
-		PlushArt.button_eye(self, eye_anchor("eye_l"), EYE_R, eye_l.fabric, _lid, fabric, eye_l.stitched, happy)
+		PlushArt.button_eye(ci, Vector2(-40, -12), EYE_R, eye_l.fabric, _lid, fabric, eye_l.stitched, happy)
 	var eye_r: PartData = data.part("eye_r")
 	if eye_r:
 		if eye_r.attached:
-			PlushArt.button_eye(self, eye_anchor("eye_r"), EYE_R, eye_r.fabric, _lid, fabric, eye_r.stitched, happy)
+			PlushArt.button_eye(ci, Vector2(40, -12), EYE_R, eye_r.fabric, _lid, fabric, eye_r.stitched, happy)
 		else:
-			var anchor := eye_anchor("eye_r")
-			draw_circle(anchor, 9.0, Color(0.12, 0.08, 0.07))
-			var mid := anchor.lerp(_eye_pos, 0.5) + Vector2(6, 10)
-			draw_polyline(PackedVector2Array([anchor, mid, _eye_pos + Vector2(0, -EYE_R)]), PlushArt.THREAD, 2.5, true)
-			PlushArt.button_eye(self, _eye_pos, EYE_R, eye_r.fabric, 0.0, fabric)
-
-	if not surgery.is_empty():
-		_draw_surgery(trim)
-	draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
+			ci.draw_circle(Vector2(40, -12), 9.0, Color(0.12, 0.08, 0.07))
 
 
-func _draw_heart(p: Vector2, wb: float) -> void:
-	var pulse := 1.0 + maxf(0.0, sin(_beat)) * 0.12
-	var r := 11.0 * pulse
-	var c := Color(0.78, 0.3, 0.33).lerp(Color(0.5, 0.42, 0.42), (1.0 - wb) * 0.6)
-	draw_circle(p + Vector2(-r * 0.5, 0), r * 0.62, c)
-	draw_circle(p + Vector2(r * 0.5, 0), r * 0.62, c)
-	draw_colored_polygon(PackedVector2Array([p + Vector2(-r * 1.08, r * 0.2), p + Vector2(r * 1.08, r * 0.2), p + Vector2(0, r * 1.3)]), c)
-	PlushArt.seam(self, PackedVector2Array([p + Vector2(-r * 1.2, r * 0.1), p + Vector2(0, r * 1.45), p + Vector2(r * 1.2, r * 0.1)]), c.lightened(0.4), 4.0, 1.5)
+## The eye hanging on its thread, in the creature's coordinates.
+func _paint_dangle(ci: CanvasItem) -> void:
+	var eye_r: PartData = data.part("eye_r")
+	if eye_r == null:
+		return
+	var anchor := eye_anchor("eye_r")
+	var mid := anchor.lerp(_eye_pos, 0.5) + Vector2(6, 10)
+	ci.draw_polyline(PackedVector2Array([anchor, mid, _eye_pos + Vector2(0, -EYE_R)]), PlushArt.THREAD, 2.5, true)
+	PlushArt.button_eye(ci, _eye_pos, EYE_R, eye_r.fabric, 0.0, _fabric(data.wellbeing()))
 
 
-func _draw_mouth(kind: String) -> void:
-	var m := mouth_pos()
+func _paint_mouth(ci: CanvasItem, kind: String, m: Vector2) -> void:
 	var col := Color(0.3, 0.17, 0.14)
 	match kind:
 		"smile":
-			draw_arc(m + Vector2(0, -10), 16.0, PI * 0.18, PI * 0.82, 14, col, 3.5, true)
+			ci.draw_arc(m + Vector2(0, -10), 16.0, PI * 0.18, PI * 0.82, 14, col, 3.5, true)
 		"frown":
-			draw_arc(m + Vector2(0, 12), 15.0, PI * 1.18, PI * 1.82, 14, col, 3.5, true)
+			ci.draw_arc(m + Vector2(0, 12), 15.0, PI * 1.18, PI * 1.82, 14, col, 3.5, true)
 		"o":
-			PlushArt.ellipse(self, m, 8.0, 9.0, col, false)
+			PlushArt.ellipse(ci, m, 8.0, 9.0, col, false)
 		"open":
-			PlushArt.ellipse(self, m, 14.0, 11.0, col, false)
-			PlushArt.ellipse(self, m + Vector2(0, 5), 7.0, 4.0, Color(0.85, 0.45, 0.45), false)
+			PlushArt.ellipse(ci, m, 14.0, 11.0, col, false)
+			PlushArt.ellipse(ci, m + Vector2(0, 5), 7.0, 4.0, Color(0.85, 0.45, 0.45), false)
 		"wavy":
 			var pts := PackedVector2Array()
 			for i in 9:
 				pts.append(m + Vector2(-16 + i * 4, sin(i * 1.4 + _t * 3.0) * 2.5))
-			draw_polyline(pts, col, 3.0, true)
+			ci.draw_polyline(pts, col, 3.0, true)
 		_:
-			draw_line(m + Vector2(-12, 0), m + Vector2(12, 0), col, 3.5, true)
+			ci.draw_line(m + Vector2(-12, 0), m + Vector2(12, 0), col, 3.5, true)
 
 
-func _draw_mud(on_head: bool, s: float) -> void:
+## Mud splotches; `origin` moves them into the drawing node's coordinates.
+func _paint_mud(ci: CanvasItem, on_head: bool, s: float, origin: Vector2) -> void:
 	for m in data.mud:
 		var y := float(m["y"])
 		if (y < -110.0) != on_head:
 			continue
-		var p := Vector2(float(m["x"]) * (1.0 if on_head else s), y)
+		var p := Vector2(float(m["x"]) * (1.0 if on_head else s), y) + origin
 		var r := float(m["r"])
-		var a := float(m["a"])
-		var c := Color(0.36, 0.26, 0.16, 0.85 * a)
-		draw_circle(p, r * 0.8, c)
-		draw_circle(p + Vector2(r * 0.5, r * 0.3), r * 0.5, c)
-		draw_circle(p + Vector2(-r * 0.4, r * 0.35), r * 0.45, c)
-		draw_circle(p + Vector2(r * 0.1, -r * 0.5), r * 0.35, c)
+		var c := Color(0.36, 0.26, 0.16, 0.85 * float(m["a"]))
+		ci.draw_circle(p, r * 0.8, c)
+		ci.draw_circle(p + Vector2(r * 0.5, r * 0.3), r * 0.5, c)
+		ci.draw_circle(p + Vector2(-r * 0.4, r * 0.35), r * 0.45, c)
+		ci.draw_circle(p + Vector2(r * 0.1, -r * 0.5), r * 0.35, c)
 
 
-func _draw_wound(slot: String) -> void:
+func _paint_wound(ci: CanvasItem, slot: String) -> void:
 	var at := socket(slot)
-	var hole := Color(0.14, 0.09, 0.07)
-	PlushArt.ellipse(self, at, 27.0, 15.0, hole, false)
+	PlushArt.ellipse(ci, at, 27.0, 15.0, Color(0.14, 0.09, 0.07), false)
 	var rim := PackedVector2Array()
 	for i in 13:
 		var a := TAU * i / 12.0
 		var r := 27.0 if i % 2 == 0 else 22.0
 		rim.append(at + Vector2(cos(a) * r, sin(a) * r * 0.58))
-	draw_polyline(rim, data.body_fabric.darkened(0.3), 3.0, true)
-	draw_polyline(PackedVector2Array([at + Vector2(-6, 2), at + Vector2(-14, 18), at + Vector2(-8, 26)]), Color(0.85, 0.2, 0.2), 2.5, true)
-	draw_polyline(PackedVector2Array([at + Vector2(5, 3), at + Vector2(16, 14), at + Vector2(22, 12)]), Color(0.95, 0.8, 0.2), 2.5, true)
+	ci.draw_polyline(rim, data.body_fabric.darkened(0.3), 3.0, true)
+	ci.draw_polyline(PackedVector2Array([at + Vector2(-6, 2), at + Vector2(-14, 18), at + Vector2(-8, 26)]), Color(0.85, 0.2, 0.2), 2.5, true)
+	ci.draw_polyline(PackedVector2Array([at + Vector2(5, 3), at + Vector2(16, 14), at + Vector2(22, 12)]), Color(0.95, 0.8, 0.2), 2.5, true)
 	var fluid := PlushArt.FLUID
 	fluid.a = 0.6
-	draw_circle(at + Vector2(3, 6), 6.0, fluid)
-	var tufts: Array = wounds[slot]
-	for tuft in tufts:
-		PlushArt.fluff(self, at + tuft, 9.0)
+	ci.draw_circle(at + Vector2(3, 6), 6.0, fluid)
+	for tuft in wounds[slot]:
+		PlushArt.fluff(ci, at + tuft, 9.0)
 
 
 ## The surgery overlay: the new part waiting below the wound, the
-## ligament tube, the spill, the stitch points and the needle.
-func _draw_surgery(trim: Color) -> void:
+## ligament tube, the spill, the stitch points and the needle. Redrawn
+## every frame, but only while a surgery is on.
+func _paint_surgery(ci: CanvasItem) -> void:
+	if surgery.is_empty():
+		return
 	var slot: String = surgery.get("slot", "")
 	if surgery.has("part"):
 		var part: PartData = surgery["part"]
 		var gap := Vector2(0, 16)
-		PlushArt.limb(self, socket(slot) + gap, rest_tip(slot) + gap, limb_width(slot), part, trim, 0.0)
+		PlushArt.limb(ci, socket(slot) + gap, rest_tip(slot) + gap, limb_width(slot), part, _trim(), 0.0)
 		var top := socket(slot) + gap + Vector2(10, 6)
 		var port := socket(slot) + Vector2(10, 0)
-		draw_arc(port, 6.0, 0, TAU, 12, Color(0.85, 0.85, 0.9), 2.5, true)
+		ci.draw_arc(port, 6.0, 0, TAU, 12, Color(0.85, 0.85, 0.9), 2.5, true)
 		var end: Vector2 = surgery.get("tube_end", top + Vector2(30, 40))
 		var mid := top.lerp(end, 0.5) + Vector2(14, 10)
 		var tube := PackedVector2Array([top, mid, end])
-		draw_polyline(tube, Color(0.1, 0.35, 0.33), 9.0, true)
+		ci.draw_polyline(tube, Color(0.1, 0.35, 0.33), 9.0, true)
 		var inner := PlushArt.FLUID
 		inner.a = 1.0 if surgery.get("connected", false) else 0.45
-		draw_polyline(tube, inner, 5.0, true)
-		draw_circle(end, 5.5, Color(0.75, 0.78, 0.82))
+		ci.draw_polyline(tube, inner, 5.0, true)
+		ci.draw_circle(end, 5.5, Color(0.75, 0.78, 0.82))
 		if surgery.get("connected", false):
 			var k := fmod(_t * 1.5, 1.0)
-			draw_circle(top.lerp(end, k), 3.0, Color(1, 1, 1, 0.8))
+			ci.draw_circle(top.lerp(end, k), 3.0, Color(1, 1, 1, 0.8))
 	if surgery.has("spill") and float(surgery["spill"]) > 0.0:
 		var sp: Vector2 = surgery["spill_pos"]
 		var c := PlushArt.FLUID
 		c.a = 0.75 * float(surgery["spill"])
-		PlushArt.ellipse(self, sp, 32.0, 14.0, c, false)
-		PlushArt.ellipse(self, sp + Vector2(-20, 8), 14.0, 7.0, c, false)
+		PlushArt.ellipse(ci, sp, 32.0, 14.0, c, false)
+		PlushArt.ellipse(ci, sp + Vector2(-20, 8), 14.0, 7.0, c, false)
 	var points: Array = surgery.get("points", [])
 	var done: int = surgery.get("done", 0)
 	for i in points.size():
 		var p: Vector2 = points[i]
 		if i < done:
 			if i > 0:
-				draw_line(points[i - 1], p, PlushArt.THREAD, 3.5, true)
-			draw_circle(p, 2.5, PlushArt.THREAD.darkened(0.3))
+				ci.draw_line(points[i - 1], p, PlushArt.THREAD, 3.5, true)
+			ci.draw_circle(p, 2.5, PlushArt.THREAD.darkened(0.3))
 		elif i == done:
 			var pulse := 9.0 + sin(_t * 6.0) * 2.5
-			draw_arc(p, pulse, 0, TAU, 16, Color(1, 0.95, 0.7, 0.95), 2.5, true)
-			draw_circle(p, 3.0, Color(1, 0.95, 0.7))
+			ci.draw_arc(p, pulse, 0, TAU, 16, Color(1, 0.95, 0.7, 0.95), 2.5, true)
+			ci.draw_circle(p, 3.0, Color(1, 0.95, 0.7))
 		else:
-			draw_circle(p, 3.0, Color(1, 1, 1, 0.45))
+			ci.draw_circle(p, 3.0, Color(1, 1, 1, 0.45))
 	if surgery.get("needle") != null and points.size() > 0:
 		var n: Vector2 = surgery["needle"]
 		if done > 0:
-			draw_line(points[done - 1], n, PlushArt.THREAD, 2.0, true)
-		draw_line(n, n + Vector2(18, -18), Color(0.85, 0.87, 0.9), 3.0, true)
-		draw_circle(n + Vector2(17, -17), 2.0, Color(0.3, 0.3, 0.35))
+			ci.draw_line(points[done - 1], n, PlushArt.THREAD, 2.0, true)
+		ci.draw_line(n, n + Vector2(18, -18), Color(0.85, 0.87, 0.9), 3.0, true)
+		ci.draw_circle(n + Vector2(17, -17), 2.0, Color(0.3, 0.3, 0.35))
 	if surgery.get("cloth") != null:
 		var cpos: Vector2 = surgery["cloth"]
 		var sq := PackedVector2Array([cpos + Vector2(-22, -16), cpos + Vector2(20, -20), cpos + Vector2(24, 16), cpos + Vector2(-18, 20)])
-		draw_colored_polygon(sq, Color(0.93, 0.93, 0.98))
-		draw_polyline(sq, Color(0.6, 0.62, 0.75), 2.0, true)
+		ci.draw_colored_polygon(sq, Color(0.93, 0.93, 0.98))
+		ci.draw_polyline(sq, Color(0.6, 0.62, 0.75), 2.0, true)
 
 
 func _fx(kind: String, local: Vector2, count: int, spread: float) -> void:

@@ -10,6 +10,12 @@ extends Node
 
 const LOOPS := ["11-haven", "01-glade", "10-shrine", "03-tide", "07-dust", "14-bloom"]
 const DIR := "res://addons/driftloom/loops/"
+## Each loop's loudness evened out: the gain that brings it to about the
+## same average level (measured on the lite mix; the loudest peak stays
+## under 0.9, so nothing clips).
+const LEVEL := {"11-haven": 1.9, "01-glade": 1.0, "10-shrine": 1.4, "03-tide": 0.75, "07-dust": 1.05, "14-bloom": 2.1}
+## The music's volume under the creatures' voices and sounds, in dB.
+const VOLUME_DB := -1.0
 
 ## True when the extension is present and a loop is playing.
 var available := false
@@ -33,6 +39,9 @@ func _ready() -> void:
 	if not ClassDB.class_exists("DriftloomPlayer") or Flags.has("nomusic"):
 		return
 	player = ClassDB.instantiate("DriftloomPlayer")
+	# Driftloom's lite mix (half the reverb's work) on phones and in the
+	# browser; the full mix on computers.
+	player.lite = OS.has_feature("web") or OS.has_feature("mobile")
 	if not _load(LOOPS[0]):
 		return
 	var gen := AudioStreamGenerator.new()
@@ -40,7 +49,7 @@ func _ready() -> void:
 	gen.buffer_length = 0.5 if OS.has_feature("web") else 0.25
 	_out = AudioStreamPlayer.new()
 	_out.stream = gen
-	_out.volume_db = -9.0
+	_out.volume_db = VOLUME_DB
 	# The web's default "sample" playback can't stream generated audio.
 	_out.playback_type = AudioServer.PLAYBACK_TYPE_STREAM
 	add_child(_out)
@@ -60,7 +69,7 @@ func _load(loop_name: String) -> bool:
 		push_warning("Music: " + loop_name + ": " + err)
 		return false
 	player.looping = false
-	player.gain = 0.8
+	player.gain = LEVEL.get(loop_name, 1.0)
 	current = loop_name
 	return true
 

@@ -250,9 +250,6 @@ class PlayHud:
 	func back_rect() -> Rect2:
 		return Rect2(28.0, 28.0, 190.0, 64.0)
 
-	func _process(_delta: float) -> void:
-		queue_redraw()
-
 	func _draw() -> void:
 		var r := back_rect()
 		var col := Color(0.42, 0.55, 0.38)

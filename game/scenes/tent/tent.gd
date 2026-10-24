@@ -78,6 +78,10 @@ func _ready() -> void:
 	if Save.spare_available:
 		_show_spare()
 	_update_hint()
+	# Debug: switch parts off to see what each costs (debug/flags.gd).
+	bg.visible = not Flags.has("nobg")
+	creature.visible = not Flags.has("nocreature")
+	layer.visible = not Flags.has("nohud")
 
 
 func set_active(on: bool) -> void:

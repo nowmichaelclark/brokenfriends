@@ -22,10 +22,6 @@ func _ready() -> void:
 	angular_damp = 0.8
 
 
-func _process(_delta: float) -> void:
-	queue_redraw()
-
-
 func _draw() -> void:
 	draw_circle(Vector2.ZERO, RADIUS, Color(0.92, 0.84, 0.62))
 	draw_arc(Vector2.ZERO, RADIUS * 0.62, 0, TAU, 24, Color(0.82, 0.32, 0.28), 9.0, true)

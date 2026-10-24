@@ -12,6 +12,10 @@ func _ready() -> void:
 		if arg.begins_with("--flow-test"):
 			flow_arg = arg
 			Save.new_game()
+	if Flags.has("empty"):
+		# Debug: nothing but the engine, to measure its own cost per frame.
+		add_child(load("res://debug/perf_overlay.gd").new())
+		return
 	tent = preload("res://scenes/tent/tent.gd").new()
 	add_child(tent)
 	tent.go_to.connect(go_to)

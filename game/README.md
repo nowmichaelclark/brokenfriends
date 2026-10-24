@@ -72,10 +72,11 @@ Then **Actions** → **web** → **Run workflow** (or just push).
 | `autoload/` | Always-loaded: `Events` (the event bus), `Voice` (sounds, synthesized), `Save`, `Music` (Driftloom) |
 | `data/` | `CreatureData` and `PartData`: creatures as plain data, saved as JSON |
 | `creature/` | `CreatureView` (drawing and body reactions) and `PlushArt` (drawing helpers) |
-| `fx/` | `FxLayer`: fluff, fluid, bubbles, drips, sparkles |
+| `fx/` | `FxLayer`: fluff, fluid, bubbles, drips, sparkles; `Baked`: a drawing made once into a picture |
 | `scenes/tent/` | The tent: care, the bin, the spare pocket, surgery, the tool shelf |
 | `scenes/play/` | The play corner and the ball |
 | `addons/driftloom/` | The Driftloom extension's config and its golden loops (`rust/` builds it) |
+| `debug/` | `Flags` (debug switches) and the `#perf` overlay |
 | `tests/` | `flow_test.gd` plays the first five minutes; `music_test.gd` checks Driftloom's hashes |
 
 Rules the code follows:
@@ -85,6 +86,11 @@ Rules the code follows:
   (decision 0016) without the rest of the game knowing.
 - **No image or sound files.** Everything is drawn and synthesized in
   code, a first step toward generated art (Q-006).
+- **Draw once, then move** (Driftloom's habit). Nothing redraws every
+  frame. Detailed drawings are baked into a picture with `Baked` and
+  re-baked only when what they show changes; motion is done by moving
+  and turning them. Sounds are made while the game starts, not during
+  play. A cheap phone (Mikey's Moto G Power 2022) is the yardstick.
 - **The body is the interface** (pillar 1). No health bars; health shows
   as shaking, droopy lids, a slow heart patch, a pale or wet coat. The
   text hints are a crutch for now.
@@ -106,6 +112,12 @@ The playthrough prints `ok` or `FAIL` for each step and ends with
 # Driftloom's golden loops, rendered in the game (needs rust/build.sh linux)
 godot --headless --path game -- --music-test
 ```
+
+Speed: add `#perf` to the web address (or `-- --perf` on the command
+line) for frame time, the music's cost and draw calls, printed as
+`PERF` lines too. Add `&nobg`, `&nocreature`, `&nohud`, `&nomusic` or
+`&empty` to see what each part costs. Numbers are in
+`plan/systems/platforms-tech/README.md`.
 
 ## Assumed in this build, waiting on Mikey
 

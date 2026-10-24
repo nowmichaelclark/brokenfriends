@@ -12,12 +12,19 @@ const ROT_TINT := Color(0.33, 0.36, 0.18)
 const MOLD := Color(0.62, 0.72, 0.42)
 
 
+static var _unit_circles := {}
+
+
+## Points around an ellipse. Built from a cached unit circle and scaled in
+## one native call, not point by point in script.
 static func ellipse_points(c: Vector2, rx: float, ry: float, n := 40) -> PackedVector2Array:
-	var pts := PackedVector2Array()
-	for i in n:
-		var a := TAU * i / n
-		pts.append(c + Vector2(cos(a) * rx, sin(a) * ry))
-	return pts
+	var unit: PackedVector2Array = _unit_circles.get(n, PackedVector2Array())
+	if unit.is_empty():
+		for i in n:
+			var a := TAU * i / n
+			unit.append(Vector2(cos(a), sin(a)))
+		_unit_circles[n] = unit
+	return Transform2D(0.0, Vector2(rx, ry), 0.0, c) * unit
 
 
 static func ellipse(ci: CanvasItem, c: Vector2, rx: float, ry: float, col: Color, outline := true) -> void:

@@ -17,7 +17,6 @@ var tool_pos := Vector2.ZERO
 var reset_armed := false
 var play_label := "Play corner"
 
-var _t := 0.0
 var _trash_pop := 0.0
 
 
@@ -67,10 +66,18 @@ func over_trash(p: Vector2) -> bool:
 	return trash_visible and p.distance_to(trash_center()) < 120.0
 
 
+var _key = null
+
+
+## Redraw only when something shown has changed (an idle shelf costs nothing).
 func _process(delta: float) -> void:
-	_t += delta
 	_trash_pop = move_toward(_trash_pop, 1.0 if trash_visible else 0.0, delta * 5.0)
-	queue_redraw()
+	var key := [spare_visible, spare_part.get_instance_id() if spare_part else 0, trash_visible,
+		trash_hover, held_tool, Vector2i(tool_pos) if held_tool != "" else Vector2i.ZERO,
+		reset_armed, play_label, screen_size(), int(_trash_pop * 20.0)]
+	if key != _key:
+		_key = key
+		queue_redraw()
 
 
 func _draw() -> void:
@@ -93,7 +100,7 @@ func _draw() -> void:
 	# Pocket with the spare part
 	if spare_visible and spare_part:
 		var pc := pocket_center()
-		var glow := 0.5 + sin(_t * 3.0) * 0.25
+		var glow := 0.6
 		draw_circle(pc, 76.0, Color(1.0, 0.9, 0.6, 0.12 * glow))
 		var pocket := PackedVector2Array([pc + Vector2(-56, -10), pc + Vector2(56, -10), pc + Vector2(48, 66), pc + Vector2(-48, 66)])
 		var trim := Color(0.94, 0.86, 0.75)

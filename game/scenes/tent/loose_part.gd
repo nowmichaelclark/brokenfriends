@@ -28,7 +28,6 @@ func _process(delta: float) -> void:
 			_angle = lerp_angle(_angle, PI * 0.5, delta * 10.0)
 			_spin = 0.0
 	rotation = _angle
-	queue_redraw()
 
 
 func drop(velocity: Vector2) -> void:

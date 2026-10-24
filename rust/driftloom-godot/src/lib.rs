@@ -47,6 +47,10 @@ pub struct DriftloomPlayer {
     /// Loudness applied on the way out (the core's own level is untouched).
     #[var]
     gain: f32,
+    /// Driftloom's lite mix for weak devices: half the reverb's work, the
+    /// same notes. Takes effect from the next list loaded.
+    #[var]
+    lite: bool,
     base: Base<RefCounted>,
 }
 
@@ -113,6 +117,9 @@ impl DriftloomPlayer {
                             *frame = Vector2::ZERO;
                             continue;
                         }
+                        if self.lite {
+                            core.quality(false);
+                        }
                         self.frame = 0;
                     }
                     core.process(self.frame);
@@ -167,6 +174,9 @@ impl DriftloomPlayer {
     fn restart(&mut self, list: &List) -> Result<(), String> {
         let mut core = CORE.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         notelist::load(&mut core, list)?;
+        if self.lite {
+            core.quality(false);
+        }
         self.frame = 0;
         self.pending.clear();
         self.used = 0;

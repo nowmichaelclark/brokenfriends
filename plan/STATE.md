@@ -1,6 +1,6 @@
 # State
 
-Updated: 2026-10-24 (all proposed decisions signed)
+Updated: 2026-10-24 (all decisions signed; no ads, open source)
 
 Rewrite this file, don't add to it. Keep it under 100 lines.
 
@@ -14,7 +14,7 @@ started. Every decision so far is signed.
 
 1. Brain session: turn Mikey's camp answer into rules (Q-021, as a new
    decision building on 0011), settle Q-022, add a fun pillar (Q-023),
-   then write the non-goals (including Q-024, ads).
+   then write the non-goals.
 2. Research session: check the references (V-012, V-013 and
    `00-vision/references.md`).
 3. Brain session: first playable.
@@ -39,6 +39,7 @@ None.
 - 0013 Collection size up to the player; camps have limits; many camps.
 - 0014 Free. 0015 No iPhone for now.
 - 0016 Driftloom's most important proof game. 0017 Play, not train.
+- 0018 Open source, free, no ads.
 
 ## Open counts
 

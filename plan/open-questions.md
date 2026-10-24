@@ -2,7 +2,7 @@
 
 Questions only Mikey can answer, or that need his call before a doc can
 move on. Removed once answered (the answer lives in a decision or a
-doc). Next number: Q-025.
+doc). Next number: Q-026.
 
 | # | Question | Blocks | Raised |
 |---|---|---|---|
@@ -19,4 +19,4 @@ doc). Next number: Q-025.
 | Q-021 | Turn Mikey's answer into rules: how the camp is left decides how likely loss is; hunger never kills but speeds rot; mold left on a rotting part can spread through camp (inbox/2026-10-24-mikey-answers.md). Record them as a new decision building on 0011. | 0011, pillars 3 and 4, condition, time-save | 2026-10-24 |
 | Q-022 | Pillar 3 needs a visible history of what happened while away; pillar 4 refuses a "you were away 6 days" message. How does the player learn what happened, without guilt? | ui-ux, time-save, pillars 3 and 4 | 2026-10-24 |
 | Q-023 | Mikey: yes, creatures must be fun to poke and listen to, with toys, like Nintendogs. Draft that pillar and a feature it would reject. | pillars, Gate A | 2026-10-24 |
-| Q-024 | The game is free (0014). Are there ads? | non-goals, progression | 2026-10-24 |
+| Q-025 | Which open-source licence, for the code and for the art and music? It must work with Driftloom's core, which the game embeds. | platforms-tech, audio-music | 2026-10-24 |

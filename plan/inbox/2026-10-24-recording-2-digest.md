@@ -1,6 +1,6 @@
 # Recording 2: Claude's reading, for Mikey to confirm
 
-What Claude took from `2026-10-24-recording-2.md`. Nothing here is
+What Claude took from `2026-10-24-recording-2-part1.md` and `-part2.md`. Nothing here is
 decided until Mikey says so; confirmed items become decisions or doc
 text, and this file goes once they have. Numbers are for replying
 ("all yes except 7 and 12").

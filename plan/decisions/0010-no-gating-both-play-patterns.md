@@ -35,6 +35,6 @@ hold the player to something."
 - Shapes `00-vision/pitch.md` (audience and play patterns) and should
   inform `00-vision/non-goals.md`.
 - Time away can still change a creature, and a player can always get a
-  new creature. How that stays a change rather than a loss, and whether
-  a weekly player can lose a creature they love, is open (Q-011).
+  new creature. How change stays change and not pressure is settled in
+  decision 0011, and enforced by pillars 3 and 4.
 - Narrows Q-005: no microtransactions, but free or paid is still open.

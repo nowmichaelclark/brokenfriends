@@ -14,13 +14,26 @@ system. *Not to be confused with:* other term, if any.
 Still to define: species, seam, stuffing, fluff, condition, wetness,
 mold, habitat, expedition, package, theme.
 
+**Camp**: the place the player mostly stays, with their creatures,
+tools and tents. A creature that is not on a quest is at camp. *Owned
+by:* no system yet. *Not to be confused with:* habitat, expedition.
+
 **Creature**: a stitched, doll-like animal the player cares for, plays
 with and repairs. *Owned by:* no system yet. *Not to be confused
 with:* species.
 
+**Donation**: moving a part from one creature to another: a rotting
+limb replaced, or a healthy spare part given. A sewn part is permanent
+(decision 0011). *Owned by:* no system yet. *Not to be confused with:*
+repair.
+
+**Keepsake**: a part left behind when a creature dies fully. Higher
+quality parts are more likely to survive. Keepsakes are the only thing
+death leaves behind (decision 0011). *Owned by:* no system yet.
+
 **Part**: a piece of a creature: a limb, an eye, an accessory. A part
-can rot, be ripped off, be sewn on, or be added. *Owned by:* no system
-yet.
+can rot, be ripped off, be sewn on, be added, or be donated to another
+creature. *Owned by:* no system yet.
 
 **Play**: interacting with a creature for its own sake: poking,
 feeding, minigames, watching it react. The preferred word over
@@ -31,7 +44,7 @@ feeding, minigames, watching it react. The preferred word over
 
 **Repair**: ripping off a rotting part and sewing on a replacement or
 an addition. A repaired creature is never the same as before. *Owned
-by:* no system yet.
+by:* no system yet. *Not to be confused with:* donation.
 
 ## Planning terms
 

@@ -28,7 +28,8 @@ the player to something. Players come back more often because they
 grow attached to a particular creature or a particular goal.
 
 Time away can change a creature, and a player can always get a new
-creature. The promise is change, not loss.
+creature. Change and loss both happen here, and both can be affected
+by the player (decision 0011).
 
 ## The first five minutes
 
@@ -47,7 +48,8 @@ rotting, sewing on replacements, and changing and adding parts. They're
 never quite the same afterward. They're still your friends.
 
 There is no going back to the creature as you found it. A creature may
-end up a Theseus creature: same friend, different parts.
+end up a Theseus creature: same friend, different parts. Parts can even
+move between friends: a healthy leg given to a creature who has none.
 
 ## The player's role
 
@@ -55,6 +57,10 @@ The player is a character of sorts, closer to a benevolent doctor than
 to a god. They care for and befriend creatures, then send them on
 quests. Later we find out the player has goals they can achieve through
 the creatures.
+
+The doctor is silent; the creatures do the talking. The doctor is
+lonely and has no other friends. These lively, toy-like creatures are
+almost imaginary friends to them.
 
 Creatures are friends we play with and care for, not things we make.
 
@@ -69,10 +75,14 @@ Tone: wholesome and gross, in the spirit of Tim Burton's stop-motion
 films [unverified, V-013]: stitched, patched, a little rotten, still
 lovable.
 
+The arc, such as it is: the doctor learns to accept death, and to be
+happy with the friends they have now. There is no plot around it to
+resolve.
+
 ## Still open in this pitch
 
 - Quests and the overarching goals are promised, not designed.
 - "Change and add parts" is deliberately abstract; the part system is
-  unwritten.
-- The tension between "nothing is gated" and "time away changes a
-  creature" is worded here, not solved (Q-011).
+  unwritten, including donation (Q-016) and keepsakes (Q-017).
+- The open world, multiple camps and tool scavenging are parked
+  (Q-018).

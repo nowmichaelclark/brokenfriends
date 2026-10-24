@@ -16,9 +16,9 @@ of it may be reworked as planning goes (0021). It runs at
 
 ## Next steps
 
-1. Mikey's second recording: the questions in
-   `prototypes/01-first-five-minutes.md` from playing the sketch, the
-   open questions, the non-goals and the first playable.
+1. Mikey confirms Claude's reading of recording 2
+   (`inbox/2026-10-24-recording-2-digest.md`); confirmed items become
+   decisions and doc text.
 2. Mikey answers the 21 numbered points from the recording (decisions,
    assumptions, questions) in the planning chat; Claude records them.
 3. Brain session (DeepSeek): Q-021 rules, Q-022, a fun pillar (Q-023),

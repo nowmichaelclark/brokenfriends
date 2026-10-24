@@ -3,7 +3,7 @@
 The Godot project. Godot **4.7.1**, GDScript, the Compatibility
 renderer (so it runs in browsers and on cheap phones), portrait 720×1280.
 
-**This is a sketch** (Mikey, 2026-10-24; decision 0021, proposed). Any
+**This is a sketch** (Mikey, 2026-10-24; decision 0021). Any
 of it may be reworked or thrown out as planning settles the game. The
 plans lead; the build is evidence about feel, never a reason.
 

@@ -1,7 +1,7 @@
 ---
-status: proposed
+status: accepted
 date: 2026-10-24
-decided_by:
+decided_by: Mikey, 2026-10-24
 supersedes:
 superseded_by:
 ---
@@ -44,5 +44,5 @@ goes. Still, this is a really fun sketch to start with."
   reason. The build is evidence about feel, not a decision.
 - What carries over is what was learned: what felt good on the phone,
   and the performance practice (`systems/platforms-tech/`).
-- On acceptance, 0019's status stays accepted; this narrows one of its
+- 0019 stays accepted; this narrows one of its
   consequences rather than replacing it.

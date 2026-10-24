@@ -563,6 +563,20 @@ func snap_eye() -> void:
 	_eye_vel = Vector2.ZERO
 
 
+## Give a limb a shove (a kick, a swat, a ball off it).
+func nudge_limb(slot: String, impulse: Vector2) -> void:
+	if _limbs.has(slot):
+		_limbs[slot]["vel"] += impulse
+
+
+## A ball bounced off the body: a soft "oof" and a wobble.
+func bounce_off() -> void:
+	_squash_vel += 3.2
+	_wiggle = maxf(_wiggle, 0.5)
+	set_expression("squint", "o", 0.5)
+	Events.friend_reacted.emit("boop")
+
+
 ## Hit on the head by a ball it didn't catch. It laughs.
 func bonk() -> void:
 	_squash_vel += 2.6

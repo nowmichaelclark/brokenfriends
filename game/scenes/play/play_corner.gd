@@ -32,11 +32,13 @@ var _walk_target := 360.0
 var _walk_timer := 0.0
 var _idle := 0.0
 var _base_y := 0.0
+var _rng := RandomNumberGenerator.new()
 ## Wandering off to the back of the corner: seen from behind (0031).
 var _away := false
 
 
 func _ready() -> void:
+	_rng.randomize()
 	add_child(PlayBackground.new())
 	_build_walls()
 	friend = FriendView.new()
@@ -172,27 +174,99 @@ func _physics_process(delta: float) -> void:
 		return
 	if _mode == "ball" or _cooldown > 0.0 or data.asleep:
 		return
+	# The ball can meet any part of the friend (pillar 6: more than one
+	# way to play with a toy).
+	if ball.linear_velocity.length() < 120.0:
+		return
+	var local := friend.to_local(ball.global_position)
+	var r := ToyBall.RADIUS / FRIEND_SCALE
+	var head := friend.head_center()
+	var hr := FriendArt.head_ry(data) + r
+	if local.distance_to(head) < hr and friend.facing == "front":
+		_at_head(data)
+		return
+	for slot in ["leg_l", "leg_r", "arm_l", "arm_r"]:
+		var part: PartData = data.part(slot)
+		if part == null or not part.attached:
+			continue
+		var q := Geometry2D.get_closest_point_to_segment(local, friend.socket(slot), friend.tip(slot))
+		if local.distance_to(q) < friend.limb_width(slot) * 0.5 + r:
+			if slot.begins_with("leg") and local.distance_to(friend.tip(slot)) < 60.0 + r:
+				_at_foot(data, slot)
+			else:
+				_off_part(slot, local - q)
+			return
+	var rx := 112.0 * friend.body_scale() * friend.body_w() + r
+	var ry := 132.0 * friend.body_h() + r
+	if pow(local.x / rx, 2) + pow(local.y / ry, 2) <= 1.0:
+		_off_part("", local)
+
+
+## At the head: they try to catch it. Catching is learned by throwing
+## again and again; even a good catcher fumbles now and then (0033).
+func _at_head(data: FriendData) -> void:
 	var head := friend.to_global(friend.head_center())
-	var reach := FriendView.HEAD_R * FRIEND_SCALE + ToyBall.RADIUS + 8.0
-	if ball.global_position.distance_to(head) < reach and ball.linear_velocity.length() > 120.0:
-		var skill := data.catch_skill
-		data.catch_skill = minf(0.92, skill + 0.07)
-		Save.mark_dirty()
-		_idle = 0.0
-		if randf() < skill:
+	var skill := data.catch_skill
+	data.catch_skill = FriendData.learn(skill)
+	Save.mark_dirty()
+	_idle = 0.0
+	match FriendData.try_skill(skill, _rng):
+		"catch":
 			_caught = true
 			_catch_timer = 1.3
 			ball.freeze = true
 			friend.arms_up = true
 			friend.set_expression("squint", "open", 1.3)
 			Events.friend_reacted.emit("catch")
-		else:
+		"fumble":
+			# Got it... and it pops out of their arms.
+			friend.arms_up = true
+			_arms_timer = 0.5
+			ball.linear_velocity = Vector2(randf_range(-160, 160), -380)
+			friend.set_expression("open", "o", 0.8)
+			Events.friend_reacted.emit("giggle")
+			_cooldown = 0.6
+		_:
 			ball.linear_velocity = (ball.global_position - head).normalized() * 480.0 + Vector2(0, -160)
 			friend.bonk()
 			# A late grab at the ball: they're still learning.
 			friend.arms_up = true
 			_arms_timer = 0.35
 			_cooldown = 0.7
+
+
+## At a foot: sometimes they kick it back, better with practice.
+func _at_foot(data: FriendData, slot: String) -> void:
+	var skill := data.kick_skill
+	data.kick_skill = FriendData.learn(skill)
+	Save.mark_dirty()
+	_idle = 0.0
+	var side := -1.0 if slot == "leg_l" else 1.0
+	if FriendData.try_skill(skill, _rng) != "miss":
+		# A proper kick, up and away across the corner.
+		friend.nudge_limb(slot, Vector2(-side * 420.0, -380.0))
+		ball.linear_velocity = Vector2(-side * randf_range(380, 620), randf_range(-760, -520))
+		friend.set_expression("squint", "smile", 0.8)
+		Events.friend_reacted.emit("cheer")
+	else:
+		friend.nudge_limb(slot, Vector2(side * 200.0, -120.0))
+		ball.linear_velocity = Vector2(side * 260.0, -240.0)
+		friend.set_expression("open", "o", 0.5)
+		Events.friend_reacted.emit("boop")
+	_cooldown = 0.6
+
+
+## Off an arm or the body: a bounce and a little reaction.
+func _off_part(slot: String, away: Vector2) -> void:
+	var dir := away.normalized() if away.length() > 0.1 else Vector2.UP
+	ball.linear_velocity = (dir * 420.0 + Vector2(0, -260)).rotated(friend.rotation)
+	if slot == "":
+		friend.bounce_off()
+	else:
+		friend.nudge_limb(slot, -dir * 300.0)
+		Events.friend_reacted.emit("boop")
+	_idle = 0.0
+	_cooldown = 0.5
 
 
 func _process(delta: float) -> void:

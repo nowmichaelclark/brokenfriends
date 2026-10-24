@@ -106,6 +106,13 @@ body. `-- --gallery=/tmp/gallery` (or `#gallery`) shows twenty side by
 side, from the back, and with heads swapped. The first two friends of
 the first day stay bears.
 
+**Play, second cut** (step B9, decision 0033, pillar 6): the ball
+meets any part of a friend. At the head they try to catch it; at a
+foot they try to kick it back; off an arm or the belly it bounces with
+a little "oof". Catching and kicking are learned by doing them, slowly
+(about 25 throws to catch half the time), and even a good catcher
+sometimes fumbles the ball out of its arms or misses.
+
 **The surgery table** (step B7, decision 0031): sewing happens with
 the friend lying on its own table, under a lamp, after a quick fade;
 the camera comes in close enough to see each stitch, and the friend is

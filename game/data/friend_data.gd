@@ -25,6 +25,8 @@ const SLOTS := ["leg_l", "leg_r", "arm_l", "arm_r", "eye_l", "eye_r"]
 @export var tickle_spot := Vector2(-35, 45)
 ## Grows by playing with the ball (decision 0017: play, not train).
 @export var catch_skill := 0.05
+## Kicking a ball back, learned the same way (0033).
+@export var kick_skill := 0.05
 @export var parts: Dictionary = {}
 ## The chip brain, the friend's personality (decision 0026). 1 is
 ## well; it fails only when the body is falling apart (0028).
@@ -147,6 +149,21 @@ func join_body(body: FriendData) -> void:
 	off_at = 0.0
 
 
+## Skills grow by repetition, slowly, and slower the better they get
+## (decision 0033): a friend needs dozens of throws to get good.
+static func learn(skill: float) -> float:
+	return minf(0.95, skill + 0.025 * (1.0 - skill))
+
+
+## How a try goes, for a friend with this skill: "catch", "fumble"
+## (caught, then dropped: even a skilled friend does it now and then),
+## or "miss".
+static func try_skill(skill: float, rng: RandomNumberGenerator) -> String:
+	if rng.randf() >= skill * 0.9:
+		return "miss"
+	return "fumble" if rng.randf() < 0.18 else "catch"
+
+
 ## How far gone the body is, 0 (whole) to about 1 (falling apart):
 ## rot, missing limbs, lost stuffing, soaking. The brain fails only
 ## above about half (decision 0028).
@@ -259,7 +276,7 @@ func to_dict() -> Dictionary:
 		"stuffing": stuffing, "fluid": fluid, "wetness": wetness,
 		"mud": mud, "asleep": asleep,
 		"tickle_spot": [tickle_spot.x, tickle_spot.y],
-		"catch_skill": catch_skill, "parts": pd,
+		"catch_skill": catch_skill, "kick_skill": kick_skill, "parts": pd,
 		"stamina": stamina, "met": met, "head_look": head_look, "body_look": body_look,
 		"brain": brain, "dead": dead, "head_fabric": head_color().to_html(),
 		"headless": headless, "head_only": head_only, "off_at": off_at,
@@ -280,6 +297,7 @@ static func from_dict(d: Dictionary) -> FriendData:
 	var ts: Array = d.get("tickle_spot", [-35, 45])
 	c.tickle_spot = Vector2(ts[0], ts[1])
 	c.catch_skill = d.get("catch_skill", 0.05)
+	c.kick_skill = d.get("kick_skill", 0.05)
 	c.brain = d.get("brain", 1.0)
 	c.stamina = d.get("stamina", 0.0)
 	c.met = d.get("met", true)

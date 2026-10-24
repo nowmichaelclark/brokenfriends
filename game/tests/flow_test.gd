@@ -589,6 +589,48 @@ func _arrival_steps() -> void:
 	await _wait(2.2)
 	_check(c.friends.size() == before + 1 and c.friends.back().met, "a newcomer walks into the tent and is seen")
 	await _shot("34_a_newcomer")
+	await _play_steps()
+
+
+# --- B9: play, second cut ---------------------------------------------
+
+func _play_steps() -> void:
+	var skill := 0.05
+	var throws := 0
+	while skill < 0.5:
+		skill = FriendData.learn(skill)
+		throws += 1
+	print("throws to catch half the time: ", throws)
+	_check(throws > 20, "catching takes many throws to learn")
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	var tally := {"catch": 0, "fumble": 0, "miss": 0}
+	for i in 300:
+		tally[FriendData.try_skill(0.95, rng)] += 1
+	_check(tally["fumble"] > 0 and tally["miss"] > 0, "even a skilled friend fumbles and misses sometimes")
+
+	# The ball at a foot: a kick (or a try at one), learned the same way.
+	var c := Save.camp
+	c.current = 0
+	for f in c.friends:
+		f.asleep = false
+	main.go_to("play_corner")
+	var play: Node2D = main.play
+	play.friend.setup(Save.friend)
+	await _wait(0.6)
+	var kick := Save.friend.kick_skill
+	var ball: RigidBody2D = play.ball
+	for t in 3:
+		await _wait(0.8)
+		var foot: Vector2 = play.friend.to_global(play.friend.tip("leg_r"))
+		ball.freeze = true
+		ball.global_position = foot + Vector2(160, -40)
+		ball.freeze = false
+		ball.linear_velocity = (foot - ball.global_position).normalized() * 700.0
+		await _wait(0.5)
+	_check(Save.friend.kick_skill > kick, "a ball at the foot gets kicked back (and kicking is learned)")
+	await _shot("35_kick")
+	main.go_to("tent")
 
 
 # --- Helpers ------------------------------------------------------------

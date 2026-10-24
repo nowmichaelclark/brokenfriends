@@ -66,7 +66,7 @@ this build" in `game/README.md` and are asked, never decided.
   and back; thin friends wobble, plump ones bounce; a voice per
   friend. *Done when:* 20 seeds look clearly different, parts swap
   between any two, and speed holds.
-- [ ] **B9. Play, second cut** (0033, pillar 6). The ball hits any
+- [x] **B9. Play, second cut** (0033, pillar 6). The ball hits any
   part; a foot kicks it back; skills grow slowly; a skilled friend
   still fumbles. *Done when:* catching takes many throws to learn.
 - [ ] **B10. No text** (0032). Hints go; what to do next is shown.

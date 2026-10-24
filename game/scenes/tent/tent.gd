@@ -20,6 +20,8 @@ var friend: FriendView
 ## The camp's other friends, sitting further back: index in
 ## Save.camp.friends -> BenchFriend.
 var bench: Dictionary = {}
+## The wordless pointer at what could be done next (0032).
+var guide: Guide
 ## Footprints and bugs on the floor: what happened at camp (0029).
 var traces: CampTraces
 var fx: FxLayer
@@ -82,6 +84,8 @@ func _ready() -> void:
 	add_child(_parts_layer)
 	fx = FxLayer.new()
 	add_child(fx)
+	guide = Guide.new()
+	add_child(guide)
 	friend.fx = fx
 	friend.setup(Save.friend)
 	fx.floor_y = FRIEND_POS.y + friend.feet_y()
@@ -103,6 +107,8 @@ func _ready() -> void:
 	hint.add_theme_constant_override("outline_size", 12)
 	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(hint)
+	# Words only for the developer (#hints); the game shows instead (0032).
+	hint.visible = Flags.has("hints")
 	_fade = ColorRect.new()
 	_fade.color = Color(0.08, 0.05, 0.04, 0.0)
 	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -951,6 +957,7 @@ func _process(delta: float) -> void:
 				friend.setup(Save.friend)
 			_build_bench()
 			_show_spare()
+	_update_cue()
 	var vs := get_viewport_rect().size
 	hint.position = Vector2(40, 118)
 	hint.size = Vector2(vs.x - 80, 120)
@@ -1011,3 +1018,104 @@ func current_hint() -> String:
 	if c.fluid < 0.6:
 		return "Stiff, squeaky joints. Give them a little oil."
 	return "All patched up. Poke, tickle or pet them, or visit the play corner."
+
+
+## Show what could be done next, without words (decision 0032): a glow
+## on the shelf or pocket or bin, a pulsing ring on the friend, a dotted
+## line to drag along. The same order of things as `current_hint`.
+func _update_cue() -> void:
+	guide.clear()
+	hud.glow = ""
+	var c := Save.friend
+	if c == null or on_table and mode != "surgery":
+		return
+	if held_head:
+		hud.glow = "pocket"
+		return
+	if c.dead:
+		return
+	if c.headless:
+		if hud.pocket_head:
+			hud.glow = "pocket"
+			_cue(friend.socket("neck"), 50.0)
+		return
+	if held and not held.from_pocket and held.part and not held.part.is_dead() and held.part.rot < 0.5:
+		hud.glow = "pocket"
+		return
+	if mode == "surgery":
+		var srg := friend.surgery
+		match srg.get("step", ""):
+			"fluff":
+				var tufts: Array = friend.wounds.get(srg["slot"], [])
+				if not tufts.is_empty():
+					_cue(friend.socket(srg["slot"]) + tufts[0], 18.0)
+			"tube":
+				_cue(srg.get("tube_end", Vector2.ZERO), 16.0, friend.socket(srg["slot"]) + Vector2(10, 0))
+			"soak":
+				_cue(srg.get("spill_pos", Vector2.ZERO), 30.0)
+		return
+	if Save.camp.bugs > 0 and not traces._bugs.is_empty():
+		guide.show_cue(traces._bugs[0].global_position, 26.0)
+		return
+	if c.asleep:
+		_cue(Vector2(40, 10), 60.0)
+		return
+	if held and not held.from_pocket:
+		hud.glow = "bin"
+		return
+	if held and held.from_pocket:
+		for slot in ["leg_l", "leg_r", "arm_l", "arm_r"]:
+			if c.is_open(slot) and slot.begins_with(held.part.kind):
+				_cue(friend.socket(slot), 40.0)
+				return
+		return
+	for slot in ["leg_l", "leg_r", "arm_l", "arm_r"]:
+		var part: PartData = c.part(slot)
+		if part and part.rot > 0.5 and part.attached:
+			var mid := friend.socket(slot).lerp(friend.tip(slot), 0.6)
+			_cue(mid, 40.0, mid + friend.limb_dir(slot) * 140.0)
+			return
+	if not loose_parts.is_empty():
+		hud.glow = "bin"
+		guide.show_cue(loose_parts[0].global_position, 50.0)
+		return
+	if hud.spare_visible:
+		for slot in ["leg_l", "leg_r", "arm_l", "arm_r"]:
+			if c.is_open(slot) and hud.spare_part and slot.begins_with(hud.spare_part.kind):
+				hud.glow = "pocket"
+				_cue(friend.socket(slot), 40.0)
+				return
+	var eye: PartData = c.part("eye_r")
+	if eye and not eye.attached and Save.camp.has("thread"):
+		_cue(friend.eye_position(), 26.0, friend.eye_anchor("eye_r"))
+		return
+	if not c.mud.is_empty():
+		hud.glow = "sponge"
+		return
+	if not Save.camp.tracks.is_empty():
+		hud.glow = "sponge"
+		var t: Dictionary = Save.camp.tracks[0]
+		guide.show_cue(Vector2(float(t["x"]), float(t["y"])), 40.0)
+		return
+	if c.wetness > 0.3:
+		hud.glow = "towel"
+		return
+	if c.stuffing < 0.9 and Save.camp.has("stuffing"):
+		hud.glow = "stuffing"
+		_cue(friend.mouth_pos(), 30.0)
+		return
+	if c.fluid < 0.6 and Save.camp.has("oil"):
+		hud.glow = "oil"
+		_cue(friend.mouth_pos(), 30.0)
+		return
+	for slot in ["arm_l", "arm_r", "leg_l", "leg_r"]:
+		var part: PartData = c.part(slot)
+		if part and not part.mold.is_empty() and Save.camp.has("spray"):
+			hud.glow = "spray"
+			return
+
+
+## A cue at a point on the friend (its own units), maybe with a drag.
+func _cue(local: Vector2, r: float, drag_local := Vector2.INF) -> void:
+	var to := friend.to_global(drag_local) if drag_local != Vector2.INF else Vector2.INF
+	guide.show_cue(friend.to_global(local), r * friend.global_scale.x, to)

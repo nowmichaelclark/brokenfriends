@@ -29,10 +29,10 @@ func hits(world: Vector2) -> bool:
 
 func _draw() -> void:
 	if friend:
-		draw_head(self, friend, Vector2.ZERO)
+		draw_head(self, friend, Transform2D.IDENTITY)
 
 
 ## A head drawn on its own: ears, face, button eyes, and fluff where the
 ## neck tore. Also used for heads in the pocket and friends on the map.
-static func draw_head(ci: CanvasItem, f: FriendData, at: Vector2) -> void:
-	FriendArt.draw_loose_head(ci, f, at, f.head_only)
+static func draw_head(ci: CanvasItem, f: FriendData, xf: Transform2D) -> void:
+	FriendArt.draw_loose_head(ci, f, xf, f.head_only)

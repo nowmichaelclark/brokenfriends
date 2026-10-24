@@ -137,27 +137,27 @@ static func draw_head(ci: CanvasItem, f: FriendData, at: Vector2, fabric: Color,
 
 ## A head on its own (in the hand, the pocket, on the map): ears, head,
 ## open button eyes, a small mouth, and fluff where the neck tore when
-## `torn`.
-static func draw_loose_head(ci: CanvasItem, f: FriendData, at: Vector2, torn := true) -> void:
+## `torn`. Drawn through `xf` (where and how big), which the caller
+## passes instead of setting a draw transform, because the ears need
+## their own transforms on top of it.
+static func draw_loose_head(ci: CanvasItem, f: FriendData, xf: Transform2D, torn := true) -> void:
 	var fabric := f.head_color()
+	if str(f.hl("ears")) != "none":
+		for side in [-1.0, 1.0]:
+			ci.draw_set_transform_matrix(xf * Transform2D(ear_angle(f, side), ear_base(f, side)))
+			draw_ear(ci, f, fabric, f.trim)
+	ci.draw_set_transform_matrix(xf)
 	if torn:
 		for t in 3:
-			PlushArt.fluff(ci, at + Vector2(-30 + t * 30, head_ry(f) - 2.0), 16.0)
-	for side in [-1.0, 1.0]:
-		if str(f.hl("ears")) == "none":
-			break
-		var base := at + ear_base(f, side)
-		var tr := Transform2D(ear_angle(f, side), base)
-		ci.draw_set_transform_matrix(tr)
-		draw_ear(ci, f, fabric, f.trim)
-		ci.draw_set_transform_matrix(Transform2D.IDENTITY)
-	draw_head(ci, f, at, fabric, f.trim)
+			PlushArt.fluff(ci, Vector2(-30 + t * 30, head_ry(f) - 2.0), 16.0)
+	draw_head(ci, f, Vector2.ZERO, fabric, f.trim)
 	for slot in ["eye_l", "eye_r"]:
 		var e: PartData = f.part(slot)
 		var side := -1.0 if slot == "eye_l" else 1.0
 		if e:
-			PlushArt.button_eye(ci, at + eye_pos(f, side), eye_radius(f), e.fabric, 0.0, fabric, e.stitched)
-	ci.draw_arc(at + mouth_pos(f) + Vector2(0, 6), 12.0, PI * 1.1, PI * 1.9, 8, Color(0.25, 0.15, 0.12), 3.0, true)
+			PlushArt.button_eye(ci, eye_pos(f, side), eye_radius(f), e.fabric, 0.0, fabric, e.stitched)
+	ci.draw_arc(mouth_pos(f) + Vector2(0, 6), 12.0, PI * 1.1, PI * 1.9, 8, Color(0.25, 0.15, 0.12), 3.0, true)
+	ci.draw_set_transform_matrix(Transform2D.IDENTITY)
 
 
 ## The body: its shape and belly from the front; a seam and the tail

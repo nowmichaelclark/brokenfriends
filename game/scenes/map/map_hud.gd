@@ -14,7 +14,7 @@ func screen_size() -> Vector2:
 
 
 func back_rect() -> Rect2:
-	return Rect2(28.0, 28.0, 188.0, 56.0)
+	return Rect2(24.0, 24.0, 80.0, 80.0)
 
 
 func go_center() -> Vector2:
@@ -38,18 +38,14 @@ func _process(delta: float) -> void:
 
 func _draw() -> void:
 	var s := screen_size()
-	var font := ThemeDB.fallback_font
-	draw_rect(back_rect(), Color(0.3, 0.24, 0.2, 0.9))
-	draw_string(font, Vector2(28, 66), "Back to tent", HORIZONTAL_ALIGNMENT_CENTER, 188, 24, Color(1, 0.96, 0.88))
+	Icons.button(self, back_rect().get_center(), Color(0.42, 0.55, 0.38), "tent")
 	if map.place == "":
 		return
 	# The panel along the bottom.
 	draw_rect(Rect2(0, s.y - 220.0, s.x, 220.0), Color(0.33, 0.22, 0.14, 0.92))
 	var f := Save.friend
 	if f:
-		draw_set_transform(Vector2(110, s.y - 112.0), 0.0, Vector2(0.55, 0.55))
-		LooseHead.draw_head(self, f, Vector2.ZERO)
-		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		LooseHead.draw_head(self, f, Transform2D(0.0, Vector2(0.55, 0.55), 0.0, Vector2(110, s.y - 112.0)))
 	# Chance: a pie, green for coming back well.
 	var c: float = map.chance()
 	var pc := Vector2(s.x * 0.5 - 60.0, s.y - 110.0)

@@ -67,6 +67,7 @@ func _ready() -> void:
 	hint.add_theme_constant_override("outline_size", 12)
 	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(hint)
+	hint.visible = Flags.has("hints")
 
 
 func set_active(on: bool) -> void:
@@ -339,14 +340,10 @@ class PlayHud:
 	extends Node2D
 
 	func back_rect() -> Rect2:
-		return Rect2(28.0, 28.0, 190.0, 64.0)
+		return Rect2(24.0, 24.0, 80.0, 80.0)
 
 	func _draw() -> void:
-		var r := back_rect()
-		var col := Color(0.42, 0.55, 0.38)
-		draw_rect(r, col)
-		draw_rect(r, col.darkened(0.4), false, 3.0)
-		draw_string(ThemeDB.fallback_font, Vector2(r.position.x, r.position.y + r.size.y * 0.5 + 9.0), "Back to tent", HORIZONTAL_ALIGNMENT_CENTER, r.size.x, 26, Color(1, 0.96, 0.88))
+		Icons.button(self, back_rect().get_center(), Color(0.42, 0.55, 0.38), "tent")
 
 
 class PlayBackground:

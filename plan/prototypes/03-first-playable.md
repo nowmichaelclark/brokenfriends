@@ -69,9 +69,9 @@ this build" in `game/README.md` and are asked, never decided.
 - [x] **B9. Play, second cut** (0033, pillar 6). The ball hits any
   part; a foot kicks it back; skills grow slowly; a skilled friend
   still fumbles. *Done when:* catching takes many throws to learn.
-- [ ] **B10. No text** (0032). Hints go; what to do next is shown.
+- [x] **B10. No text** (0032). Hints go; what to do next is shown.
   *Done when:* Mikey plays the first five minutes with no words on
-  screen.
+  screen. (Built; Mikey's verdict pending.)
 - [ ] **B11. Music at moments** (0038). Music changes on a room change,
   a friend made well, a return, a death, the time of day; never on a
   timer. *Done when:* a test logs each change with its reason.

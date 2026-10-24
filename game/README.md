@@ -106,6 +106,14 @@ body. `-- --gallery=/tmp/gallery` (or `#gallery`) shows twenty side by
 side, from the back, and with heads swapped. The first two friends of
 the first day stay bears.
 
+**No words** (step B10, decision 0032): the hint text is gone, and so
+are the words on buttons and the shelf. What could be done next glows
+instead: a soft pulsing ring where to touch, a dotted line where to
+drag, a glow on the thing on the shelf (or the pocket, or the bin) to
+use. Buttons are pictures: a circling arrow (start over; tap twice), a
+map, a ball (the play corner), a tent (back). `#hints` (or `-- --hints`)
+brings the words back, for development.
+
 **Play, second cut** (step B9, decision 0033, pillar 6): the ball
 meets any part of a friend. At the head they try to catch it; at a
 foot they try to kick it back; off an arm or the belly it bounces with

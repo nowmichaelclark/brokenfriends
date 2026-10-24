@@ -404,7 +404,14 @@ static func newcomer(seed_value: int) -> FriendData:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_value + 7
 	var problems := ["mud", "thin", "soaked", "rotting", "missing", "eye", "out"]
-	problems.shuffle()
+	# Shuffled with this friend's own numbers, so the same seed always
+	# brings the same newcomer.
+	for i in range(problems.size() - 1, 0, -1):
+		var j := rng.randi() % (i + 1)
+		var tmp = problems[i]
+		problems[i] = problems[j]
+		problems[j] = tmp
+	var limbs := ["arm_l", "arm_r", "leg_l", "leg_r"]
 	for p in problems.slice(0, 1 + rng.randi() % 2):
 		match p:
 			"mud":
@@ -415,12 +422,13 @@ static func newcomer(seed_value: int) -> FriendData:
 			"soaked":
 				c.wetness = rng.randf_range(0.7, 1.0)
 			"rotting":
-				var part: PartData = c.parts[["arm_l", "arm_r", "leg_l", "leg_r"][rng.randi() % 4]]
+				var part: PartData = c.parts[limbs[rng.randi() % limbs.size()]]
 				part.rot = rng.randf_range(0.6, 0.85)
 				part.torn = true
 				part.mold = [[0.4, 0.2, 0.15], [0.7, -0.2, 0.12]]
 			"missing":
-				c.parts[["arm_l", "arm_r", "leg_l", "leg_r"][rng.randi() % 4]] = null
+				var gone: String = limbs.pop_at(rng.randi() % limbs.size())
+				c.parts[gone] = null
 			"eye":
 				c.parts["eye_r"].attached = false
 			"out":

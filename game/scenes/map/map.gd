@@ -255,6 +255,4 @@ class Walkers:
 			var p := q.progress(now)
 			var t := p * 2.0 if p < 0.5 else (1.0 - p) * 2.0
 			var at := Quests.along(pts, t)
-			draw_set_transform(at + Vector2(0, -20), 0.0, Vector2(0.28, 0.28))
-			LooseHead.draw_head(self, q.friend, Vector2.ZERO)
-			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+			LooseHead.draw_head(self, q.friend, Transform2D(0.0, Vector2(0.28, 0.28), 0.0, at + Vector2(0, -20)))

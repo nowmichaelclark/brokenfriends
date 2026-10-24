@@ -14,6 +14,10 @@ const COUNTED := ["stuffing", "oil", "spray", "thread"]
 
 ## The camp's supplies, shown by how full each thing on the shelf looks.
 var supplies: Dictionary = {}
+## What to glow, showing what could be used next (no words, 0032): a
+## shelf item's name, "pocket", "bin", "play" or "map". "" for none.
+var glow := ""
+var _glow_t := 0.0
 ## A shelf item to shake (tapped or needed when empty).
 var shake_item := ""
 var _shake := 0.0
@@ -67,16 +71,27 @@ func trash_center() -> Vector2:
 	return Vector2(s.x * 0.5, s.y - 300.0)
 
 
+func glow_center() -> Vector2:
+	match glow:
+		"": return Vector2.INF
+		"pocket": return pocket_center()
+		"bin": return trash_center()
+		"play": return play_rect().get_center()
+		"map": return map_rect().get_center()
+	var i: int = (TOOLS + SHOWN).find(glow)
+	return tool_center(i) if i >= 0 else Vector2.INF
+
+
 func play_rect() -> Rect2:
-	return Rect2(screen_size().x - 236.0, 28.0, 208.0, 64.0)
+	return Rect2(screen_size().x - 104.0, 24.0, 80.0, 80.0)
 
 
 func map_rect() -> Rect2:
-	return Rect2(screen_size().x - 236.0 - 150.0, 28.0, 136.0, 64.0)
+	return Rect2(screen_size().x - 200.0, 24.0, 80.0, 80.0)
 
 
 func reset_rect() -> Rect2:
-	return Rect2(28.0, 28.0, 188.0, 56.0)
+	return Rect2(28.0, 28.0, 64.0, 64.0)
 
 
 func over_pocket(p: Vector2) -> bool:
@@ -114,7 +129,10 @@ func _process(delta: float) -> void:
 	_trash_pop = move_toward(_trash_pop, 1.0 if trash_visible else 0.0, delta * 5.0)
 	_shake = maxf(0.0, _shake - delta)
 	_bake_static()
-	var key := [pocket_head.get_instance_id() if pocket_head else 0, pocket_open, spare_count, spare_visible, spare_part.get_instance_id() if spare_part else 0, trash_visible,
+	if glow != "":
+		_glow_t += delta
+		queue_redraw()
+	var key := [glow, pocket_head.get_instance_id() if pocket_head else 0, pocket_open, spare_count, spare_visible, spare_part.get_instance_id() if spare_part else 0, trash_visible,
 		trash_hover, held_tool, Vector2i(tool_pos) if held_tool != "" else Vector2i.ZERO,
 		reset_armed, play_label, screen_size(), int(_trash_pop * 20.0)]
 	if key != _key:
@@ -165,16 +183,24 @@ func _paint_shelf(ci: CanvasItem) -> void:
 			ci.draw_arc(c, 48.0, 0, TAU, 24, Color(1, 1, 1, 0.25), 3.0, true)
 		else:
 			draw_tool(ci, tool_name, c + Vector2(0, -12), 0.85, amount(tool_name))
-		ci.draw_string(font, c + Vector2(-56, 62), LABELS[tool_name], HORIZONTAL_ALIGNMENT_CENTER, 112, 19, Color(0.95, 0.88, 0.75, 0.9))
+		if Flags.has("hints"):
+			ci.draw_string(font, c + Vector2(-56, 62), LABELS[tool_name], HORIZONTAL_ALIGNMENT_CENTER, 112, 19, Color(0.95, 0.88, 0.75, 0.9))
 
 
 func _paint_buttons(ci: CanvasItem) -> void:
-	_button(ci, play_rect(), play_label, Color(0.42, 0.55, 0.38))
-	_button(ci, map_rect(), "Map", Color(0.5, 0.42, 0.3))
-	_button(ci, reset_rect(), "Tap again" if reset_armed else "Start over", Color(0.55, 0.3, 0.27) if reset_armed else Color(0.3, 0.24, 0.2, 0.85))
+	Icons.button(ci, play_rect().get_center(), Color(0.42, 0.55, 0.38), "ball")
+	Icons.button(ci, map_rect().get_center(), Color(0.5, 0.42, 0.3), "map")
+	Icons.button(ci, reset_rect().get_center(), Color(0.55, 0.3, 0.27) if reset_armed else Color(0.3, 0.24, 0.2, 0.85),
+		"again_armed" if reset_armed else "again", 32.0)
 
 
 func _draw() -> void:
+	# What could be used next, glowing softly (0032).
+	var gc := glow_center()
+	if gc != Vector2.INF:
+		var pulse := 0.5 + 0.5 * sin(_glow_t * 4.0)
+		draw_circle(gc, 54.0 + 6.0 * pulse, Color(1.0, 0.9, 0.55, 0.12 + 0.14 * pulse))
+		draw_arc(gc, 54.0 + 6.0 * pulse, 0, TAU, 32, Color(1.0, 0.92, 0.55, 0.5 + 0.4 * pulse), 4.0, true)
 	# Pocket with spare parts and heads in it
 	if (spare_visible and spare_part) or pocket_head or pocket_open:
 		var pc := pocket_center()
@@ -183,9 +209,7 @@ func _draw() -> void:
 		var pocket := PackedVector2Array([pc + Vector2(-56, -10), pc + Vector2(56, -10), pc + Vector2(48, 66), pc + Vector2(-48, 66)])
 		var trim := Color(0.94, 0.86, 0.75)
 		if pocket_head:
-			draw_set_transform(pc + Vector2(0, -30), 0.0, Vector2(0.42, 0.42))
-			LooseHead.draw_head(self, pocket_head, Vector2.ZERO)
-			draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
+			LooseHead.draw_head(self, pocket_head, Transform2D(0.0, Vector2(0.42, 0.42), 0.0, pc + Vector2(0, -30)))
 		elif spare_visible and spare_part:
 			for k in range(mini(spare_count, 3) - 1, -1, -1):
 				draw_set_transform(pc + Vector2(-10 * k, -6 - 4 * k), 0.15 - 0.2 * k, Vector2(0.7, 0.7))

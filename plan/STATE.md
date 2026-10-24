@@ -23,8 +23,7 @@ of it may be reworked as planning goes (0021). It runs at
    assumptions, questions) in the planning chat; Claude records them.
 3. Brain session (DeepSeek): Q-021 rules, Q-022, a fun pillar (Q-023),
    then the non-goals.
-4. Mikey's next stream-of-consciousness recording, to update the plans.
-5. Research session, first playable, red team, Gate A.
+4. Research session, first playable, red team, Gate A.
 
 ## Blockers
 

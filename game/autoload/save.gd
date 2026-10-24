@@ -86,6 +86,9 @@ func advance_to(t: float) -> void:
 	for i in camp.just_arrived:
 		Events.friend_arrived.emit.call_deferred(i)
 	camp.just_arrived.clear()
+	for i in camp.just_died:
+		Events.friend_died.emit.call_deferred()
+	camp.just_died = 0
 	for q in camp.just_returned:
 		Events.quest_ended.emit.call_deferred(q.place, q.result)
 	camp.just_returned.clear()

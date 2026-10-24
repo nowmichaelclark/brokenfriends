@@ -14,9 +14,9 @@ system) resumes alongside when Mikey wants planning sessions.
 
 ## Next steps
 
-1. Build B1 to B6, the core loop, one step per session or a few; push
-   each step; Mikey plays after B6.
-2. Then B7 to B11, and Mikey's few days of play (B12).
+1. Mikey plays the first playable for a few days (B12): B1 to B11 are
+   built and live. His results go in `prototypes/03-first-playable.md`.
+2. Tune the guesses he flags (`game/README.md`, "Assumed in this build").
 3. Mikey, whenever: Q-030 (first playable lists), Q-026 to Q-029.
 4. Planning, when Mikey is ready: red team of the vision (another
    lab), then Phase 2.

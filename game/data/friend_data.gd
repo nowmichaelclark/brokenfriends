@@ -39,6 +39,8 @@ const SLOTS := ["leg_l", "leg_r", "arm_l", "arm_r", "eye_l", "eye_r"]
 @export var stamina := 0.0
 ## Death is final (0011).
 @export var dead := false
+## Its death has been announced (the music marks it once).
+@export var mourned := false
 ## How the head and body look (decision 0037; see Looks). Empty means
 ## the sketch's bear. The head's look goes with the head (0026).
 @export var head_look: Dictionary = {}
@@ -277,7 +279,7 @@ func to_dict() -> Dictionary:
 		"mud": mud, "asleep": asleep,
 		"tickle_spot": [tickle_spot.x, tickle_spot.y],
 		"catch_skill": catch_skill, "kick_skill": kick_skill, "parts": pd,
-		"stamina": stamina, "met": met, "head_look": head_look, "body_look": body_look,
+		"stamina": stamina, "met": met, "mourned": mourned, "head_look": head_look, "body_look": body_look,
 		"brain": brain, "dead": dead, "head_fabric": head_color().to_html(),
 		"headless": headless, "head_only": head_only, "off_at": off_at,
 	}
@@ -301,6 +303,7 @@ static func from_dict(d: Dictionary) -> FriendData:
 	c.brain = d.get("brain", 1.0)
 	c.stamina = d.get("stamina", 0.0)
 	c.met = d.get("met", true)
+	c.mourned = d.get("mourned", d.get("dead", false))
 	c.head_look = d.get("head_look", {})
 	c.body_look = d.get("body_look", {})
 	c.dead = d.get("dead", false)

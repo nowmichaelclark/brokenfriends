@@ -29,5 +29,8 @@ signal friend_arrived(index: int)
 signal quest_started(place: String)
 signal quest_ended(place: String, result: String)
 
+## A friend died at camp (0028).
+signal friend_died()
+
 ## The player chose a different friend to look after in the tent.
 signal friend_chosen(index: int)

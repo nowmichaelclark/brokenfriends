@@ -137,8 +137,14 @@ seen them (pillar 4).
 
 The game saves on its own. **Start over** (tap twice) begins again.
 
-**Music** (when the Driftloom extension is built): Driftloom's own core
-plays six of its golden loops in turn, quietly. See `rust/README.md`.
+**Music** (step B11, decision 0038; when the Driftloom extension is
+built): Driftloom's own core plays its golden loops, but now a piece
+repeats until something happens: the tent has one piece while someone
+needs looking after and another once the friend in front is well; the
+play corner, a long play, the map and late night (22:00 to 06:00) each
+have their own; a friend coming home or dying plays a moment's piece
+for about 20 seconds. Never on a timer. Each change prints its reason
+(`Music: <piece> (<reason>)`). See `rust/README.md`.
 
 ## Play it
 
@@ -251,6 +257,8 @@ planning chat). Each is easy to change.
   leg torn off and the wound left open, in about two. A dead friend
   stays at camp until parts can be taken (step B4).
 - The sponge also scrubs the floor; bugs leave when tapped.
+- Which loop goes with which moment is in `autoload/music.gd`
+  (`PIECE`); `#hour=N` pretends it is that hour.
 - Body plans turn up bear 30%, bunny 18%, cat 18%, monster 14%,
   alien 10%, ghost-like 10%; cheeks one in four, a head patch one in
   seven.

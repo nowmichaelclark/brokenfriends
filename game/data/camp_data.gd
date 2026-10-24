@@ -53,6 +53,8 @@ var _rng := RandomNumberGenerator.new()
 ## Friends who arrived during the last `advance` (indexes), for the game
 ## to announce. Data never talks to the screen itself.
 var just_arrived: Array[int] = []
+## Friends who died at camp during the last `advance`, for the game to mark.
+var just_died := 0
 
 
 func friend() -> FriendData:
@@ -109,6 +111,10 @@ func _step(hours: float) -> void:
 				rotting = true
 		if not f.dead and f.mud_amount() > 0.5:
 			muddy = true
+	for f in friends:
+		if f.dead and not f.mourned:
+			f.mourned = true
+			just_died += 1
 	# A head without a body lasts about a day (0026).
 	for h in heads:
 		if not h.dead and clock_now() - h.off_at > HEAD_LIFE:

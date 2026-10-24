@@ -636,6 +636,26 @@ func _play_steps() -> void:
 	_check(Save.friend.kick_skill > kick, "a ball at the foot gets kicked back (and kicking is learned)")
 	await _shot("35_kick")
 	main.go_to("tent")
+	await _music_steps()
+
+
+# --- B11: music at moments ------------------------------------------------
+
+func _music_steps() -> void:
+	await _wait(1.2)
+	var reasons: Array = Music.changes.map(func(ch): return ch[2])
+	print("music changes: ", Music.changes.size())
+	for ch in Music.changes:
+		print("  ", ch[0], "s  ", ch[1], "  (", ch[2], ")")
+	_check(reasons.has("the play corner") and reasons.has("the map"), "music changes going to the play corner and the map")
+	_check(reasons.has("the tent") or reasons.has("night at camp"), "the tent has its own music")
+	_check(reasons.has("a friend made well") or reasons.has("night at camp"), "a friend made well changes the music (by day)")
+	_check(reasons.any(func(r): return r.begins_with("a friend came home")), "a friend home from a quest changes the music")
+	_check(Music.changes.all(func(ch): return ch[2] != ""), "every change has a reason")
+	# Nothing happens for half a minute: the music stays put.
+	var before := Music.changes.size()
+	await _wait(30.0)
+	_check(Music.changes.size() == before, "no change on a timer")
 
 
 # --- Helpers ------------------------------------------------------------

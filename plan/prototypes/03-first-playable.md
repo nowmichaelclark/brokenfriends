@@ -72,7 +72,7 @@ this build" in `game/README.md` and are asked, never decided.
 - [x] **B10. No text** (0032). Hints go; what to do next is shown.
   *Done when:* Mikey plays the first five minutes with no words on
   screen. (Built; Mikey's verdict pending.)
-- [ ] **B11. Music at moments** (0038). Music changes on a room change,
+- [x] **B11. Music at moments** (0038). Music changes on a room change,
   a friend made well, a return, a death, the time of day; never on a
   timer. *Done when:* a test logs each change with its reason.
 - [ ] **B12. Mikey plays for a few days**, and the result goes below.

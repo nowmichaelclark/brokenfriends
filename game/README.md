@@ -44,6 +44,13 @@ Built from Mikey's recording of 2026-10-24
   bonks their head; every throw teaches them, until they catch it and
   toss it back.
 
+**The camp** (first playable, step B1): friends live at camp
+together. The one being looked after stands in front; the others sit
+further back, and tapping one brings them forward. A couple of minutes
+after the first friend is patched up, a second, muddy friend walks in.
+Time passes while the game is closed: on opening, the camp catches up
+(slowly, for now: a little stuffing and oil a day).
+
 The game saves on its own. **Start over** (tap twice) begins again.
 
 **Music** (when the Driftloom extension is built): Driftloom's own core
@@ -83,10 +90,10 @@ Then **Actions** → **web** → **Run workflow** (or just push).
 | Folder | What |
 |---|---|
 | `autoload/` | Always-loaded: `Events` (the event bus), `Voice` (sounds, synthesized), `Save`, `Music` (Driftloom) |
-| `data/` | `FriendData` and `PartData`: friends as plain data, saved as JSON |
+| `data/` | `CampData`, `FriendData` and `PartData`: the camp and its friends as plain data, saved as JSON |
 | `friend/` | `FriendView` (drawing and body reactions) and `PlushArt` (drawing helpers) |
 | `fx/` | `FxLayer`: fluff, fluid, bubbles, drips, sparkles; `Baked`: a drawing made once into a picture |
-| `scenes/tent/` | The tent: care, the bin, the spare pocket, surgery, the tool shelf |
+| `scenes/tent/` | The tent: care, the bin, the spare pocket, surgery, the tool shelf, friends sitting further back (`BenchFriend`) |
 | `scenes/play/` | The play corner and the ball |
 | `addons/driftloom/` | The Driftloom extension's config and its golden loops (`rust/` builds it) |
 | `debug/` | `Flags` (debug switches) and the `#perf` overlay |
@@ -132,6 +139,12 @@ line) for frame time, the music's cost and draw calls, printed as
 `&empty` to see what each part costs. Numbers are in
 `plan/systems/platforms-tech/README.md`.
 
+Time: `#days=3` pretends three more days passed since the last save;
+`#fast=60` runs the clock 60 times faster; `#friends=3` starts a new
+game with three friends (after **Start over**, or with no save).
+
+The build follows `plan/prototypes/03-first-playable.md`, step by step.
+
 ## Assumed in this build, waiting on Mikey
 
 These are guesses from the recording (see the numbered list in the
@@ -147,3 +160,7 @@ planning chat). Each is easy to change.
 - Each camp has a tent; surgery and play happen inside it (assumption
   16; 0031 moves surgery to its own table, lying down).
 - The friend naps after about 40 seconds alone in the play corner.
+- A friend loses about a tenth of its stuffing and a bit more oil each
+  day; wet friends stay wet until dried (step B1, for B2 to refine).
+- The second friend of the first day arrives two minutes after the
+  first is patched up; up to four friends sit at the back.

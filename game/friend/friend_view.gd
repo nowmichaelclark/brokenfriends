@@ -24,6 +24,9 @@ var walk_phase := 0.0
 var surgery: Dictionary = {}
 ## Open wounds: slot -> Array of fluff tuft offsets around the socket.
 var wounds: Dictionary = {}
+## Texture pixels per unit for the baked parts: 2 for the friend up
+## close, 1 for friends sitting further back.
+var bake_detail := 2.0
 
 var _t := 0.0
 var _limbs: Dictionary = {}
@@ -56,6 +59,8 @@ var _rng := RandomNumberGenerator.new()
 
 
 func setup(friend: FriendData) -> void:
+	if friend != data:
+		wounds = {}
 	data = friend
 	_rng.seed = data.look_seed
 	for slot in ["arm_l", "arm_r", "leg_l", "leg_r"]:
@@ -587,7 +592,7 @@ func _part(parent: Node, painter: Callable) -> Part:
 func _baked(parent: Node, rect: Rect2, painter: Callable) -> Baked:
 	var n := Baked.new()
 	parent.add_child(n)
-	return n.setup(rect, painter)
+	return n.setup(rect, painter, bake_detail)
 
 
 func _build_parts() -> void:

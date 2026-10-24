@@ -17,3 +17,13 @@ static func has(name: String) -> bool:
 			for part in str(page_hash).trim_prefix("#").split("&", false):
 				_cache.append(part)
 	return name in _cache
+
+
+## The value of a switch written `name=value` (e.g. `days=3`), or
+## `fallback` if it isn't there.
+static func value(name: String, fallback := "") -> String:
+	has(name)
+	for item in _cache:
+		if item.begins_with(name + "="):
+			return item.get_slice("=", 1)
+	return fallback

@@ -1,6 +1,8 @@
 extends Node2D
-## The tent at the starting camp: one friend, front-on, and the
-## first five minutes from Mikey's recording (2026-10-24). Rip off the
+## The tent at the starting camp: the friend being looked after,
+## front-on, with the camp's other friends sitting further back (tap
+## one to bring them forward), and the first five minutes from Mikey's
+## recording (2026-10-24). Rip off the
 ## rotting leg, toss it in the bin, sew on the spare in a layered
 ## surgery, put the dangling eye back, wash, dry, feed stuffing and oil,
 ## and poke, tickle and pet them. Double-tap to zoom in or out.
@@ -13,6 +15,9 @@ const VIEW_CENTER := Vector2(360, 640)
 const TOOL_OFFSET := Vector2(0, -80)
 
 var friend: FriendView
+## The camp's other friends, sitting further back: index in
+## Save.camp.friends -> BenchFriend.
+var bench: Dictionary = {}
 var fx: FxLayer
 var camera: Camera2D
 var hud: TentHud
@@ -28,6 +33,7 @@ var loose_parts: Array = []
 var zoomed := false
 
 var _parts_layer: Node2D
+var _bench_layer: Node2D
 var _now := 0.0
 var _press_pos := Vector2.ZERO
 var _press_time := 0.0
@@ -46,6 +52,8 @@ var _cam_tween: Tween
 func _ready() -> void:
 	var bg := TentBackground.new()
 	add_child(bg)
+	_bench_layer = Node2D.new()
+	add_child(_bench_layer)
 	friend = FriendView.new()
 	friend.position = FRIEND_POS
 	add_child(friend)
@@ -75,8 +83,9 @@ func _ready() -> void:
 	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(hint)
 
-	if Save.spare_available:
-		_show_spare()
+	_show_spare()
+	_build_bench()
+	Events.friend_arrived.connect(_on_friend_arrived)
 	_update_hint()
 	# Debug: switch parts off to see what each costs (debug/flags.gd).
 	bg.visible = not Flags.has("nobg")
@@ -143,6 +152,10 @@ func _press(sp: Vector2) -> void:
 		hud.spare_visible = false
 		mode = "part"
 		Voice.pop()
+		return
+	var sitting := _bench_at(w)
+	if sitting >= 0 and not friend.is_on_friend(l) and held == null:
+		choose_friend(sitting)
 		return
 	for lp in loose_parts:
 		if lp.hits(w):
@@ -227,6 +240,83 @@ func _release(sp: Vector2) -> void:
 			_release_part(sp, w)
 	if mode != "surgery":
 		mode = ""
+
+
+# --- The camp's other friends -----------------------------------------
+
+## Where friends sit further back, in the order they fill up.
+const BENCH_X := [110.0, 610.0, 228.0, 492.0]
+const BENCH_SCALE := 0.42
+
+
+func _bench_pos(n: int) -> Vector2:
+	var floor_y := FRIEND_POS.y + friend.feet_y()
+	return Vector2(BENCH_X[n], floor_y - 26.0 - friend.feet_y() * BENCH_SCALE)
+
+
+## Sit every friend but the one being looked after further back.
+func _build_bench() -> void:
+	for v in bench.values():
+		v.queue_free()
+	bench.clear()
+	var n := 0
+	for i in Save.camp.friends.size():
+		if i == Save.camp.current or n >= BENCH_X.size():
+			continue
+		var v := BenchFriend.new()
+		v.position = _bench_pos(n)
+		_bench_layer.add_child(v)
+		v.setup(Save.camp.friends[i], BENCH_SCALE)
+		bench[i] = v
+		n += 1
+
+
+## Which sitting friend is under a world point, or -1.
+func _bench_at(w: Vector2) -> int:
+	for i in bench:
+		var v: BenchFriend = bench[i]
+		if v.hits(w):
+			return i
+	return -1
+
+
+## Bring a sitting friend forward to be looked after.
+func choose_friend(i: int) -> void:
+	if i == Save.camp.current or i < 0 or i >= Save.camp.friends.size():
+		return
+	Save.camp.current = i
+	friend.setup(Save.friend)
+	_build_bench()
+	friend.scale = Vector2(0.85, 0.85)
+	create_tween().tween_property(friend, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	if zoomed:
+		_zoom_reset()
+	Voice.pop()
+	Save.mark_dirty()
+	Events.friend_chosen.emit(i)
+	_update_hint()
+
+
+## A new friend walks in and sits down.
+func _on_friend_arrived(i: int) -> void:
+	_build_bench()
+	if bench.has(i):
+		var v: BenchFriend = bench[i]
+		var to := v.position
+		v.position = Vector2(-160.0, to.y)
+		create_tween().tween_property(v, "position", to, 1.6).set_trans(Tween.TRANS_SINE)
+	Events.friend_reacted.emit("wake")
+	Save.mark_dirty()
+
+
+## The second friend of the first day turns up a couple of minutes
+## after the first is patched up (until the arrivals system, step B6).
+func _maybe_schedule_arrival() -> void:
+	var camp := Save.camp
+	if camp.arrivals == 0 and camp.next_arrival == 0.0 and camp.friends.size() == 1 \
+			and current_hint().begins_with("All patched up"):
+		camp.next_arrival = Save.now() + 120.0
+		Save.mark_dirty()
 
 
 # --- Tools --------------------------------------------------------------
@@ -323,21 +413,25 @@ func _trash(lp: LoosePart) -> void:
 	_offer_spare()
 
 
-## Once the rotten leg is gone, a spare waits on the side.
+## Once the first rotten leg is gone, a spare waits on the side. It
+## comes once: after that, parts are found on quests (decision 0027).
 func _offer_spare() -> void:
-	if Save.spare_available:
+	if Save.camp.spare_given:
 		return
 	for slot in ["leg_l", "leg_r"]:
 		if Save.friend.is_open(slot):
-			Save.spare_available = true
+			Save.camp.spare_given = true
+			Save.camp.spares.append(FriendData.spare_leg())
 			Save.mark_dirty()
 			_show_spare()
 			return
 
 
+## Show the first spare part in the pocket, if there is one.
 func _show_spare() -> void:
-	hud.spare_part = FriendData.spare_leg()
-	hud.spare_visible = true
+	var spares := Save.camp.spares
+	hud.spare_part = spares[0] if not spares.is_empty() else null
+	hud.spare_visible = not spares.is_empty()
 
 
 # --- Surgery ------------------------------------------------------------
@@ -506,7 +600,7 @@ func _finish_sew() -> void:
 		part.stitched = true
 		Save.friend.parts[slot] = part
 		friend.wounds.erase(slot)
-		Save.spare_available = false
+		Save.camp.spares.erase(part)
 	Events.part_changed.emit(slot, "sewn")
 	Events.surgery_step.emit("sewn")
 	friend.surgery = {}
@@ -566,6 +660,7 @@ func _process(delta: float) -> void:
 
 func _update_hint() -> void:
 	hint.text = current_hint()
+	_maybe_schedule_arrival()
 
 
 ## Gentle guidance for the first five minutes. (Later the body alone

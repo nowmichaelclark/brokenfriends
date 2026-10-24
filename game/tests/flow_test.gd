@@ -176,6 +176,7 @@ func _run() -> void:
 	await _wait(1.0)
 	await _shot("19_after_play")
 	print("catch skill after play: ", Save.friend.catch_skill)
+	await _camp_steps()
 
 	if failures.is_empty():
 		print("FLOW OK")
@@ -184,6 +185,48 @@ func _run() -> void:
 		for f in failures:
 			print("  - ", f)
 	get_tree().quit(0 if failures.is_empty() else 1)
+
+
+# --- B1: a camp of friends -------------------------------------------
+
+func _camp_steps() -> void:
+	main.go_to("tent")
+	await _wait(0.6)
+	var camp: CampData = Save.camp
+	# The second friend of the first day is on the way once the first
+	# is patched up; bring the moment forward instead of waiting.
+	_check(camp.next_arrival > 0.0, "a second friend is on the way after the first is patched up")
+	camp.advance(1.0, camp.next_arrival + 1.0)
+	await _wait(2.0)
+	_check(camp.friends.size() == 2, "the second friend arrives")
+	_check(tent.bench.size() == 1, "the second friend sits further back")
+	await _shot("20_second_friend")
+
+	# Tap the friend at the back to bring them forward.
+	var v: BenchFriend = tent.bench.values()[0]
+	await _tap(_screen(v.to_global(Vector2.ZERO)))
+	await _wait(0.6)
+	_check(camp.current == 1, "tapping a sitting friend brings them forward")
+	_check(not Save.friend.mud.is_empty(), "the second friend came in muddy")
+	await _shot("21_second_forward")
+
+	# Days pass: needs move on, slowly.
+	var before := Save.friend.stuffing
+	camp.advance(3.0 * 86400.0, camp.clock + 3.0 * 86400.0)
+	_check(Save.friend.stuffing < before, "three days away: stuffing settles")
+
+	# A third friend, then quit and reopen: everyone is still there.
+	camp.friends.append(FriendData.test_friend(7))
+	Save.save_now()
+	Save.load_game()
+	_check(Save.camp.friends.size() == 3, "three friends survive a quit and reopen")
+	_check(Save.camp.current == 1, "the friend being looked after is remembered")
+	main.go_to("tent")
+	tent._build_bench()
+	tent.friend.setup(Save.friend)
+	await _wait(0.6)
+	_check(tent.bench.size() == 2, "both other friends sit further back")
+	await _shot("22_three_friends")
 
 
 # --- Helpers ------------------------------------------------------------

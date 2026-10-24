@@ -59,6 +59,17 @@ func wellbeing() -> float:
 	return clampf(w, 0.0, 1.0)
 
 
+## Time passing for this friend (`CampData.advance`). For now only
+## slow needs: stuffing settles and joints dry out over days. Rot,
+## mold and death come with step B2 (decisions 0011, 0028).
+## Assumed, waiting on Mikey: about a tenth of the stuffing a day, a
+## little more oil than that; wet friends stay wet until dried.
+func advance(seconds: float) -> void:
+	var days := seconds / 86400.0
+	stuffing = maxf(0.35, stuffing - days * 0.1)
+	fluid = maxf(0.2, fluid - days * 0.12)
+
+
 func to_dict() -> Dictionary:
 	var pd := {}
 	for slot in parts:
@@ -126,6 +137,48 @@ static func first_friend() -> FriendData:
 		{"x": 60.0, "y": -150.0, "r": 18.0, "a": 1.0},
 		{"x": -95.0, "y": -10.0, "r": 18.0, "a": 1.0},
 	]
+	return c
+
+
+## The second friend of the first day (Mikey's recording 1): nothing
+## wrong but mud and a bit too little stuffing.
+static func second_friend() -> FriendData:
+	var c := FriendData.new()
+	c.name = "Second friend"
+	c.look_seed = 2
+	c.body_fabric = Color(0.56, 0.6, 0.7)
+	c.trim = Color(0.93, 0.9, 0.84)
+	c.stuffing = 0.68
+	c.fluid = 0.8
+	c.tickle_spot = Vector2(38, 20)
+	for slot in SLOTS:
+		c.parts[slot] = PartData.make(slot, c.body_fabric, 0, 0.5)
+	c.parts["eye_l"].fabric = Color(0.12, 0.1, 0.12)
+	c.parts["eye_r"].fabric = Color(0.12, 0.1, 0.12)
+	c.mud = [
+		{"x": -40.0, "y": 30.0, "r": 28.0, "a": 1.0},
+		{"x": 55.0, "y": 85.0, "r": 22.0, "a": 1.0},
+		{"x": 25.0, "y": -215.0, "r": 20.0, "a": 1.0},
+	]
+	return c
+
+
+## A healthy test friend for the debug flag `friends=N`, its look and
+## fabric from `seed`.
+static func test_friend(seed_value: int) -> FriendData:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value
+	var c := FriendData.new()
+	c.name = "Test friend %d" % seed_value
+	c.look_seed = seed_value
+	c.body_fabric = Color.from_hsv(rng.randf(), rng.randf_range(0.2, 0.5), rng.randf_range(0.5, 0.8))
+	c.trim = Color.from_hsv(rng.randf(), rng.randf_range(0.05, 0.2), rng.randf_range(0.85, 0.97))
+	c.stuffing = rng.randf_range(0.7, 1.05)
+	c.tickle_spot = Vector2(rng.randf_range(-60, 60), rng.randf_range(-10, 80))
+	for slot in SLOTS:
+		c.parts[slot] = PartData.make(slot, c.body_fabric, rng.randi_range(0, 2) if slot.begins_with("leg") or slot.begins_with("arm") else 0, 0.5)
+	c.parts["eye_l"].fabric = Color(0.12, 0.1, 0.12)
+	c.parts["eye_r"].fabric = Color(0.12, 0.1, 0.12)
 	return c
 
 

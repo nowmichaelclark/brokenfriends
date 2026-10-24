@@ -28,7 +28,7 @@ this build" in `game/README.md` and are asked, never decided.
 
 **Steps** (tick when done; the core loop is B1 to B6):
 
-- [ ] **B1. A camp of friends.** Several friends at one camp, chosen by
+- [x] **B1. A camp of friends.** Several friends at one camp, chosen by
   tapping; saved and reloaded; time passes while away. The code says
   "friend", not "creature" (0022). *Done when:* three friends survive
   a quit and reopen, and a debug clock (`#days=N`) moves time on.

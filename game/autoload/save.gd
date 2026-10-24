@@ -1,36 +1,80 @@
 extends Node
-## Saves the game as JSON in the player's own storage (on the web,
-## the browser's). Saves a timestamp too, so time away can be worked
-## out when the game reopens (plan/systems/time-save).
+## Saves the camp as JSON in the player's own storage (on the web, the
+## browser's), and keeps the game's clock: on opening, the camp catches
+## up on the time it was left alone (plan/systems/time-save).
+##
+## Debug switches (debug/flags.gd): `days=N` pretends N more days have
+## passed since the last save; `fast=N` runs the clock N times faster
+## while playing; `friends=N` starts a new game with N friends.
 
 const PATH := "user://broken_friends.json"
-const VERSION := 1
+const VERSION := 2
+## How often the camp moves on while the game is open, in seconds.
+const TICK := 5.0
 
-var friend: FriendData
-var spare_available := false
+var camp: CampData
+## The friend on the tent floor.
+var friend: FriendData:
+	get:
+		return camp.friend() if camp else null
+
 var _dirty := false
 var _timer := 0.0
+var _tick := 0.0
+var _started := 0.0
+var _fast := 1.0
+var _offset := 0.0
 
 
 func _ready() -> void:
+	_started = Time.get_unix_time_from_system()
+	_fast = maxf(1.0, float(Flags.value("fast", "1")))
+	_offset = float(Flags.value("days", "0")) * 86400.0
 	load_game()
 
 
+## The game's time, in seconds since 1970: the real clock, plus the
+## debug switches.
+func now() -> float:
+	var real := Time.get_unix_time_from_system()
+	return real + _offset + (real - _started) * (_fast - 1.0)
+
+
 func load_game() -> void:
-	friend = null
+	camp = null
 	if FileAccess.file_exists(PATH):
 		var f := FileAccess.open(PATH, FileAccess.READ)
 		var parsed = JSON.parse_string(f.get_as_text())
-		if parsed is Dictionary and int(parsed.get("version", 0)) == VERSION:
-			friend = FriendData.from_dict(parsed.get("friend", {}))
-			spare_available = parsed.get("spare_available", false)
-	if friend == null:
+		if parsed is Dictionary:
+			camp = _from_save(parsed)
+	if camp == null or camp.friends.is_empty():
 		new_game()
+		return
+	# Time away: the camp catches up on everything it missed.
+	var t := now()
+	camp.advance(t - camp.clock, t)
+
+
+func _from_save(d: Dictionary) -> CampData:
+	match int(d.get("version", 0)):
+		2:
+			return CampData.from_dict(d.get("camp", {}))
+		1:
+			# The first sketch saved one friend: keep it.
+			var c := CampData.new()
+			c.friends.append(FriendData.from_dict(d.get("creature", {})))
+			if d.get("spare_available", false):
+				c.spares.append(FriendData.spare_leg())
+				c.spare_given = true
+			c.clock = float(d.get("saved_at", now()))
+			return c
+	return null
 
 
 func new_game() -> void:
-	friend = FriendData.first_friend()
-	spare_available = false
+	camp = CampData.first_camp(now())
+	for i in int(Flags.value("friends", "1")) - 1:
+		camp.friends.append(FriendData.test_friend(100 + i))
 	save_now()
 
 
@@ -44,9 +88,8 @@ func save_now() -> void:
 	_dirty = false
 	var data := {
 		"version": VERSION,
-		"saved_at": Time.get_unix_time_from_system(),
-		"friend": friend.to_dict(),
-		"spare_available": spare_available,
+		"saved_at": now(),
+		"camp": camp.to_dict(),
 	}
 	var f := FileAccess.open(PATH, FileAccess.WRITE)
 	if f:
@@ -54,6 +97,12 @@ func save_now() -> void:
 
 
 func _process(delta: float) -> void:
+	_tick += delta
+	if _tick >= TICK and camp:
+		_tick = 0.0
+		var t := now()
+		camp.advance(t - camp.clock, t)
+		mark_dirty()
 	if _dirty:
 		_timer += delta
 		if _timer > 1.0:
@@ -64,5 +113,5 @@ func _process(delta: float) -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST or what == NOTIFICATION_APPLICATION_PAUSED \
 			or what == NOTIFICATION_APPLICATION_FOCUS_OUT:
-		if friend:
+		if camp:
 			save_now()

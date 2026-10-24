@@ -20,3 +20,9 @@ signal surgery_step(step: String)
 
 ## The player moved between places ("tent", "play_corner").
 signal place_changed(place: String)
+
+## A new friend came to camp (its index in `Save.camp.friends`).
+signal friend_arrived(index: int)
+
+## The player chose a different friend to look after in the tent.
+signal friend_chosen(index: int)

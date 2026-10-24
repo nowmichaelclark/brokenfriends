@@ -29,6 +29,9 @@ const SLOTS := ["leg_l", "leg_r", "arm_l", "arm_r", "eye_l", "eye_r"]
 ## The chip brain, the friend's personality (decision 0026). 1 is
 ## well; it fails only when the body is falling apart (0028).
 @export var brain := 1.0
+## False for a newcomer the player hasn't seen yet: it waits, no worse,
+## until then, so nobody is lost to an absence (pillar 4).
+@export var met := true
 ## Grows a little with each trip that goes well (0034): a friend who
 ## has been out more gets about better.
 @export var stamina := 0.0
@@ -181,6 +184,8 @@ func catch_mold(rng: RandomNumberGenerator) -> void:
 ## guesses (game/README, "Assumed in this build").
 func step(hours: float, dirt: float, rng: RandomNumberGenerator) -> void:
 	var days := hours / 24.0
+	if not met:
+		return
 	if dead or headless:
 		for slot in SLOTS:
 			var part: PartData = parts.get(slot)
@@ -239,7 +244,7 @@ func to_dict() -> Dictionary:
 		"mud": mud, "asleep": asleep,
 		"tickle_spot": [tickle_spot.x, tickle_spot.y],
 		"catch_skill": catch_skill, "parts": pd,
-		"stamina": stamina,
+		"stamina": stamina, "met": met,
 		"brain": brain, "dead": dead, "head_fabric": head_color().to_html(),
 		"headless": headless, "head_only": head_only, "off_at": off_at,
 	}
@@ -261,6 +266,7 @@ static func from_dict(d: Dictionary) -> FriendData:
 	c.catch_skill = d.get("catch_skill", 0.05)
 	c.brain = d.get("brain", 1.0)
 	c.stamina = d.get("stamina", 0.0)
+	c.met = d.get("met", true)
 	c.dead = d.get("dead", false)
 	c.head_fabric = Color.html(d.get("head_fabric", c.body_fabric.to_html()))
 	c.headless = d.get("headless", false)
@@ -346,6 +352,39 @@ static func test_friend(seed_value: int) -> FriendData:
 		c.parts[slot] = PartData.make(slot, c.body_fabric, rng.randi_range(0, 2) if slot.begins_with("leg") or slot.begins_with("arm") else 0, 0.5)
 	c.parts["eye_l"].fabric = Color(0.12, 0.1, 0.12)
 	c.parts["eye_r"].fabric = Color(0.12, 0.1, 0.12)
+	return c
+
+
+## A newcomer turning up at camp (0034): its own look, and one or two
+## things wrong with it, mild to bad (Mikey: muddy and skinny, or no
+## legs and sad, or anything between).
+static func newcomer(seed_value: int) -> FriendData:
+	var c := test_friend(seed_value)
+	c.name = "Newcomer"
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value + 7
+	var problems := ["mud", "thin", "soaked", "rotting", "missing", "eye", "out"]
+	problems.shuffle()
+	for p in problems.slice(0, 1 + rng.randi() % 2):
+		match p:
+			"mud":
+				for i in 3:
+					c.mud.append({"x": rng.randf_range(-80, 80), "y": rng.randf_range(-60, 110), "r": rng.randf_range(16, 28), "a": 1.0})
+			"thin":
+				c.stuffing = rng.randf_range(0.45, 0.65)
+			"soaked":
+				c.wetness = rng.randf_range(0.7, 1.0)
+			"rotting":
+				var part: PartData = c.parts[["arm_l", "arm_r", "leg_l", "leg_r"][rng.randi() % 4]]
+				part.rot = rng.randf_range(0.6, 0.85)
+				part.torn = true
+				part.mold = [[0.4, 0.2, 0.15], [0.7, -0.2, 0.12]]
+			"missing":
+				c.parts[["arm_l", "arm_r", "leg_l", "leg_r"][rng.randi() % 4]] = null
+			"eye":
+				c.parts["eye_r"].attached = false
+			"out":
+				c.asleep = true
 	return c
 
 

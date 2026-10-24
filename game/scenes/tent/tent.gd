@@ -323,7 +323,11 @@ func _bench_pos(n: int) -> Vector2:
 
 
 ## Sit every friend but the one being looked after further back.
+## Everyone shown here has now been seen (FriendData.met).
 func _build_bench() -> void:
+	if visible:
+		for f in Save.camp.friends:
+			f.met = true
 	for v in bench.values():
 		v.queue_free()
 	bench.clear()

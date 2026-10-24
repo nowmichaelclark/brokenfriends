@@ -23,6 +23,8 @@ var clock := 0.0
 ## of the first day is scripted.)
 var next_arrival := 0.0
 var arrivals := 0
+## Gifts newcomers have brought, for the tests.
+var gifts := 0
 ## Friends out on quests (0034). A friend on a quest is not at camp.
 var quests: Array[QuestData] = []
 ## Quests that ended during the last `advance`, for the game to show.
@@ -35,6 +37,13 @@ var tracks: Array = []
 ## Bugs crawling around the tent, drawn to rot.
 var bugs := 0
 
+## How many friends a camp holds, the one in front and four further
+## back (decision 0013: camps have limits; the number is a guess).
+const LIMIT := 5
+## Newcomers turn up about once in this many hours, while there's room.
+const ARRIVAL_HOURS := 36.0
+## About one newcomer in this many brings something with them (0034).
+const GIFT_ONE_IN := 7
 ## How long a head lasts without a body, seconds (0026: about a day).
 const HEAD_LIFE := 86400.0
 const MAX_TRACKS := 12
@@ -115,6 +124,14 @@ func _step(hours: float) -> void:
 		for other in friends:
 			if other != f and not other.dead and _rng.randf() < 0.004 * hours:
 				other.catch_mold(_rng)
+	# Now and then a friend turns up, looking for help or a home (0034).
+	# The first day's second friend is scripted; after it, chance.
+	if arrivals >= 1 and next_arrival == 0.0 and friends.size() < LIMIT \
+			and _rng.randf() < hours / ARRIVAL_HOURS:
+		var newcomer := FriendData.newcomer(_rng.randi())
+		if _rng.randi() % GIFT_ONE_IN == 0:
+			_gift()
+		arrive(newcomer)
 	# Rot draws bugs; muddy friends track mud across the floor (0029).
 	if rotting and bugs < MAX_BUGS and _rng.randf() < 0.05 * hours:
 		bugs += 1
@@ -203,7 +220,22 @@ func living() -> Array[FriendData]:
 	return out
 
 
+## Something a newcomer brought: a few supplies or a spare part.
+func _gift() -> void:
+	if _rng.randf() < 0.3:
+		spares.append(QuestData._found_part(_rng))
+	else:
+		var k: String = ["stuffing", "oil", "thread", "spray"][_rng.randi() % 4]
+		supplies[k] = int(supplies[k]) + 2
+	gifts += 1
+
+
+## A friend comes to camp. A full camp turns them away (they find
+## somewhere else).
 func arrive(f: FriendData) -> void:
+	if friends.size() >= LIMIT:
+		return
+	f.met = false
 	friends.append(f)
 	arrivals += 1
 	just_arrived.append(friends.size() - 1)

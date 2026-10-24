@@ -91,6 +91,14 @@ changed: soaked, muddy, torn, missing a limb, or a little fitter, with
 supplies for the shelf, parts for the pocket, sometimes a new friend.
 A friend can die out there; then only a part or two comes back.
 
+**Newcomers** (step B6, decision 0034): after the first day's second
+friend, others turn up now and then, each with something wrong (mud,
+too little stuffing, soaked, a rotting limb, a missing limb, a dangling
+eye, passed out); about one in seven brings supplies or a part. A camp
+holds five friends (decision 0013); a full camp turns newcomers away.
+A newcomer who arrives while you're away waits, no worse, until you've
+seen them (pillar 4).
+
 The game saves on its own. **Start over** (tap twice) begins again.
 
 **Music** (when the Driftloom extension is built): Driftloom's own core
@@ -218,6 +226,8 @@ planning chat). Each is easy to change.
   trips that went well raise it a little. Only routes with wolves or a
   cliff can kill. What happens is decided as the friend leaves.
 - Someone must stay at camp: the last friend at camp can't be sent.
+- A newcomer turns up about once every day and a half while there's
+  room; a camp holds five (the one in front and four further back).
 - A friend who has died stays until all four limbs are taken, then is
   laid to rest.
 - A new camp starts with 6 handfuls of stuffing, 3 doses of oil, 4

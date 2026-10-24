@@ -54,7 +54,7 @@ this build" in `game/README.md` and are asked, never decided.
   there (one or two parts come back). *Done when:* 20 quests on the
   debug clock give varied results that follow the friend's condition,
   skills and route.
-- [ ] **B6. Arrivals** (0034). New friends turn up with problems, now
+- [x] **B6. Arrivals** (0034). New friends turn up with problems, now
   and then bringing a gift; the camp has a limit (0013). *Done when:*
   a simulated month brings arrivals and respects the limit.
 - [ ] **B7. The surgery table** (0031). Surgery lying down in its own

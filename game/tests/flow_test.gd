@@ -222,13 +222,14 @@ func _camp_steps() -> void:
 	camp.friends.append(FriendData.test_friend(7))
 	Save.save_now()
 	Save.load_game()
-	_check(Save.camp.friends.size() == 3, "three friends survive a quit and reopen")
+	# (Three days away may also have brought a newcomer.)
+	_check(Save.camp.friends.size() >= 3 and "Test friend 7" in Save.camp.friends.map(func(f): return f.name), "three friends survive a quit and reopen")
 	_check(Save.camp.current == 1, "the friend being looked after is remembered")
 	main.go_to("tent")
 	tent._build_bench()
 	tent.friend.setup(Save.friend)
 	await _wait(0.6)
-	_check(tent.bench.size() == 2, "both other friends sit further back")
+	_check(tent.bench.size() == Save.camp.friends.size() - 1, "the other friends sit further back")
 	await _shot("22_three_friends")
 	await _change_steps()
 
@@ -553,6 +554,41 @@ func _quest_steps() -> void:
 	tent.choose_friend(1)
 	await _wait(0.8)
 	await _shot("33_home_from_the_woods")
+	await _arrival_steps()
+
+
+# --- B6: arrivals -------------------------------------------------------
+
+func _arrival_steps() -> void:
+	var gifts := 0
+	var most := 0
+	var arrivals := 0
+	var newcomers_died := 0
+	for m in 6:
+		var camp := CampData.first_camp(3000000.0 + m * 1000.0)
+		camp.arrivals = 1
+		camp.advance(30.0 * 86400.0, camp.clock + 30.0 * 86400.0)
+		gifts += camp.gifts
+		arrivals += camp.arrivals - 1
+		most = maxi(most, camp.friends.size())
+		for i in range(1, camp.friends.size()):
+			if camp.friends[i].dead:
+				newcomers_died += 1
+	print("six months away, one camp each: ", arrivals, " newcomers, ", gifts, " gifts, at most ", most, " friends")
+	_check(arrivals >= 12, "a month brings newcomers")
+	_check(most <= CampData.LIMIT, "the camp never holds more than its limit")
+	_check(gifts > 0, "now and then a newcomer brings something")
+	_check(newcomers_died == 0, "a newcomer nobody has seen yet waits, no worse")
+	# One turns up while the tent is open.
+	var c := Save.camp
+	while c.friends.size() >= CampData.LIMIT:
+		c.remove_friend(c.friends.size() - 1)
+	var before := c.friends.size()
+	c.arrive(FriendData.newcomer(77))
+	Save.advance_to(Save.now())
+	await _wait(2.2)
+	_check(c.friends.size() == before + 1 and c.friends.back().met, "a newcomer walks into the tent and is seen")
+	await _shot("34_a_newcomer")
 
 
 # --- Helpers ------------------------------------------------------------

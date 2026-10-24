@@ -21,6 +21,7 @@ config/icon="res://icon.svg"
 Events="*res://autoload/events.gd"
 Voice="*res://autoload/voice.gd"
 Save="*res://autoload/save.gd"
+Music="*res://autoload/music.gd"
 
 [display]
 

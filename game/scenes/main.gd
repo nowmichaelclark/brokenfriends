@@ -20,6 +20,12 @@ func _ready() -> void:
 		add_child(play)
 		play.go_to.connect(go_to)
 	go_to("tent")
+	var music_test := "--music-test" in OS.get_cmdline_user_args()
+	if OS.has_feature("web"):
+		var page_hash = JavaScriptBridge.eval("window.location.hash", true)
+		music_test = music_test or str(page_hash) == "#music-test"
+	if music_test:
+		add_child(load("res://tests/music_test.gd").new())
 	if flow_arg != "":
 		var test: Node = load("res://tests/flow_test.gd").new()
 		test.out_dir = flow_arg.get_slice("=", 1) if "=" in flow_arg else ""

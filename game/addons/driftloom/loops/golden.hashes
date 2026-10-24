@@ -1,0 +1,8 @@
+# Golden hashes from Driftloom core/golden/wasm32-unknown-unknown.hashes at f654fdb.
+# Every target must render these exactly (Driftloom promise 3).
+01-glade frames=480000 out=adaef6e905e48db7 melody=a8fff9c5430ad1de chords=fdf9bd5c7729133e bass=5f46739d993f3ffb texture=32c937c2b7e2a494 drums=f23b303e6344f40e wash=ebe8e831cc3bc770 bus=692a451576288224
+03-tide frames=768000 out=dbf85772fc109bf1 melody=1c888e860e30f8d8 chords=a220b7675797cbcf bass=02fb9e2e1059e3ad texture=3a1c2bbfef09713d drums=ba2a0d9c3cd28c38 wash=dff2e40b0a1ba325 bus=c0c5b26f08b56c68
+07-dust frames=816000 out=c4048c74a17e8159 melody=c8435bddb2add60e chords=01cee608218efd77 bass=480b775eb4cf5407 texture=4c85447ce0335c3f drums=24a4b684c5db1de9 wash=5169a02e231b3b25 bus=ca3252f7e45eb1ae
+10-shrine frames=768000 out=f655fa0fcbe7b33a melody=de0b995dba4acd30 chords=7dd4a08ba31c8f91 bass=c8809019277cee49 texture=b2707880d15d7802 drums=dff2e40b0a1ba325 wash=dff2e40b0a1ba325 bus=7f438ff8842e8254
+11-haven frames=1200000 out=0d6595d49fab8200 melody=91e4c1100cef901f chords=92531609866f54a2 bass=2220248132250afa texture=0fde6c784f747765 drums=220acbc2c817fb25 wash=220acbc2c817fb25 bus=493daaf1d176764f
+14-bloom frames=336000 out=263af2a2eaf6a921 melody=2ef21d33bd29c066 chords=15241a89ae3bfaee bass=eda931948342428e texture=2373bb15fd5f4b25 drums=2373bb15fd5f4b25 wash=0e6387dcd71901bd bus=6f395257a9618e81

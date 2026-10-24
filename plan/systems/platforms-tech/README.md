@@ -25,10 +25,9 @@ budgets, the development workflow and the test scenes.
 - No iPhone for now (decision 0015): Android and the browser first.
 - One repo, `brokenfriends`: plans in `plan/`, the Godot project in
   `game/` (decision 0007).
-- Web builds use the Compatibility renderer (V-003, verified). The
-  standard web build has no GDExtension support, so Driftloom's core in
-  the browser needs Godot's `web_dlink` templates and a spike (V-008,
-  decision 0016).
+- Web builds use the Compatibility renderer (V-003, verified). The web
+  build uses Godot's extension-capable `web_dlink` engine so Driftloom's
+  core can run in the browser (V-008, verified; spike 2).
 - The game is built and running: `game/`, decisions 0019 and 0020.
 
 ## First questions

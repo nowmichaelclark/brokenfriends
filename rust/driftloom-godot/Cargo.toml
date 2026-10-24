@@ -1,0 +1,28 @@
+[package]
+name = "driftloom-godot"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "Driftloom's audio core inside Godot: a GDExtension for Broken Friends"
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib"]
+name = "driftloom_godot"
+
+[dependencies]
+godot = "=0.5.5"
+# Driftloom's core, pinned to one commit so the golden hashes below stay
+# comparable. "wide" (192 kHz room) is off: games run at 44.1 or 48 kHz.
+dlcore = { git = "https://github.com/nowmichaelclark/driftloom", rev = "f654fdb767b77bbd5845dafe8d42d2e3a0ba8647", default-features = false }
+
+# The browser build: Godot's single-threaded web engine with extension
+# support (the web_dlink templates). See rust/README.md.
+[target.'cfg(target_os = "emscripten")'.dependencies]
+godot = { version = "=0.5.5", features = ["api-custom", "experimental-wasm", "experimental-wasm-nothreads", "lazy-function-tables"] }
+
+[profile.release]
+opt-level = 3
+codegen-units = 1
+lto = true
+strip = true

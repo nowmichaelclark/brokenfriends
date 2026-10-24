@@ -30,6 +30,11 @@ that follows the game's state, and sound effects.
 - Mikey (2026-10-24): Broken Friends is the most important of
   Driftloom's "three real games" (decision 0016).
 
+- Spike 2 (2026-10-24): the core runs in the game, natively and in the
+  browser, bit-identical to Driftloom; `game/autoload/music.gd` plays
+  Driftloom's golden loops. Writing new music waits on Driftloom's
+  phase 2 (its generator moving to Rust).
+
 ## First questions
 
 - Which game states map to which music settings?

@@ -1,6 +1,6 @@
 # State
 
-Updated: 2026-10-24 (the game is started: the first five minutes)
+Updated: 2026-10-24 (Driftloom's core plays inside the game)
 
 Rewrite this file, don't add to it. Keep it under 100 lines.
 
@@ -9,7 +9,8 @@ Rewrite this file, don't add to it. Keep it under 100 lines.
 **Phase 1: vision, with building started early (decision 0019).**
 Pitch and pillars are drafted; non-goals, references and first
 playable aren't written. The Godot game in `game/` plays the first
-five minutes from Mikey's recording (Prototype 1).
+five minutes from Mikey's recording (Prototype 1), with Driftloom's
+core playing its golden loops (spike 2).
 
 ## Next steps
 
@@ -20,7 +21,8 @@ five minutes from Mikey's recording (Prototype 1).
    assumptions, questions) in the planning chat; Claude records them.
 3. Brain session (DeepSeek): Q-021 rules, Q-022, a fun pillar (Q-023),
    then the non-goals.
-4. Spike: Driftloom's core as a GDExtension in a Godot web build (V-008).
+4. Mikey listens to the music on his phone (spike 2 is done: the core
+   runs in the game and the browser, bit-identical).
 5. Research session, first playable, red team, Gate A.
 
 ## Blockers

@@ -7,7 +7,7 @@ name: web
 on:
   push:
     branches: [main]
-    paths: ["game/**", ".github/workflows/web.yml"]
+    paths: ["game/**", "rust/**", ".github/workflows/web.yml"]
   workflow_dispatch:
 
 permissions:
@@ -21,6 +21,9 @@ concurrency:
 
 env:
   GODOT_VERSION: "4.7.1"
+  # Must match the Emscripten Godot's web engine was built with.
+  EMSCRIPTEN_VERSION: "4.0.20"
+  RUST_NIGHTLY: "nightly-2026-10-24"
 
 jobs:
   build:
@@ -35,7 +38,7 @@ jobs:
           path: |
             ~/godot
             ~/.local/share/godot/export_templates
-          key: godot-${{ env.GODOT_VERSION }}-web
+          key: godot-${{ env.GODOT_VERSION }}-web-dlink
 
       - name: Download Godot and its web templates
         if: steps.cache.outputs.cache-hit != 'true'
@@ -48,11 +51,40 @@ jobs:
           curl -sSL -o templates.tpz "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
           dest=~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
           mkdir -p "$dest"
-          unzip -q -j templates.tpz 'templates/web_nothreads_*' 'templates/version.txt' -d "$dest"
+          unzip -q -j templates.tpz 'templates/web_nothreads_*' 'templates/web_dlink_nothreads_*' 'templates/version.txt' -d "$dest"
+
+      # Driftloom's core as a Godot extension, for the browser
+      # (rust/README.md). The game still builds if this step fails.
+      - name: Install Rust for the browser build
+        continue-on-error: true
+        run: |
+          rustup toolchain install "$RUST_NIGHTLY" --profile minimal \
+            --component rust-src --target wasm32-unknown-emscripten
+
+      - uses: mymindstorm/setup-emsdk@v14
+        continue-on-error: true
+        with:
+          version: ${{ env.EMSCRIPTEN_VERSION }}
+          actions-cache-folder: emsdk-cache
+
+      - uses: Swatinem/rust-cache@v2
+        continue-on-error: true
+        with:
+          workspaces: rust/driftloom-godot
+
+      - name: Build the Driftloom extension for the browser
+        continue-on-error: true
+        run: |
+          GODOT4_BIN=~/godot/godot NIGHTLY="$RUST_NIGHTLY" rust/build.sh web
 
       - name: Export for the web
         run: |
           mkdir -p build/web
+          # No extension built: ship the game without music rather than fail.
+          if [ ! -f game/addons/driftloom/bin/web/driftloom_godot.wasm ]; then
+            echo "::warning::Driftloom extension missing; deploying without music"
+            rm game/addons/driftloom/driftloom.gdextension
+          fi
           ~/godot/godot --headless --path game --import || true
           ~/godot/godot --headless --path game --export-release "Web" ../build/web/index.html
           test -f build/web/index.wasm

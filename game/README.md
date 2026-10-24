@@ -42,6 +42,9 @@ Built from Mikey's recording of 2026-10-24
 
 The game saves on its own. **Start over** (tap twice) begins again.
 
+**Music** (when the Driftloom extension is built): Driftloom's own core
+plays six of its golden loops in turn, quietly. See `rust/README.md`.
+
 ## Play it
 
 - **Phone browser:** https://nowmichaelclark.github.io/brokenfriends/
@@ -66,13 +69,14 @@ Then **Actions** → **web** → **Run workflow** (or just push).
 
 | Folder | What |
 |---|---|
-| `autoload/` | Always-loaded: `Events` (the event bus), `Voice` (all sounds, synthesized), `Save` |
+| `autoload/` | Always-loaded: `Events` (the event bus), `Voice` (sounds, synthesized), `Save`, `Music` (Driftloom) |
 | `data/` | `CreatureData` and `PartData`: creatures as plain data, saved as JSON |
 | `creature/` | `CreatureView` (drawing and body reactions) and `PlushArt` (drawing helpers) |
 | `fx/` | `FxLayer`: fluff, fluid, bubbles, drips, sparkles |
 | `scenes/tent/` | The tent: care, the bin, the spare pocket, surgery, the tool shelf |
 | `scenes/play/` | The play corner and the ball |
-| `tests/` | `flow_test.gd`: plays the first five minutes with real touch events |
+| `addons/driftloom/` | The Driftloom extension's config and its golden loops (`rust/` builds it) |
+| `tests/` | `flow_test.gd` plays the first five minutes; `music_test.gd` checks Driftloom's hashes |
 
 Rules the code follows:
 - **Data and drawing are separate.** `CreatureData` knows nothing about
@@ -97,6 +101,11 @@ godot --path game --resolution 720x1280 -- --flow-test=/tmp/shots
 
 The playthrough prints `ok` or `FAIL` for each step and ends with
 `FLOW OK`. Run it before pushing changes to the tent or the creature.
+
+```bash
+# Driftloom's golden loops, rendered in the game (needs rust/build.sh linux)
+godot --headless --path game -- --music-test
+```
 
 ## Assumed in this build, waiting on Mikey
 

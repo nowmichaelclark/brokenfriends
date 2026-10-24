@@ -12,3 +12,7 @@ export_presets.cfg.bak
 
 # Builds
 build/
+
+# Driftloom extension builds
+game/addons/driftloom/bin/
+rust/*/target/

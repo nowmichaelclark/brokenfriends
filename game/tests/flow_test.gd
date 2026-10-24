@@ -229,7 +229,7 @@ func _camp_steps() -> void:
 	tent._build_bench()
 	tent.friend.setup(Save.friend)
 	await _wait(0.6)
-	_check(tent.bench.size() == Save.camp.friends.size() - 1, "the other friends sit further back")
+	_check(tent.bench.size() == mini(Save.camp.friends.size() - 1, tent.BENCH_X.size()), "the other friends sit further back")
 	await _shot("22_three_friends")
 	await _change_steps()
 
@@ -611,9 +611,10 @@ func _play_steps() -> void:
 
 	# The ball at a foot: a kick (or a try at one), learned the same way.
 	var c := Save.camp
-	c.current = 0
-	for f in c.friends:
-		f.asleep = false
+	# A friend with both legs, awake, standing still.
+	var kicker := FriendData.test_friend(55)
+	c.friends.append(kicker)
+	c.current = c.friends.size() - 1
 	main.go_to("play_corner")
 	var play: Node2D = main.play
 	play.friend.setup(Save.friend)
@@ -621,6 +622,10 @@ func _play_steps() -> void:
 	var kick := Save.friend.kick_skill
 	var ball: RigidBody2D = play.ball
 	for t in 3:
+		play._walk_timer = 99.0
+		play._walk_target = play.friend.position.x
+		play._away = false
+		play._cooldown = 0.0
 		await _wait(0.8)
 		var foot: Vector2 = play.friend.to_global(play.friend.tip("leg_r"))
 		ball.freeze = true

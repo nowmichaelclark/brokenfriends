@@ -37,7 +37,7 @@ with Defold as the only serious alternative.
 
 ## Consequences
 
-Web builds use the Compatibility renderer [unverified, V-003] and run
+Web builds use the Compatibility renderer (V-003, verified) and run
 noticeably slower than native builds. Driftloom's Rust core would join
 through Godot's extension system, which needs testing on web
 [unverified, V-008].

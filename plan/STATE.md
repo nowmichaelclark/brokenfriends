@@ -1,29 +1,31 @@
 # State
 
-Updated: 2026-10-24 (all decisions signed; no ads, open source)
+Updated: 2026-10-24 (the game is started: the first five minutes)
 
 Rewrite this file, don't add to it. Keep it under 100 lines.
 
 ## Phase
 
-**Phase 1: vision.** Pitch and pillars are drafted. Non-goals has a
-tone fence but isn't written. References and first playable aren't
-started. Every decision so far is signed.
+**Phase 1: vision, with building started early (decision 0019).**
+Pitch and pillars are drafted; non-goals, references and first
+playable aren't written. The Godot game in `game/` plays the first
+five minutes from Mikey's recording (Prototype 1).
 
 ## Next steps
 
-1. Brain session: turn Mikey's camp answer into rules (Q-021, as a new
-   decision building on 0011), settle Q-022, add a fun pillar (Q-023),
-   then write the non-goals.
-2. Research session: check the references (V-012, V-013 and
-   `00-vision/references.md`).
-3. Brain session: first playable.
-4. Red team of the five vision docs by a model from another lab, then
-   Gate A.
+1. Mikey switches on GitHub Pages (`game/README.md`) and plays the
+   build on his phone, then answers the questions in
+   `prototypes/01-first-five-minutes.md`.
+2. Mikey answers the 21 numbered points from the recording (decisions,
+   assumptions, questions) in the planning chat; Claude records them.
+3. Brain session (DeepSeek): Q-021 rules, Q-022, a fun pillar (Q-023),
+   then the non-goals.
+4. Spike: Driftloom's core as a GDExtension in a Godot web build (V-008).
+5. Research session, first playable, red team, Gate A.
 
 ## Blockers
 
-None.
+None. GitHub Pages needs switching on by Mikey (admin setting).
 
 ## Decided so far
 
@@ -40,6 +42,7 @@ None.
 - 0014 Free. 0015 No iPhone for now.
 - 0016 Driftloom's most important proof game. 0017 Play, not train.
 - 0018 Open source, free, no ads.
+- 0019 Start the Godot game now. 0020 Web build on GitHub Pages.
 
 ## Open counts
 

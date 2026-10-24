@@ -10,19 +10,19 @@ Rewrite this file, don't add to it. Keep it under 100 lines.
 Pitch and pillars are drafted; non-goals, references and first
 playable aren't written. The Godot game in `game/` plays the first
 five minutes from Mikey's recording (Prototype 1), with Driftloom's
-core playing its golden loops (spike 2).
+core playing its golden loops (spike 2). Mikey calls it a sketch: any
+of it may be reworked as planning goes (0021, proposed). It runs at
+60 fps on his phone, in the browser and as an Android app.
 
 ## Next steps
 
-1. Mikey plays the build on his phone (live at
-   https://nowmichaelclark.github.io/brokenfriends/), then answers the questions in
-   `prototypes/01-first-five-minutes.md`.
+1. Mikey signs 0021 (the build is a sketch), and answers the questions
+   in `prototypes/01-first-five-minutes.md` from playing it.
 2. Mikey answers the 21 numbered points from the recording (decisions,
    assumptions, questions) in the planning chat; Claude records them.
 3. Brain session (DeepSeek): Q-021 rules, Q-022, a fun pillar (Q-023),
    then the non-goals.
-4. Mikey listens to the music on his phone (spike 2 is done: the core
-   runs in the game and the browser, bit-identical).
+4. Mikey's next stream-of-consciousness recording, to update the plans.
 5. Research session, first playable, red team, Gate A.
 
 ## Blockers

@@ -69,17 +69,19 @@ limited-time event, or a "you were away 6 days" message.
 ## 5. The gross is always in the player's hands
 
 **The pillar:** every gross thing is something the player does, or can
-reach and fix; never something done to a friend they can't help.
+see and act on; never something done to a friend out of their sight
+and reach.
 
 **What it means in practice:** ripping, sewing, cleaning and treating
 are the player's acts. Rot on a friend the player can see and reach
-is fair game; rot on a friend the player cannot reach or treat is
-not. The tone is wholesomely gross, never grim.
+is fair game. Treating can need supplies the player has run out of
+(0042); then acting means finding more, and the shortage was visible
+before it mattered. The tone is wholesomely gross, never grim.
 
 **A feature it would reject:** a screaming pain face, blood and gore
-for shock, or rot crossing a camp the player has no way to clean.
+for shock, or rot spreading somewhere the player can't see.
 
-## 6. Friends are fun to touch (draft, for Mikey to confirm)
+## 6. Friends are fun to touch
 
 **The pillar:** poking, petting, tickling, throwing a toy: every touch
 gets a lively, physical, funny reaction, and it is fun for its own

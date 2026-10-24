@@ -35,13 +35,13 @@ this build" in `game/README.md` and are asked, never decided.
 - [ ] **B2. Change over time** (0028, 0029). Rot needs a source;
   untended wounds worsen; mold spreads; hunger speeds rot; a lost brain
   is death. Time away leaves traces: mud tracks, bugs, mold, a soaked
-  friend sitting weakly. A basic way to clean and treat never runs out
-  (Q-031). *Done when:* a test shows a wounded friend left alone dies
+  friend sitting weakly. *Done when:* a test shows a wounded friend left alone dies
   and a healthy one lives, and screenshots show the traces.
 - [ ] **B3. Supplies run out** (0027). Stuffing, oil, thread and spare
   parts are counted and shown as things on a shelf, not numbers.
-  *Done when:* using them up empties the shelf, and the basic remedy
-  still works.
+  Without them, the treatment that needs them can't be done (0042).
+  *Done when:* using them up empties the shelf and blocks that
+  treatment.
 - [ ] **B4. Parts** (0025, 0026). Any part comes off after several
   pulls; a donor hops or crawls; parts can die; fluid leaks where a
   part tore; head swap leads into sewing; a dead friend's parts go to

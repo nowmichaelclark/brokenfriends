@@ -17,8 +17,7 @@ system) resumes alongside when Mikey wants planning sessions.
 1. Build B1 to B6, the core loop, one step per session or a few; push
    each step; Mikey plays after B6.
 2. Then B7 to B11, and Mikey's few days of play (B12).
-3. Mikey, whenever: Q-023 (pillar 6), Q-030 (first playable lists),
-   Q-031 (a remedy that never runs out), Q-026 to Q-029.
+3. Mikey, whenever: Q-030 (first playable lists), Q-026 to Q-029.
 4. Planning, when Mikey is ready: red team of the vision (another
    lab), then Phase 2.
 
@@ -54,6 +53,7 @@ None.
   from materials; one ending. 0036 Friend maker (dev tool first).
 - 0037 Friends made by maths. 0038 Music changes at moments.
 - 0039 Single player, offline. 0040 No weapons. 0041 Chores.
+- 0042 Without the supplies, some things can't be treated.
 
 ## Open counts
 

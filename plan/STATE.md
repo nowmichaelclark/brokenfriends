@@ -1,30 +1,26 @@
 # State
 
-Updated: 2026-10-25 (recording 2 recorded as decisions 0022 to 0041)
+Updated: 2026-10-25 (Gate A passed; building the first playable)
 
 Rewrite this file, don't add to it. Keep it under 100 lines.
 
 ## Phase
 
-**Phase 1: vision, with building started early (decision 0019).**
-Pitch, pillars, non-goals and first playable are drafted; references
-are unconfirmed. Recording 2 settled most open questions (0022 to
-0041). The Godot game in `game/` plays the first five minutes
-(Prototype 1, played) with Driftloom's music; it is a sketch (0021),
-running at 60 fps on Mikey's phone in the browser and as an Android
-app.
+**Gate A passed** (`reviews/2026-10-25-gate-a.md`, go after fixes,
+all made). Mikey wants to play before planning more, so **building the
+first playable** (`prototypes/03-first-playable.md`, steps B1 to B12)
+comes next, as a sketch (0021). Phase 2 (the shallow pass of every
+system) resumes alongside when Mikey wants planning sessions.
 
 ## Next steps
 
-1. Mikey, when he can: Q-030 (first playable lists), then Q-026 to
-   Q-029.
-2. Brain session (DeepSeek): the fun pillar (Q-023), checked against
-   0025 to 0041.
-3. Research session: confirm `00-vision/references.md`.
-4. Red team of the vision docs, then Gate A.
-5. Mikey decides whether the next build round starts on the first
-   playable's core loop (quests, arrivals, death at one camp) now or
-   after Gate A.
+1. Build B1 to B6, the core loop, one step per session or a few; push
+   each step; Mikey plays after B6.
+2. Then B7 to B11, and Mikey's few days of play (B12).
+3. Mikey, whenever: Q-023 (pillar 6), Q-030 (first playable lists),
+   Q-031 (a remedy that never runs out), Q-026 to Q-029.
+4. Planning, when Mikey is ready: red team of the vision (another
+   lab), then Phase 2.
 
 ## Blockers
 

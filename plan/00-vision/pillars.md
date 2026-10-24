@@ -3,7 +3,7 @@ status: draft
 ---
 # Pillars
 
-Five short statements every feature is tested against. Hold a feature
+Short statements every feature is tested against. Hold a feature
 up and answer yes or no. Settled with Mikey on 2026-10-24; the rules
 behind them are in decisions 0011 and 0012.
 
@@ -79,6 +79,20 @@ not. The tone is wholesomely gross, never grim.
 **A feature it would reject:** a screaming pain face, blood and gore
 for shock, or rot crossing a camp the player has no way to clean.
 
+## 6. Friends are fun to touch (draft, for Mikey to confirm)
+
+**The pillar:** poking, petting, tickling, throwing a toy: every touch
+gets a lively, physical, funny reaction, and it is fun for its own
+sake, even when nothing needs fixing.
+
+**What it means in practice:** like Nintendogs, a friend is a toy to
+play with as much as a patient. Reactions vary with the spot touched,
+the friend's mood and its skills; even a skilled friend still fumbles
+sometimes (0033). Every toy has more than one way to play with it.
+
+**A feature it would reject:** a play button that plays an animation
+and raises a stat; a toy with a single fixed response.
+
 ## Why 2 and 3 are separate
 
 Both carry "accept death", so a later session may try to merge them.
@@ -91,5 +105,5 @@ and fail the other.
 
 - The tone fence (blood, gore, revive, story) lives in
   `00-vision/non-goals.md` (decision 0012).
-- Parked features, not tests: donation rules, keepsakes, camp tools,
-  the open world, multiple camps. See `open-questions.md`.
+- Features, not tests: donation, keepsakes, camps and the open world
+  are decisions (0025, 0026, 0035), checked against the pillars.

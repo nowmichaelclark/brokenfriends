@@ -37,5 +37,7 @@ What those need to work (Claude's reading, for Mikey to confirm):
 - **Sharing friends by code** (0039) and the **friend maker** for
   players (0036).
 - **Chores** (0041): they matter once there are several camps.
-- **A full generated cast** (0037): a handful of generated friends is
-  enough to test the loop.
+- **A full generated cast** (0037): a few body plans with generated
+  details are enough to test the loop (Gate A).
+- **Drawing routes freehand** (0034): the first playable offers a few
+  preset routes per quest, each with its own risk (Gate A).

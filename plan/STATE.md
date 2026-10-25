@@ -1,25 +1,37 @@
 # State
 
-Updated: 2026-10-25 (Gate A passed; building the first playable)
+Updated: 2026-10-25 (first playable built; mini games and physics next)
 
 Rewrite this file, don't add to it. Keep it under 100 lines.
 
 ## Phase
 
-**Gate A passed** (`reviews/2026-10-25-gate-a.md`, go after fixes,
-all made). Mikey wants to play before planning more, so **building the
-first playable** (`prototypes/03-first-playable.md`, steps B1 to B12)
-comes next, as a sketch (0021). Phase 2 (the shallow pass of every
-system) resumes alongside when Mikey wants planning sessions.
+**Gate A passed** (`reviews/2026-10-25-gate-a.md`). The first playable
+(`prototypes/03-first-playable.md`, B1 to B11) is built and live, as a
+sketch (0021). Mikey has playtest notes to give later (B12). He wants
+a better-built slice of the first version, with real mini games
+(proposed 0043) that any friend can play, its body changing how
+(proposed 0044). Those stand on physics, so the **physics test**
+(`prototypes/04-physics-test.md`) comes next.
+
+## How sessions run
+
+One job per chat (decision 0001); this file, `game/README.md` and the
+prototype docs carry everything between chats. Building and gates on a
+strong model; Brain, cleanup and verify sessions on any model.
 
 ## Next steps
 
-1. Mikey plays the first playable for a few days (B12): B1 to B11 are
-   built and live. His results go in `prototypes/03-first-playable.md`.
-2. Tune the guesses he flags (`game/README.md`, "Assumed in this build").
-3. Mikey, whenever: Q-030 (first playable lists), Q-026 to Q-029.
-4. Planning, when Mikey is ready: red team of the vision (another
-   lab), then Phase 2.
+1. **Build: the physics test** (`prototypes/04-physics-test.md`), then
+   Mikey plays it on his phone.
+2. Mikey signs or changes proposed 0043 and 0044, and answers Q-032.
+3. If the physics test feels good: the skateboard grind course as the
+   first real mini game.
+4. Mikey's B12 playtest notes, when he's ready; tune what he flags.
+5. Later: a Brain session on mini games (which ones, rewards, where
+   they happen), and one on friend looks (fur, head shapes; see
+   `inbox/2026-10-25-friend-looks-and-minigames.md`).
+6. Mikey, whenever: Q-026 to Q-030.
 
 ## Blockers
 
@@ -54,6 +66,8 @@ None.
 - 0037 Friends made by maths. 0038 Music changes at moments.
 - 0039 Single player, offline. 0040 No weapons. 0041 Chores.
 - 0042 Without the supplies, some things can't be treated.
+- Proposed, awaiting Mikey: 0043 Many mini games. 0044 Any friend can
+  play; its body changes how.
 
 ## Open counts
 

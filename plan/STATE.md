@@ -26,7 +26,7 @@ A session ends by deleting its row, flipping rows it unblocks to
 
 | # | Session | Where | Model, effort | Status |
 |---|---|---|---|---|
-| S-006 | **Red team:** the physics test's result, 0043, 0044 and the body-ability framework, before any mini game is built on them. A fresh chat that didn't build it. | Claude Code | Fable 5.1, high (or Opus 5.5) | waiting on S-008 |
+| S-006 | **Red team:** the physics test's result, 0043, 0044 and the body-ability framework, before any mini game is built on them. A fresh chat that didn't build it. | Claude Code | Opus 5.5, high | waiting on S-008 |
 | S-007 | **Build:** the skateboard grind course, the first real mini game. | Claude Code | Opus 5.5, high | waiting on S-006, S-012 |
 | S-008 | **Brain** with Mikey: which mini games, what each gives, where they happen; friend looks (fur, head shapes); which body plans first, in what order, and how each moves (0045, `systems/friend-body`); where the play room is (Q-036). | Project | Opus 5.5, medium | **ready** |
 | S-009 | **Cleanup:** the regular one (RULES section 1). | Claude Code | Sonnet 5.5, medium | **ready** (due now) |

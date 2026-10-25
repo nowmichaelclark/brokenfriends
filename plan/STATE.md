@@ -22,17 +22,18 @@ everything open (0045).
 How it works: `kit/RULES.md` section 1. Mikey starts a session by
 saying "Run S-NNN" in a new chat of the kind, model and effort shown.
 A session ends by deleting its row, flipping rows it unblocks to
-**ready**, and adding follow-ups at the bottom. Next number: S-016.
+**ready**, and adding follow-ups at the bottom. Next number: S-018.
 
 | # | Session | Where | Model, effort | Status |
 |---|---|---|---|---|
 | S-007 | **Build:** the skateboard grind course, the first real mini game. | Claude Code | Opus 5.5, high | waiting on S-012, S-015 |
 | S-008 | **Brain** with Mikey: which mini games, what each gives, where they happen; friend looks (fur, head shapes); which body plans first, in what order, and how each moves (0045, `systems/friend-body`); where the play room is (Q-036). | Project | Opus 5.5, medium | **ready** |
 | S-012 | **Build:** Mikey's first playtest notes (`prototypes/03-first-playable.md`, Result): a bigger play room where several friends wander, with a camera that zooms in and out and a stress test for how many friends the phone holds (`systems/play`; where the room is, Q-036: guess and list it); surgery upright and zoomed in; the starting screen split into the entrance and the grooming screen (`systems/ui-ux`); a dev menu to reach every mini game and test friend (0045); sewing a missing part's hole shut, an open hole rotting, and the physics test's neck snag (fix it; a very hard neck hit pulls the neck seam, which takes more pulls than a limb; V-020). Skip patches and new body plans. | Claude Code | Opus 5.5, high | **ready** |
-| S-011 | **Verifier** (needs web access to docs sites, Wikipedia, Defold and Esoteric pages, which this container blocked): V-007, V-013 (Nightmare Before Christmas half), V-017 (references); V-018, V-019 need a minimal repro on Godot 4.7.1, so pair them with a Build session. | Claude Code (with web) | Sonnet 5.5, medium | **ready** |
 | S-013 | **Red team 2, plans:** 0043, 0045 and what S-008 decides (mini games, body plans, the play room). Review file only. S-008 ends by making its pack (`kit/tools/pack.py red-team`). | DeepSeek chat (browser, free) | DeepSeek, thinking on | waiting on S-008 |
 | S-014 | **Brain** with Mikey: save S-013's DeepSeek review into `reviews/` (Mikey pastes it in; S-006's is saved), then go through both finding by finding, skipping what S-012 already fixed; decide what to fix, what to drop, what to test. | Project | Opus 5.5, medium | waiting on S-013 |
 | S-015 | **Build:** fix what S-014 chose, run the playthrough and physics tests, play it, change it, test again. If a fix is big or shaky, add another red team row for it before S-007. | Claude Code | Opus 5.5, high | waiting on S-014, S-012 |
+| S-016 | **Verifier:** the rest of V-017 (about a dozen references unchecked; allow wikipedia.org and the games' own pages in the environment's network settings first, or it will rely on search results again). V-018 to V-020 need a repro on Godot 4.7.1, so pair them with a Build session. | Claude Code (with web) | Sonnet 5.5, medium | **ready** |
+| S-017 | **Cleanup:** `check.py` counts 3 session commits since the last one; also clear ticked `verify.md` items and stale `[unverified]` tags in decisions 0003, 0004, 0015, 0016 whose V- items are done or moot. | Claude Code | Sonnet 5.5, medium | **ready** |
 
 **Order** (Mikey asked, 2026-10-25):
 1. S-009 (Cleanup) is done. (S-005, Mikey playing the physics test,

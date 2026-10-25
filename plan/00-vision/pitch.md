@@ -78,7 +78,7 @@ come back and see how my creatures are doing again", without the game
 being built to be addictive.
 
 Tone: wholesome and gross, in the spirit of Tim Burton's stop-motion
-films [unverified, V-013]: stitched, patched, a little rotten, still
+films (corrected: see V-013 and Q-033; *The Nightmare Before Christmas* is stop-motion, *9* is not): stitched, patched, a little rotten, still
 lovable.
 
 The arc, such as it is: the doctor learns to accept death, and to be

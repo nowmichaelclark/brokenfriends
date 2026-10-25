@@ -29,7 +29,7 @@ with Defold as the only serious alternative.
 
 - **Defold:** much smaller web builds and strong on mobile, but more
   bare-bones; 2D deformable skeletons usually mean the paid Spine
-  tool [unverified, V-007]. May build iOS without a Mac
+  tool (V-007: true; the free DragonBones route is a third-party extension). May build iOS without a Mac
   [unverified, V-005].
 - **Unity:** heavy, large web builds, history of licensing changes.
 - **Phaser:** web-first; phones and desktop need wrappers.
@@ -45,3 +45,4 @@ through Godot's extension system, which needs testing on web
 ## Sources
 
 - Godot 4.7.1-stable class reference (`doc/classes/` in godotengine/godot): Skeleton2D, Bone2D, Polygon2D (bones and weights), PinJoint2D, ShaderMaterial, CPUParticles2D, GPUParticles2D all exist; docs "2D skeletons" describes the skin deformation. Checked 2026-10-25. V-006.
+- Defold has no built-in bone editor; Spine support is the official `defold/extension-spine` (Spine runtime 4.2.xx; extension since Defold 1.2.193), and DragonBones is a third-party extension (defDragon). Esoteric's Spine Runtimes License requires each user to hold a Spine Editor license. Defold forum, Defold asset pages and Esoteric license page, seen through search results only, checked 2026-10-25. V-007.

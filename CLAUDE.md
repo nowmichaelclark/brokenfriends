@@ -17,8 +17,11 @@ Differences from chat sessions:
 - Run `python3 plan/kit/tools/check.py` before you finish, and fix what
   it reports in the files you touched.
 - Commit once per session: `<Session type>: <what changed>` (`check.py`
-  counts these to pace Cleanup sessions). `git pull --rebase` before
-  pushing; other sessions may be running in tandem.
+  counts these to pace Cleanup sessions). Finish on `main`, not a
+  session branch: `git pull --rebase origin main`, then
+  `git push origin HEAD:main`. Other sessions may be running in tandem;
+  on a clash, keep both sides' agenda rows and renumber your new S-, V-
+  or Q- numbers past theirs.
 - Agents for some session types live in `.claude/agents/`.
 
 ## Game code

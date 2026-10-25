@@ -1,7 +1,7 @@
 ---
-status: proposed
+status: accepted
 date: 2026-10-25
-decided_by:
+decided_by: Mikey, 2026-10-25
 supersedes:
 superseded_by:
 ---
@@ -41,4 +41,9 @@ Claude's framework and physics test (2026-10-25).
 
 - Friends become soft ragdolls first (`prototypes/04-physics-test.md`).
 - Every size needs mini games it's best at.
-- What happens when a body truly can't do a game is open (Q-032).
+- When a body truly can't do a game (rare), the friend shrugs or plays
+  a similar short animation and the mini game closes (Mikey, Q-032:
+  "the minigame plays a short scene of the creature shrugging it's
+  shoulders... and then the minigame closes out"). "Almost always a
+  friend should be able to do a mini game, but there will probably be
+  rare examples where it just won't be possible."

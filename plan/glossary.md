@@ -14,6 +14,11 @@ system. *Not to be confused with:* other term, if any.
 Still to define: species, stuffing, fluff, condition, wetness,
 mold, habitat, expedition, package, theme.
 
+**Body plan**: the overall shape a friend is built on, which sets how
+it moves: two legs, four legs, insect legs, tentacles, floating,
+oozing (Q-035). *Owned by:* no system yet. *Not to be confused with:*
+species.
+
 **Camp**: the place the player mostly stays, with their friends,
 tools and tents. A friend that is not on a quest is at camp. *Owned
 by:* no system yet. *Not to be confused with:* habitat, expedition.
@@ -35,6 +40,11 @@ The friend itself never comes back (0011). *Owned by:* no system yet.
 **Part**: a piece of a friend: a limb, an eye, an accessory. A part
 can rot, be ripped off, be sewn on, be added, or be donated to another
 friend. *Owned by:* no system yet.
+
+**Patch**: a piece of cloth sewn over a place where a friend's skin
+was ripped off; random, so each friend looks its own (Mikey,
+2026-10-25). *Owned by:* no system yet (Q-039). *Not to be confused
+with:* repair.
 
 **Play**: interacting with a friend for its own sake: poking,
 feeding, minigames, watching it react. The preferred word over

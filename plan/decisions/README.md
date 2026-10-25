@@ -43,5 +43,5 @@ One line each, to find the right file; the file is the decision.
 - 0037 Friends made by maths. 0038 Music changes at moments.
 - 0039 Single player, offline. 0040 No weapons. 0041 Chores.
 - 0042 Without the supplies, some things can't be treated.
-- Proposed: 0043 Many mini games. 0044 Any friend can play; its body
-  changes how.
+- 0043 Many mini games. 0044 Any friend can play; its body changes
+  how (a body that truly can't: a shrug, and the game closes).

@@ -75,7 +75,7 @@ this build" in `game/README.md` and are asked, never decided.
 - [x] **B11. Music at moments** (0038). Music changes on a room change,
   a friend made well, a return, a death, the time of day; never on a
   timer. *Done when:* a test logs each change with its reason.
-- [ ] **B12. Mikey plays for a few days**, and the result goes below.
+- [x] **B12. Mikey plays for a few days**, and the result goes below.
 
 Mikey plays after B6 (the core loop) and again after B11.
 
@@ -96,7 +96,31 @@ Play for a few days, a few minutes or longer each time:
 
 ## Result
 
-Not played yet.
+**First notes** (Mikey, 2026-10-25, S-004; "not all of things I would
+like to address... but it's a good start"):
+
+- **Play area:** too small. "More like a room", with "multiple
+  friends at once instead of just one at a time" (Q-036).
+- **Surgery:** "shouldn't be horizontal, let's keep it vertical
+  similar to the main view. The surgery view is just more zoomed in."
+  Fits 0031 (lying down, its own table); the friend lies head up the
+  screen.
+- **The starting screen** isn't for surgery: "only for washing mud off
+  and drying the friend (general grooming)", and brushing fur once
+  friends have it (its name: Q-037).
+- **Friend shapes:** the current ones are "okay for playtesting and
+  finding hitboxes", but all humanoid. Wanted early, for playtesting
+  even if later found only in some biomes: four legs, tentacles,
+  insect legs, a ghost-like friend that "gently float[s] without
+  legs", legless slime-like friends. Plan them now so movement and
+  hitboxes shape the interactions and mini games (Q-035).
+- **Sewing shut:** "it should be possible to sew shut where a limb is
+  missing. Maybe the player is okay with their friend not having a leg
+  there." A hole left leaking "should start to rot in some way."
+- **Patches:** a friend's skin can be ripped off and "patched back up
+  with a random patch of cloth", for personality and variety (Q-039).
+- Surgery's interactions and feedback "can still certainly be
+  improved, but it's a nice start."
 
 ## What changed in the docs
 

@@ -1,7 +1,7 @@
 ---
-status: proposed
+status: accepted
 date: 2026-10-25
-decided_by:
+decided_by: Mikey, 2026-10-25
 supersedes:
 superseded_by:
 ---

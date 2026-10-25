@@ -11,7 +11,7 @@ Are friends fun to push, fling and watch fall over as soft ragdolls
 (head, body, arms and legs joined by springy seams), and does that run
 smoothly on Mikey's Moto G Power 2022 and in its browser? Every mini
 game will stand on this (the 2026-10-25 looks and mini games note, digested; see git history,
-proposed 0043 and 0044), so it comes first.
+0043 and 0044), so it comes first.
 
 ## Smallest build
 
@@ -68,8 +68,14 @@ instead of physics, or the Rapier plugin, decision 0005).
 
 ## Result
 
-**Built, not yet played** (2026-10-25, S-001). Waiting on Mikey's ten
-minutes (S-005). Open `#physics` (`&three` for three friends, `&perf`
+**Built; first impressions in** (Mikey, 2026-10-25, S-004): "great.
+It works pretty well." Once the skateboard got caught in a friend's
+neck; he'd expect "the head to come off... or for it to not get caught
+in the neck". He chose: fix the snag, and let a very hard hit on the
+neck count as a pull on its seam, with the neck taking more pulls than
+a limb (0025), so heads come off rarely and only after a hard hit. The
+snag is likely the board overlapping the gap at the joint [unverified,
+V-020]. Full ten minutes still to come (S-005). Open `#physics` (`&three` for three friends, `&perf`
 for speed); `game/README.md` says what it does and lists every guess
 (weights, bounce, swing, what counts as a hard landing).
 

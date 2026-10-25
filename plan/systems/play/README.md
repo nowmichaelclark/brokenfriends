@@ -40,7 +40,7 @@ learn new skills) by playing.
 - Friends speak in noises that sound like talk but aren't, R2-D2
   style, not robotic voices (recording 1).
 
-## Mini games (proposed 0043, 0044; Mikey, 2026-10-25)
+## Mini games (0043, 0044; Mikey, 2026-10-25)
 
 - Real mini games, not only toys: a goal, something to get better at,
   a way to fail; a minute or two, one thumb, portrait, no words.
@@ -53,7 +53,7 @@ learn new skills) by playing.
   (Frogger-like), climbing over rocks, swinging across gaps.
 - Two skateboarding games: a grind and obstacle course like OlliOlli,
   and a half pipe for tricks and high scores.
-- Claude's framework (0044), not yet signed: mini games ask for
+- The framework (0044): mini games ask for
   abilities worked out from the body (size, weight, grip, push, jump,
   balance, float), never for parts; the camera zooms so every friend
   shows at about the same size, and each size has games it's best at;
@@ -61,12 +61,15 @@ learn new skills) by playing.
   says what it gives (skill, prizes, both) and what it risks (a loose
   seam, a lost part, mud, soaking), shown back at camp.
 - Built on the soft ragdolls of `prototypes/04-physics-test.md`.
+- A body that truly can't play (rare): a shrug, and the game closes
+  (0044).
+- Limbs could be creative things, "a limb as a broom or a limb as a
+  clawshot" (Mikey, 2026-10-25); unshaped (Q-038).
 
 ## First questions
 
 - Which skills and stats exist, and what does each change on quests?
 - Which mini games first, what each gives, where each happens (camp,
   a place on the map, a route)? (agenda S-008)
-- When a body truly can't do a game: try and fail, or sit it out?
-  (Q-032)
+- If a head comes off mid-game, does the game end or play on? (Q-034)
 - How do prizes from mini games keep things scarce (0027)?

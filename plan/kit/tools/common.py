@@ -29,6 +29,25 @@ BUDGETS = [
     ("inbox/*.md", 200),
 ]
 
+# Keeping the repo lean, kit/RULES.md section 6.
+# Folders that should be emptied as they fill: (folder, most files,
+# what to do). README.md doesn't count.
+FOLDER_LIMITS = [
+    ("inbox", 4, "digest it: move each idea to the doc it belongs in, then delete the raw file"),
+    ("log", 6, "delete the oldest notes; git keeps them"),
+    ("reviews", 3, "delete reviews whose fixes are all made; git keeps them"),
+    ("research", 6, "fold findings into the docs that use them, then delete"),
+]
+# The files every planning session reads first, and their total budget.
+HOT_SET = ["START-HERE.md", "kit/RULES.md", "STATE.md", "../CLAUDE.md"]
+HOT_SET_LINES = 450
+# Outside plan/: the game's README and each script.
+GAME_README_LINES = 220
+SCRIPT_LINES = 600
+SCRIPT_GLOBS = ["game/**/*.gd", "rust/*/src/*.rs"]
+# Copied unchanged from Driftloom, so split there, not here.
+SCRIPT_EXEMPT = ["rust/driftloom-godot/src/notelist.rs"]
+
 UNVERIFIED_RE = re.compile(r"\[unverified[^\]]*\]", re.IGNORECASE)
 V_REF_RE = re.compile(r"\bV-(\d{3,})\b")
 

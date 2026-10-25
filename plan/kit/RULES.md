@@ -91,11 +91,34 @@ cannot be `locked`; `check.py` enforces this.
   they become decisions or doc text.
 - Ticked items in `verify.md` are cleared by the Cleanup session.
 
-## 6. Size budgets
+## 6. Keeping the repo lean
 
-Long files get skimmed, and cheap models lose track of them. `check.py`
-warns at these limits (lines). Over budget means split the doc or cut
-it, not raise the limit.
+Every line a session must read costs time and attention, and long
+files get skimmed. So:
+
+- **Read on demand.** Every session reads only the hot set
+  (`START-HERE.md`, this file, `STATE.md`, `CLAUDE.md`; 450 lines in
+  all), then follows links to what its task needs. Never read a
+  folder whole.
+- **One fact, one home.** A fact lives in one doc; others link to it
+  or cite the decision number instead of restating it.
+- **Digest, then delete.** Raw material (`inbox/`, `research/`, old
+  `log/` notes, `reviews/` whose fixes are made) is temporary. Once its
+  ideas live in the docs they belong to (a line each, under the right
+  system's seed notes), delete the raw file.
+- **Git is the archive.** No `old/` or `archive/` folders, no copies of
+  past versions, no commented-out code. To find something deleted:
+  `git log --all -- <path>`.
+- **Code too.** `game/README.md` says what the build is and assumes
+  now, not a history of steps (220 lines). A script over 600 lines is
+  split before more is added. Sketch code that's replaced is deleted,
+  not kept beside the new version.
+- **Nothing generated is committed**: screenshots, builds, packs.
+
+`check.py` warns when a folder holds too many files, the hot set or a
+script is too long, or a doc is over its budget below. A warning is a
+job for the next Cleanup session (`kit/sessions/cleanup.md`), and
+over budget means split or cut, never raise the limit.
 
 | File | Lines |
 |---|---|

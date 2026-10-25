@@ -18,12 +18,18 @@ a better-built slice of the first version, with real mini games
 
 One job per chat (decision 0001); this file, `game/README.md` and the
 prototype docs carry everything between chats. Building and gates on a
-strong model; Brain, cleanup and verify sessions on any model.
+strong model; Brain, cleanup and verify sessions on any model. The repo
+stays lean by `kit/RULES.md` section 6: `check.py` warnings are the
+next Cleanup session's jobs (plans) or Build session's (code).
 
 ## Next steps
 
 1. **Build: the physics test** (`prototypes/04-physics-test.md`), then
-   Mikey plays it on his phone.
+   Mikey plays it on his phone. First split `friend_view.gd` and
+   `tent.gd` (over 600 lines each) and trim `game/README.md` to what
+   the build is now.
+   - Alongside, any time, a **Cleanup session** (cheap model) digests
+     `inbox/` and prunes `log/`.
 2. Mikey signs or changes proposed 0043 and 0044, and answers Q-032.
 3. If the physics test feels good: the skateboard grind course as the
    first real mini game.

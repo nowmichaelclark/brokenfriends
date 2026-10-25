@@ -26,7 +26,14 @@ and `glossary.md`.
 5. Glossary: list terms used in docs but missing from the glossary,
    and synonyms used for the same thing. Fix the glossary; list the
    doc fixes for a Drafter.
-6. Never change what a doc means. If something looks wrong, put it in
+6. Folder warnings (RULES section 6): for each `inbox/` or
+   `research/` file, put every idea not yet in a doc or decision as one
+   line under the right system's seed notes (citing the file's date),
+   then delete the raw file. Delete the oldest `log/` notes down to
+   five, and `reviews/` whose fixes are all made. Say in the log note
+   what went where. Warnings about `game/` or `rust/` files are for the
+   next Build session: leave them.
+7. Never change what a doc means. If something looks wrong, put it in
    **Weak spots** instead.
 
 Return the files, the log note and **Weak spots**.

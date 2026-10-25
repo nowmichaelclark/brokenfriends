@@ -14,7 +14,8 @@ import sys
 from collections import Counter
 
 from common import (
-    DECISION_STATES, DOC_LADDER, LOCKED_STATES, PROTOTYPE_STATES, ROOT,
+    DECISION_STATES, DOC_LADDER, FOLDER_LIMITS, GAME_README_LINES, HOT_SET,
+    HOT_SET_LINES, SCRIPT_EXEMPT, SCRIPT_GLOBS, SCRIPT_LINES, LOCKED_STATES, PROTOTYPE_STATES, ROOT,
     UNVERIFIED_RE, V_REF_RE, budget_for, markdown_files, path_matches,
     read_frontmatter, rel, requires_doc_status, strip_code,
 )
@@ -134,6 +135,8 @@ def main():
     if not (ROOT / "MIKEY.md").exists():
         errors.append("MIKEY.md is missing.")
 
+    lean_checks(warnings)
+
     # Report
     for title, items in (("Errors", errors), ("Warnings", warnings)):
         if items:
@@ -153,6 +156,38 @@ def main():
         return 1
     print("OK" + (f", with {len(warnings)} warning(s)." if warnings else "."))
     return 0
+
+
+def _lines(path):
+    text = path.read_text(encoding="utf-8")
+    return text.count("\n") + (0 if text.endswith("\n") else 1)
+
+
+def lean_checks(warnings):
+    """Warnings that keep the repo from piling up (RULES.md section 6)."""
+    for folder, most, fix in FOLDER_LIMITS:
+        d = ROOT / folder
+        if d.is_dir():
+            files = [p for p in d.iterdir() if p.is_file() and p.name != "README.md"]
+            if len(files) > most:
+                warnings.append(f"{folder}/: {len(files)} files, more than {most}. Cleanup: {fix}.")
+    hot = sum(_lines(ROOT / f) for f in HOT_SET if (ROOT / f).exists())
+    if hot > HOT_SET_LINES:
+        warnings.append(f"The files every session reads first ({', '.join(HOT_SET)}) total "
+                        f"{hot} lines, over {HOT_SET_LINES}. Cut them.")
+    repo = ROOT.parent
+    readme = repo / "game" / "README.md"
+    if readme.exists() and _lines(readme) > GAME_README_LINES:
+        warnings.append(f"game/README.md: {_lines(readme)} lines, over {GAME_README_LINES}. "
+                        "It says what the build is and assumes now, not what each step added.")
+    for pattern in SCRIPT_GLOBS:
+        for p in sorted(repo.glob(pattern)):
+            if "target" in p.parts or p.relative_to(repo).as_posix() in SCRIPT_EXEMPT:
+                continue
+            n = _lines(p)
+            if n > SCRIPT_LINES:
+                warnings.append(f"{p.relative_to(repo).as_posix()}: {n} lines, over {SCRIPT_LINES}. "
+                                "Split it before adding more.")
 
 
 if __name__ == "__main__":

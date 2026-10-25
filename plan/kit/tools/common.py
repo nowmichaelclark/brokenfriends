@@ -41,6 +41,8 @@ FOLDER_LIMITS = [
 # The files every planning session reads first, and their total budget.
 HOT_SET = ["START-HERE.md", "kit/RULES.md", "STATE.md", "../CLAUDE.md"]
 HOT_SET_LINES = 450
+# Anthropic's guidance: under 200 lines per CLAUDE.md file (V-014).
+HOT_SET_FILE_LINES = 200
 # Outside plan/: the game's README and each script.
 GAME_README_LINES = 220
 SCRIPT_LINES = 600

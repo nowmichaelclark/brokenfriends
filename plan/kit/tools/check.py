@@ -16,7 +16,7 @@ from collections import Counter
 
 from common import (
     DECISION_STATES, DOC_LADDER, FOLDER_LIMITS, GAME_README_LINES, HOT_SET,
-    HOT_SET_LINES, SCRIPT_EXEMPT, SESSION_TYPES, SESSIONS_PER_CLEANUP, SCRIPT_GLOBS, SCRIPT_LINES, LOCKED_STATES, PROTOTYPE_STATES, ROOT,
+    HOT_SET_FILE_LINES, HOT_SET_LINES, SCRIPT_EXEMPT, SESSION_TYPES, SESSIONS_PER_CLEANUP, SCRIPT_GLOBS, SCRIPT_LINES, LOCKED_STATES, PROTOTYPE_STATES, ROOT,
     UNVERIFIED_RE, V_REF_RE, budget_for, markdown_files, path_matches,
     read_frontmatter, rel, requires_doc_status, strip_code,
 )
@@ -172,6 +172,9 @@ def lean_checks(warnings):
             files = [p for p in d.iterdir() if p.is_file() and p.name != "README.md"]
             if len(files) > most:
                 warnings.append(f"{folder}/: {len(files)} files, more than {most}. Cleanup: {fix}.")
+    for f in HOT_SET:
+        if (ROOT / f).exists() and _lines(ROOT / f) > HOT_SET_FILE_LINES:
+            warnings.append(f"{f}: {_lines(ROOT / f)} lines, over {HOT_SET_FILE_LINES}. Cut it.")
     hot = sum(_lines(ROOT / f) for f in HOT_SET if (ROOT / f).exists())
     if hot > HOT_SET_LINES:
         warnings.append(f"The files every session reads first ({', '.join(HOT_SET)}) total "

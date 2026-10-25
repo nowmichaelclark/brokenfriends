@@ -21,6 +21,9 @@ stop and say so rather than picking one.
   sessions (`check.py` counts, by commit). A Red team after each
   prototype is played, before anything is built on it. A gate review
   at the end of each phase (`kit/PHASES.md`).
+- **Where it runs** (Mikey, 2026-10-25): back-and-forth sessions
+  (Brain) are **Project chats**; mostly-working-alone ones (Build,
+  Cleanup, Verifier, Red team) are **Claude Code**. Both edit the repo.
 
 ## 2. Output format
 
@@ -40,12 +43,9 @@ each **whole file** sits between marker lines, like this:
     ~~~~
 ```
 
-(Shown indented here; in your reply every line starts at the very
-beginning of the line.)
-
-Why: Mikey copies your reply from a chat window. Text inside a code
-block keeps its raw markdown (`#` headings, `-` bullets, `---`
-frontmatter); text outside it can lose that when copied.
+(Shown indented here; in your reply each line starts at column one.)
+This is for chats that can't edit the repo: Mikey copies the block,
+and text inside a code block keeps its raw markdown.
 
 - Never return a partial file, a diff, or "the rest stays the same".
   The unpack tool overwrites the file with what you send.

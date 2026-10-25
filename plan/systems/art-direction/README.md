@@ -32,6 +32,13 @@ animated, and how wetness, mold and tears show.
   lengths on some parts or all over, and hair with its own physics
   like Sally's (recording 2, 2026-10-24; looks note, 2026-10-25). Parts
   such as ears, noses and eyes must also detach and swap.
+- Claude's read of the first generated sheet (54 friends, 2026-10-25;
+  `game/tests/gallery.gd --by_plan`), which Mikey agreed with: every
+  plan shares one body outline and tube limbs, and every head is an
+  oval; monsters read as purple cats; floppy ears stick out sideways;
+  the ghost-like hem reads as feet; every eye is the same button;
+  colours are random within a plan; no hair, clothes or lopsided
+  patchwork yet. Mikey: no redesign yet (agenda S-008).
 
 ## First questions
 

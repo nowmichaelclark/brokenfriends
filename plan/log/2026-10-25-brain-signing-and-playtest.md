@@ -8,7 +8,7 @@ model: Claude Opus 5.5
 ## Changed
 
 - `decisions/0043`, `0044`: accepted (0044 holds Q-032's answer);
-  `0045` proposed (dev release, everything open); `decisions/README`.
+  `0045` accepted (dev release, everything open); `decisions/README`.
 - `prototypes/03`: B12 ticked, first notes. `prototypes/04`: first
   impressions, the neck snag.
 - `systems/play`, `ui-ux`, `friend-body`, `condition`,
@@ -31,7 +31,7 @@ model: Claude Opus 5.5
 
 ## Still open
 
-- Proposed 0045; Q-036 (where the room is); Q-040 (gating, 0010).
+- Q-036 (where the room is). Q-040 answered: unlocking is fine; 0010 forbids artificial gating.
 
 ## Next
 

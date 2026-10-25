@@ -42,7 +42,7 @@ its skeleton, and how it moves, flops and comes apart.
   insect legs, tentacles, a plush ghost-like friend that gently floats
   without legs (0037: never an actual ghost), legless oozing friends
   like Slime Rancher's. As many as possible in the dev release
-  (proposed 0045).
+  (0045), as many as a low-end phone runs very well.
 - A missing part's hole can be sewn shut; a friend can live without
   that leg. A hole left open leaks and starts to rot (Mikey).
 - Skin can be ripped off and patched with a random patch of cloth

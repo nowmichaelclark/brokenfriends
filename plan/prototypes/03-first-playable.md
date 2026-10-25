@@ -114,7 +114,7 @@ like to address... but it's a good start"):
   even if later found only in some biomes: four legs, tentacles,
   insect legs, a ghost-like friend that "gently float[s] without
   legs", legless slime-like friends. Plan them now so movement and
-  hitboxes shape the interactions and mini games (proposed 0045).
+  hitboxes shape the interactions and mini games (0045).
 - **Sewing shut:** "it should be possible to sew shut where a limb is
   missing. Maybe the player is okay with their friend not having a leg
   there." A hole left leaking "should start to rot in some way."

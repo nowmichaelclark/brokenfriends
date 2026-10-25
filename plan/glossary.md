@@ -16,7 +16,7 @@ mold, habitat, expedition, package, theme.
 
 **Body plan**: the overall shape a friend is built on, which sets how
 it moves: two legs, four legs, insect legs, tentacles, floating,
-oozing (proposed 0045). *Owned by:* no system yet. *Not to be confused with:*
+oozing (0045). *Owned by:* no system yet. *Not to be confused with:*
 species.
 
 **Camp**: the place the player mostly stays, with their friends,

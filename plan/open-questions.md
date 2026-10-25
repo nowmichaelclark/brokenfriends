@@ -13,4 +13,3 @@ doc). Next number: Q-041.
 | Q-030 | First playable: confirm the "Out, on purpose" list and Claude's additions to "In" (`00-vision/first-playable.md`). | first-playable, Gate A | 2026-10-25 |
 | Q-033 | The pitch says the tone is "in the spirit of Tim Burton's stop-motion films", but 9 is computer-animated and Burton only produced it (V-013). Reword the tone line, or keep it as a loose mood reference? | pitch | 2026-10-25 |
 | Q-036 | Where is the play room: inside the tent, or elsewhere at camp? (How many friends: a stress test decides.) | play, ui-ux | 2026-10-25 |
-| Q-040 | Later versions won't open every mini game at the start (proposed 0045), but 0010 says nothing is gated. How do mini games open up: found by playing and exploring, without timers or walls? Or does 0010 need a new decision? | play, progression | 2026-10-25 |

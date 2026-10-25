@@ -1,7 +1,7 @@
 ---
-status: proposed
+status: accepted
 date: 2026-10-25
-decided_by:
+decided_by: Mikey, 2026-10-25
 supersedes:
 superseded_by:
 ---
@@ -10,10 +10,14 @@ superseded_by:
 ## Decision
 
 The first version is a dev release for playtesting and trying things
-out: as many body plans as can be built, and every mini game and place
-easy to reach from the start.
+out: as many body plans as a low-end phone can hold while keeping very
+good performance, and every mini game and place easy to reach from the
+start.
 
 ## Context
+
+Signing, Mikey: "not actually infinite bodies, but as many as a low
+end phone can handle and maintain very good performance."
 
 Asked how many body plans the first version needs (Q-035), Mikey: "as
 many body plans as possible for testing purposes. The 'First version'
@@ -45,5 +49,7 @@ easy to access from the start." (S-004, 2026-10-25)
 - Each body plan costs a rig, a way of moving, and front and back
   drawings (0031, 0037): a lot of work for one developer, so they come
   in one at a time.
-- How a player later reaches mini games must square with "nothing is
-  gated" (0010): Q-040.
+- Later versions unlock mini games as the player goes; that fits 0010.
+  Mikey (Q-040): "things can still be unlocked of course"; "nothing is
+  gated" means microtransactions "or other artificial gating that is
+  unnecessary for good game development where fun is the goal".

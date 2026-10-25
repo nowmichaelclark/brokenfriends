@@ -73,7 +73,8 @@ learn new skills) by playing.
   wander, "the more the merrier", with the friend count found by a
   stress test on the phone; the camera zooms in and out.
 - Later versions won't open every mini game at the start; the dev
-  release does (proposed 0045; how that fits 0010: Q-040).
+  release does (0045). Unlocking by playing fits 0010, which forbids
+  only artificial gating like microtransactions (Mikey, Q-040).
 
 ## First questions
 

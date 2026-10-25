@@ -100,25 +100,27 @@ Play for a few days, a few minutes or longer each time:
 like to address... but it's a good start"):
 
 - **Play area:** too small. "More like a room", with "multiple
-  friends at once instead of just one at a time" (Q-036).
+  friends at once instead of just one at a time". Answers: `systems/play`.
 - **Surgery:** "shouldn't be horizontal, let's keep it vertical
   similar to the main view. The surgery view is just more zoomed in."
   Fits 0031 (lying down, its own table); the friend lies head up the
   screen.
 - **The starting screen** isn't for surgery: "only for washing mud off
   and drying the friend (general grooming)", and brushing fur once
-  friends have it (its name: Q-037).
+  friends have it. Then split in two: the entrance and the grooming
+  screen (`systems/ui-ux`).
 - **Friend shapes:** the current ones are "okay for playtesting and
   finding hitboxes", but all humanoid. Wanted early, for playtesting
   even if later found only in some biomes: four legs, tentacles,
   insect legs, a ghost-like friend that "gently float[s] without
   legs", legless slime-like friends. Plan them now so movement and
-  hitboxes shape the interactions and mini games (Q-035).
+  hitboxes shape the interactions and mini games (proposed 0045).
 - **Sewing shut:** "it should be possible to sew shut where a limb is
   missing. Maybe the player is okay with their friend not having a leg
   there." A hole left leaking "should start to rot in some way."
 - **Patches:** a friend's skin can be ripped off and "patched back up
-  with a random patch of cloth", for personality and variety (Q-039).
+  with a random patch of cloth", for personality and variety
+  (`systems/friend-body`).
 - Surgery's interactions and feedback "can still certainly be
   improved, but it's a nice start."
 

@@ -45,3 +45,5 @@ One line each, to find the right file; the file is the decision.
 - 0042 Without the supplies, some things can't be treated.
 - 0043 Many mini games. 0044 Any friend can play; its body changes
   how (a body that truly can't: a shrug, and the game closes).
+- Proposed: 0045 The first version is a dev release, with everything
+  open.

@@ -26,6 +26,8 @@ and how much stuffing it has, and how each changes over time.
 
 - Health reads from the body alone: shaking, a moving mouth, sad eyes,
   mud, mold (recording 2, 2026-10-24).
+- An open hole where a part was, or an open tear in the skin, leaks
+  and starts to rot; sewing it shut stops that (Mikey, 2026-10-25).
 - Camps wear too: mud in a muddy place, soot in a volcanic one; the
   starting camp stays easy (recording 1). Bugs, worms, water, mold and
   rust threaten the chip brain (0028).

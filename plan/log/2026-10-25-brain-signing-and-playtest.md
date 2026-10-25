@@ -7,30 +7,32 @@ model: Claude Opus 5.5
 
 ## Changed
 
-- `decisions/0043`, `0044`, `decisions/README.md`: accepted; 0044
-  carries the Q-032 answer.
-- `prototypes/03-first-playable.md`: B12 ticked; first notes in Result.
-- `prototypes/04-physics-test.md`: first impressions, the neck snag.
-- `systems/play/README.md`: signed framework, the shrug, limbs as tools.
-- `open-questions.md`: Q-032 out; Q-034 to Q-039 in; duplicate rows
-  for Q-028 to Q-030 removed.
-- `verify.md`: V-020. `glossary.md`: body plan, patch.
-- `STATE.md`: S-004 done; S-008 ready and wider; S-012 added.
+- `decisions/0043`, `0044`: accepted (0044 holds Q-032's answer);
+  `0045` proposed (dev release, everything open); `decisions/README`.
+- `prototypes/03`: B12 ticked, first notes. `prototypes/04`: first
+  impressions, the neck snag.
+- `systems/play`, `ui-ux`, `friend-body`, `condition`,
+  `00-vision/first-playable.md`: Mikey's answers in their homes.
+- `open-questions.md`: Q-032, Q-034, Q-035, Q-037 to Q-039 answered;
+  Q-036 narrowed; Q-040 new; duplicate Q-028 to Q-030 rows removed.
+- `verify.md`: V-020. `glossary.md`: body plan, patch, entrance,
+  grooming screen. `STATE.md`: agenda.
 
 ## Decided by Mikey
 
-- "Yes to 43 and 44."
-- Q-032: "the minigame plays a short scene of the creature shrugging
-  it's shoulders... and then the minigame closes out"; "almost always
-  a friend should be able to do a mini game".
-- Neck snag: fix it, and a very hard neck hit pulls the neck seam.
-- Playtest notes: a room with many friends, upright surgery, grooming
-  on the starting screen, sew shut, leaks rot, patches, many body plans.
+- "Yes to 43 and 44." Q-032: the friend shrugs "and then the minigame
+  closes out".
+- Neck snag: fix it; a very hard neck hit pulls the neck seam.
+- A room of friends, upright surgery, an entrance and a grooming
+  screen, sew shut, open holes rot, patches, many body plans.
+- A lost head usually ends a mini game; the first version is "a dev
+  release"; "the more the merrier", with a stress test; Claude picks
+  who owns patches.
 
 ## Still open
 
-- Q-034 to Q-039. The rest of Mikey's playtest notes.
+- Proposed 0045; Q-036 (where the room is); Q-040 (gating, 0010).
 
 ## Next
 
-- S-012 (Build), S-008 (Brain), S-005 (Mikey plays).
+- S-012 (Build), S-008 (Brain), S-009 (Cleanup, now due).

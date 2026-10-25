@@ -38,9 +38,23 @@ its skeleton, and how it moves, flops and comes apart.
   ones answer differently; dry joints squeak until oiled.
 - Quality varies: better limbs, buttons, capes and accessories change
   what a friend suits (recording 1).
+- Body plans (Mikey's playtest, 2026-10-25): two legs, four legs,
+  insect legs, tentacles, a plush ghost-like friend that gently floats
+  without legs (0037: never an actual ghost), legless oozing friends
+  like Slime Rancher's. As many as possible in the dev release
+  (proposed 0045).
+- A missing part's hole can be sewn shut; a friend can live without
+  that leg. A hole left open leaks and starts to rot (Mikey).
+- Skin can be ripped off and patched with a random patch of cloth
+  (Mikey). Who owns what (Mikey: go with what an experienced developer
+  would pick; Claude's pick, Q-039): this system stores the skin on
+  each part (where it's torn, where it's patched); `condition` decides
+  what an open tear does over time (leak, rot, like an open hole);
+  `art-direction` generates and draws the patches. The patchwork
+  puzzle mini game is one way to make a patch (`play`).
 
 ## First questions
 
 - What is a "part", and what is a "seam"?
-- What does a friend with a missing limb do?
+- What does a friend with a missing limb do, beyond hopping (0025)?
 - Can parts be swapped between friends?

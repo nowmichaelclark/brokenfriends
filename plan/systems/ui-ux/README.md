@@ -20,9 +20,15 @@ and accessibility.
 
 - Mobile first, also in a browser and maybe on desktop: touch first,
   mouse must work too.
+- Portrait everywhere, surgery included; surgery is the same upright
+  view, zoomed in (Mikey's playtest, 2026-10-25).
+- The starting screen splits in two (Mikey, Q-037): the **entrance**,
+  showing a new friend or new items that arrived and offering what to
+  do next; and the **grooming screen**, for washing, drying, brushing
+  and accessories. Surgery has its own table (0031).
+- The play room's camera zooms in and out (Q-036).
 
 ## First questions
 
-- Portrait or landscape?
 - How does the player move between friends and places?
 - Push notifications when a friend needs care? (careful: nagging)

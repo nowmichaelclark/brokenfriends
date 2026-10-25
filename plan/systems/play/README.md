@@ -63,13 +63,21 @@ learn new skills) by playing.
 - Built on the soft ragdolls of `prototypes/04-physics-test.md`.
 - A body that truly can't play (rare): a shrug, and the game closes
   (0044).
+- A head that comes off mid-game usually ends the game; "there might
+  be some exceptions to that or a short time period of leniency"
+  (Mikey, Q-034).
 - Limbs could be creative things, "a limb as a broom or a limb as a
-  clawshot" (Mikey, 2026-10-25); unshaped (Q-038).
+  clawshot" (Mikey, 2026-10-25): unshaped, "something we can play
+  with".
+- The play room (Mikey, Q-036): a decently sized room where friends
+  wander, "the more the merrier", with the friend count found by a
+  stress test on the phone; the camera zooms in and out.
+- Later versions won't open every mini game at the start; the dev
+  release does (proposed 0045; how that fits 0010: Q-040).
 
 ## First questions
 
 - Which skills and stats exist, and what does each change on quests?
 - Which mini games first, what each gives, where each happens (camp,
   a place on the map, a route)? (agenda S-008)
-- If a head comes off mid-game, does the game end or play on? (Q-034)
 - How do prizes from mini games keep things scarce (0027)?

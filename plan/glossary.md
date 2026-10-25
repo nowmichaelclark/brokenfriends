@@ -16,7 +16,7 @@ mold, habitat, expedition, package, theme.
 
 **Body plan**: the overall shape a friend is built on, which sets how
 it moves: two legs, four legs, insect legs, tentacles, floating,
-oozing (Q-035). *Owned by:* no system yet. *Not to be confused with:*
+oozing (proposed 0045). *Owned by:* no system yet. *Not to be confused with:*
 species.
 
 **Camp**: the place the player mostly stays, with their friends,
@@ -28,10 +28,19 @@ limb replaced, or a healthy spare part given. The donor is left without
 the part (0025). A sewn part is permanent (0011). *Owned by:* no system yet. *Not to be confused with:*
 repair.
 
+**Entrance**: the first screen, showing a new friend or new items that
+have arrived and offering what to do next (Mikey, 2026-10-25). *Owned
+by:* ui-ux. *Not to be confused with:* grooming screen.
+
 **Friend**: a stitched, doll-like being the player cares for, plays
 with and repairs; the game's word for them (decision 0022). Not
 "creature". *Owned by:* no system yet. *Not to be confused with:*
 species.
+
+**Grooming screen**: where a friend stands to be washed, dried,
+brushed and given accessories; not surgery (Mikey, 2026-10-25).
+*Owned by:* ui-ux. *Not to be confused with:* entrance, the surgery
+table (0031).
 
 **Keepsake**: a part left behind when a friend dies. Died at camp:
 nearly all its parts; died on a quest: one or two (decision 0026).
@@ -43,8 +52,8 @@ friend. *Owned by:* no system yet.
 
 **Patch**: a piece of cloth sewn over a place where a friend's skin
 was ripped off; random, so each friend looks its own (Mikey,
-2026-10-25). *Owned by:* no system yet (Q-039). *Not to be confused
-with:* repair.
+2026-10-25). *Owned by:* friend-body (drawn by art-direction). *Not
+to be confused with:* repair.
 
 **Play**: interacting with a friend for its own sake: poking,
 feeding, minigames, watching it react. The preferred word over

@@ -11,6 +11,16 @@ stop and say so rather than picking one.
   below call for it.
 - Small sessions beat long ones. If a task would need more than about
   three docs, say so and suggest how to split it.
+- **The agenda** (`STATE.md`) lists every planned session: its number
+  (S-NNN), type, model and effort, and status: **ready**, or waiting on
+  what. Mikey starts one with "Run S-NNN". When yours ends, delete its
+  row, flip the rows it unblocks to ready, and add follow-ups (with the
+  model and effort you'd recommend) at the bottom. Touch only those
+  rows, so sessions running in tandem don't clash.
+- **The rhythm.** A Cleanup session at least every three other
+  sessions (`check.py` counts, by commit). A Red team after each
+  prototype is played, before anything is built on it. A gate review
+  at the end of each phase (`kit/PHASES.md`).
 
 ## 2. Output format
 
@@ -98,8 +108,8 @@ files get skimmed. So:
 
 - **Read on demand.** Every session reads only the hot set
   (`START-HERE.md`, this file, `STATE.md`, `CLAUDE.md`; 450 lines in
-  all), then follows links to what its task needs. Never read a
-  folder whole.
+  all [unverified, V-014]), then follows links to what its task
+  needs. Never read a folder whole.
 - **One fact, one home.** A fact lives in one doc; others link to it
   or cite the decision number instead of restating it.
 - **Digest, then delete.** Raw material (`inbox/`, `research/`, old
@@ -110,15 +120,17 @@ files get skimmed. So:
   past versions, no commented-out code. To find something deleted:
   `git log --all -- <path>`.
 - **Code too.** `game/README.md` says what the build is and assumes
-  now, not a history of steps (220 lines). A script over 600 lines is
-  split before more is added. Sketch code that's replaced is deleted,
-  not kept beside the new version.
+  now, not a history of steps (220 lines). A script over 600 lines
+  [unverified, V-015] is split before more is added. Sketch code
+  that's replaced is deleted, not kept beside the new version.
 - **Nothing generated is committed**: screenshots, builds, packs.
 
-`check.py` warns when a folder holds too many files, the hot set or a
-script is too long, or a doc is over its budget below. A warning is a
-job for the next Cleanup session (`kit/sessions/cleanup.md`), and
-over budget means split or cut, never raise the limit.
+`check.py` warns when a folder holds too many files [unverified,
+V-016], the hot set or a script is too long, or a doc is over its
+budget below. A warning is a job for the next Cleanup session
+(`kit/sessions/cleanup.md`) or, for code, the next Build session. Over
+budget means split or cut; a limit changes only on evidence, in a
+Verifier session, never to make a file fit.
 
 | File | Lines |
 |---|---|

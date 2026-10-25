@@ -45,6 +45,11 @@ HOT_SET_LINES = 450
 GAME_README_LINES = 220
 SCRIPT_LINES = 600
 SCRIPT_GLOBS = ["game/**/*.gd", "rust/*/src/*.rs"]
+# A Cleanup session at least every this many other sessions, counted by
+# commit subjects ("<Session type>: ...", RULES section 1).
+SESSIONS_PER_CLEANUP = 3
+SESSION_TYPES = ["Brain", "Drafter", "Red team", "Research", "Verifier",
+                 "Gate review", "Build", "Setup"]
 # Copied unchanged from Driftloom, so split there, not here.
 SCRIPT_EXEMPT = ["rust/driftloom-godot/src/notelist.rs"]
 

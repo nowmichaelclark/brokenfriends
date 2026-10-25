@@ -2,7 +2,7 @@
 
 Technical claims waiting for a Verifier session (`kit/sessions/verifier.md`).
 One line each: number, claim, where it's used, how to confirm. Ticked
-items are cleared by Cleanup. Next number: V-014.
+items are cleared by Cleanup. Next number: V-017.
 
 ## Open
 
@@ -19,6 +19,9 @@ items are cleared by Cleanup. Next number: V-014.
 - [x] V-011: **True.** Godot 4.7.1-stable downloaded and run, 2026-10-24. The current stable Godot is 4.7.1. (first chat) Confirm on: godotengine.org.
 - [ ] V-012: In Trauma Center (DS), the player does the cutting and stitching directly with the stylus. (00-vision/pitch.md) Confirm in: game reviews or a playthrough.
 - [ ] V-013: The Nightmare Before Christmas is stop-motion; 9 is computer-animated, not stop-motion; check how Tim Burton was involved in each. (00-vision/pitch.md) Confirm in: the films' production notes.
+- [ ] V-014: Files an AI session must read in full should stay short (the hot set capped near 450 lines in all; docs at their RULES section 6 budgets), because models attend less well to the middle of long contexts and instruction files that grow long get followed less reliably. (kit/RULES.md section 6) Confirm in: Anthropic's guidance on CLAUDE.md and context, and research on long-context recall ("lost in the middle").
+- [ ] V-015: Code files around 600 lines or less are easier for AI coding agents to read and edit correctly than files over 1,000 lines. (kit/RULES.md section 6) Confirm in: Anthropic's Claude Code best practices and other agent-tool guidance; say if no good evidence exists and the number is a judgment call.
+- [ ] V-016: Deleting digested raw notes and relying on git history loses nothing that can't be recovered, and keeping a few files per folder (inbox 4, log 6, reviews 3, research 6) is a reasonable cap. (kit/RULES.md section 6) Confirm in: git documentation; for the caps, say whether any evidence exists or they are judgment calls.
 
 ## Done
 

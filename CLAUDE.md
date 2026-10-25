@@ -5,9 +5,10 @@ project lives in `game/`.
 
 ## Planning sessions
 
-Read `plan/START-HERE.md` and `plan/kit/RULES.md` before anything else.
-Your session type and task come from Mikey's message; the matching
-brief is in `plan/kit/sessions/`. Paths inside the plan docs are
+Read `plan/START-HERE.md`, `plan/kit/RULES.md` and `plan/STATE.md`
+before anything else. "Run S-NNN" means the agenda row in `STATE.md`;
+its type names the brief in `plan/kit/sessions/` (Build sessions:
+`build.md`). Paths inside the plan docs are
 relative to `plan/`.
 
 Differences from chat sessions:
@@ -15,7 +16,9 @@ Differences from chat sessions:
 - Edit files directly instead of returning `=== FILE ===` blocks.
 - Run `python3 plan/kit/tools/check.py` before you finish, and fix what
   it reports in the files you touched.
-- Commit once per session: `<Session type>: <what changed>`.
+- Commit once per session: `<Session type>: <what changed>` (`check.py`
+  counts these to pace Cleanup sessions). `git pull --rebase` before
+  pushing; other sessions may be running in tandem.
 - Agents for some session types live in `.claude/agents/`.
 
 ## Game code

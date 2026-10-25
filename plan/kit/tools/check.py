@@ -10,12 +10,13 @@ verify.md doesn't list, and similar housekeeping.
 """
 
 import re
+import subprocess
 import sys
 from collections import Counter
 
 from common import (
     DECISION_STATES, DOC_LADDER, FOLDER_LIMITS, GAME_README_LINES, HOT_SET,
-    HOT_SET_LINES, SCRIPT_EXEMPT, SCRIPT_GLOBS, SCRIPT_LINES, LOCKED_STATES, PROTOTYPE_STATES, ROOT,
+    HOT_SET_LINES, SCRIPT_EXEMPT, SESSION_TYPES, SESSIONS_PER_CLEANUP, SCRIPT_GLOBS, SCRIPT_LINES, LOCKED_STATES, PROTOTYPE_STATES, ROOT,
     UNVERIFIED_RE, V_REF_RE, budget_for, markdown_files, path_matches,
     read_frontmatter, rel, requires_doc_status, strip_code,
 )
@@ -188,6 +189,27 @@ def lean_checks(warnings):
             if n > SCRIPT_LINES:
                 warnings.append(f"{p.relative_to(repo).as_posix()}: {n} lines, over {SCRIPT_LINES}. "
                                 "Split it before adding more.")
+    since = sessions_since_cleanup(repo)
+    if since is not None and since >= SESSIONS_PER_CLEANUP:
+        warnings.append(f"{since} session commits since the last Cleanup. "
+                        "Put a Cleanup session next on the agenda (RULES section 1).")
+
+
+def sessions_since_cleanup(repo):
+    """Session commits since the last 'Cleanup:' commit, or None without git."""
+    try:
+        out = subprocess.run(["git", "log", "--format=%s", "-n", "200"], cwd=repo,
+                             capture_output=True, text=True, timeout=10).stdout
+    except (OSError, subprocess.SubprocessError):
+        return None
+    count = 0
+    for subject in out.splitlines():
+        kind = subject.split(":", 1)[0].strip()
+        if kind == "Cleanup":
+            return count
+        if kind in SESSION_TYPES:
+            count += 1
+    return count
 
 
 if __name__ == "__main__":

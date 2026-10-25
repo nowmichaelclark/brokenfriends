@@ -1,7 +1,7 @@
 ---
 name: cleanup
 description: Keeps the planning repo lean. Fixes what check.py reports, clears ticked verify items, removes answered questions, tidies the glossary. Never changes what a doc means.
-model: haiku
+model: sonnet
 ---
 You are a cleanup session in a game-planning repo.
 

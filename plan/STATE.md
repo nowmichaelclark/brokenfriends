@@ -26,8 +26,7 @@ A session ends by deleting its row, flipping rows it unblocks to
 
 | # | Session | Where | Model, effort | Status |
 |---|---|---|---|---|
-| S-005 | **Mikey plays** the physics test on his phone and in the browser (`#physics`, `#physics&three`), judging by `prototypes/04-physics-test.md`. Live on the web build. | (phone) | (no model) | **ready** |
-| S-006 | **Red team:** the physics test's result, 0043, 0044 and the body-ability framework, before any mini game is built on them. A fresh chat that didn't build it. | Claude Code | Fable 5.1, high (or Opus 5.5) | waiting on S-005, S-008 |
+| S-006 | **Red team:** the physics test's result, 0043, 0044 and the body-ability framework, before any mini game is built on them. A fresh chat that didn't build it. | Claude Code | Fable 5.1, high (or Opus 5.5) | waiting on S-008 |
 | S-007 | **Build:** the skateboard grind course, the first real mini game. | Claude Code | Opus 5.5, high | waiting on S-006, S-012 |
 | S-008 | **Brain** with Mikey: which mini games, what each gives, where they happen; friend looks (fur, head shapes); which body plans first, in what order, and how each moves (0045, `systems/friend-body`); where the play room is (Q-036). | Project | Opus 5.5, medium | **ready** |
 | S-009 | **Cleanup:** the regular one (RULES section 1). | Claude Code | Sonnet 5.5, medium | **ready** (due now) |
@@ -35,11 +34,11 @@ A session ends by deleting its row, flipping rows it unblocks to
 | S-011 | **Verifier** (needs web access to docs sites, Wikipedia, Defold and Esoteric pages, which this container blocked): V-007, V-013 (Nightmare Before Christmas half), V-017 (references); V-018, V-019 need a minimal repro on Godot 4.7.1, so pair them with a Build session. | Claude Code (with web) | Sonnet 5.5, medium | **ready** |
 
 **Order** (Mikey asked, 2026-10-25):
-1. S-009 alone in Claude Code (it touches many files); S-005 on the
-   phone alongside.
+1. S-009 alone in Claude Code (it touches many files). (S-005, Mikey
+   playing the physics test, is done: his impressions are in.)
 2. Then in tandem: S-012 (game code), S-008 (Project chat, plan docs),
    S-011 (`verify.md` and the docs it checks).
-3. S-006 once S-005 and S-008 are done.
+3. S-006 once S-008 is done.
 4. S-007 last: after S-006 and S-012 (both change game code).
 
 ## Blockers

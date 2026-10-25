@@ -75,7 +75,10 @@ in the neck". He chose: fix the snag, and let a very hard hit on the
 neck count as a pull on its seam, with the neck taking more pulls than
 a limb (0025), so heads come off rarely and only after a hard hit. The
 snag is likely the board overlapping the gap at the joint [unverified,
-V-020]. Full ten minutes still to come (S-005). Open `#physics` (`&three` for three friends, `&perf`
+V-020]. That counts as the play (S-005). Not reported: whether tiny,
+huge, soaked and legless friends felt different, whether tearing felt
+fair, and smoothness with three friends on the phone (S-012's stress
+test covers speed). Open `#physics` (`&three` for three friends, `&perf`
 for speed); `game/README.md` says what it does and lists every guess
 (weights, bounce, swing, what counts as a hard landing).
 

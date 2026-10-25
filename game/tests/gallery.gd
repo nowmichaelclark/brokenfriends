@@ -18,6 +18,9 @@ func _ready() -> void:
 	cam.position = Vector2(360, 640)
 	add_child(cam)
 	cam.make_current()
+	if Flags.has("by_plan"):
+		await _by_plan()
+		return
 	var friends: Array[FriendData] = []
 	for i in 20:
 		friends.append(FriendData.test_friend(1000 + i * 37))
@@ -70,3 +73,33 @@ func _shoot(name: String) -> void:
 		return
 	await RenderingServer.frame_post_draw
 	get_viewport().get_texture().get_image().save_png(out_dir.path_join(name + ".png"))
+
+
+## Nine friends of each body plan, one picture per plan (`by_plan`).
+func _by_plan() -> void:
+	var buckets := {}
+	for plan in Looks.PLANS:
+		buckets[plan] = []
+	var seed_value := 2000
+	while buckets.values().any(func(b): return b.size() < 9):
+		var f := FriendData.test_friend(seed_value)
+		var plan: String = f.hl("plan")
+		if buckets[plan].size() < 9:
+			buckets[plan].append(f)
+		seed_value += 1
+	for plan in buckets:
+		var views: Array = []
+		for i in 9:
+			var v := FriendView.new()
+			v.bake_detail = 1.2
+			v.scale = Vector2(0.5, 0.5)
+			v.position = Vector2(130 + (i % 3) * 230, 260 + (i / 3) * 380)
+			add_child(v)
+			v.setup(buckets[plan][i])
+			views.append(v)
+		await _shoot("plan_" + plan)
+		for v in views:
+			v.queue_free()
+	print("GALLERY OK")
+	if not OS.has_feature("web"):
+		get_tree().quit(0)

@@ -24,3 +24,30 @@ actual mini game) apart from surgery and sending creatures out on
 quests. We would want to do some planning and brainstorming though
 about what would be some good mini game ideas to add: always the
 objective should be mini games that are the most fun."
+
+## Answers to Claude's first mini game list (same day)
+
+Claude listed: fishing, tower of friends, run the route, keepy-uppy,
+trampoline, jam session, patchwork puzzle, hide and seek.
+
+Mikey: "Yes, I love all of these mini games ideas! Some should increase
+stats, some should give prizes, some should do both. Yes, a mini game
+could hurt a friend.
+
+I like doing run the route as different routes as well: one route mini
+game could be cross the river, frogger style, another could be climb
+over the rocks or swing across the gaps, etc. There are all sorts of
+interesting route mini games we could come up with.
+
+Also, I would love two skateboarding mini games: one is an obstacle and
+grinding course like olli Olli and one is a half pipe where friends can
+practice their tricks on and go for high scores.
+
+I'm thinking we should have many mini games like this now. But, we
+need a strong framework also. For instance a tiny friend and a huge
+friend should both be able to play the same mini games. A friend with
+no legs could still play too, but maybe some mini games wouldn't be
+possible with no legs. Still, it would be fun if a friend with no legs
+could at least try a skateboarding grinding mini game.
+
+But also, we need to be thinking about the physics of the bodies, etc."

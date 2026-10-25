@@ -24,6 +24,12 @@ and how much stuffing it has, and how each changes over time.
 - Claude's suggestion: wet means heavier and slower; staying wet too
   long grows mold.
 
+- Health reads from the body alone: shaking, a moving mouth, sad eyes,
+  mud, mold (recording 2, 2026-10-24).
+- Camps wear too: mud in a muddy place, soot in a volcanic one; the
+  starting camp stays easy (recording 1). Bugs, worms, water, mold and
+  rust threaten the chip brain (0028).
+
 ## First questions
 
 - Is condition ever permanent, or can everything be repaired?

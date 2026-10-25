@@ -44,6 +44,10 @@ that follows the game's state, and sound effects.
 - Before that, the game must run smoothly on weak phones (Moto G Power
   2022 and weaker), or live music would make it worse.
 
+- Every friend's voice must sound unique, across thousands, ideally
+  10,000 or more, so voices need the same weighted generation as looks
+  (recording 2, 2026-10-24).
+
 ## First questions
 
 - Which game states map to which music settings?

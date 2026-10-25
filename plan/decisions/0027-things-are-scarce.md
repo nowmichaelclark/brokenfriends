@@ -15,7 +15,7 @@ care for most, and a neglected friend may die.
 
 ## Context
 
-Recording 2 (`inbox/2026-10-24-recording-2-part1.md` and `-part2.md`), confirmed point by point on 2026-10-25. Mikey: "stuffing shouldn't just be something the player
+Recording 2 (the 2026-10-24 recording (digested; see git history)), confirmed point by point on 2026-10-25. Mikey: "stuffing shouldn't just be something the player
 has an infinite amount of, or like the oil... So the player is going
 to have to pick and choose maybe like which friends to really take
 care of."

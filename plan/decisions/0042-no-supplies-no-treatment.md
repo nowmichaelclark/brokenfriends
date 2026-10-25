@@ -15,7 +15,7 @@ supplies are found, on a quest or brought by a newcomer.
 
 ## Context
 
-Gate A (`reviews/2026-10-25-gate-a.md`) found that scarcity (0027) could
+Gate A (review of 2026-10-25, deleted once its fixes were made; see git history) found that scarcity (0027) could
 leave rot the player can't treat, against pillar 5, and proposed a basic
 remedy that never runs out (Q-031). Mikey: "No, sometimes you cannot
 treat things if you don't have what is needed like thread or mold

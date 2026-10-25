@@ -22,7 +22,7 @@ Playing the sketch, Mikey found only the rotten leg came off: "even
 healthy limbs a player should be able to pull off". Q-016 asked whether
 a donor suffers: "the creature you took the part from is going to be at
 a disadvantage usually in some way... it sort of hops on one leg."
-Recording 2 (`inbox/2026-10-24-recording-2-part1.md` and `-part2.md`), confirmed point by point on 2026-10-25.
+Recording 2 (the 2026-10-24 recording (digested; see git history)), confirmed point by point on 2026-10-25.
 
 ## Why
 

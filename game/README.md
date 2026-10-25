@@ -10,7 +10,7 @@ plans lead; the build is evidence about feel, never a reason.
 ## What's in it now: the first five minutes
 
 Built from Mikey's recording of 2026-10-24
-(`plan/inbox/2026-10-24-recording-1.md`).
+(recording 1, 2026-10-24, digested; see git history).
 
 **In the tent**
 - A sick friend, passed out and shaking, front-on. Mud, a rotting

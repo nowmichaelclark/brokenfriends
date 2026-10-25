@@ -27,6 +27,18 @@ its skeleton, and how it moves, flops and comes apart.
 - Squishiness will likely need to be faked with springs or a wobble
   effect [unverified].
 
+- Insides (recording 1, 2026-10-24): mostly fluff; maybe robotic
+  bones or hydraulic ligaments full of colored liquid that spills when
+  a part comes off; a heart or battery in the chest (stamina, strength,
+  mood); a chip brain in the head (0026); a voice box, so a friend that
+  can't speak needs surgery. Insides follow what is fun to cut, pull
+  and spill.
+- Build shows in motion (recording 2, 2026-10-24): thin friends wobble
+  as they walk, fat ones bounce; thin long ears droop and swing, thick
+  ones answer differently; dry joints squeak until oiled.
+- Quality varies: better limbs, buttons, capes and accessories change
+  what a friend suits (recording 1).
+
 ## First questions
 
 - What is a "part", and what is a "seam"?

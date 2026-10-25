@@ -22,7 +22,7 @@ superseded_by:
 
 ## Context
 
-Q-018 (scope of camps and the open world) and Q-019 (story). Recording 2 (`inbox/2026-10-24-recording-2-part1.md` and `-part2.md`), confirmed point by point on 2026-10-25.
+Q-018 (scope of camps and the open world) and Q-019 (story). Recording 2 (the 2026-10-24 recording (digested; see git history)), confirmed point by point on 2026-10-25.
 Mikey also dropped one proposal: limits on moving friends between camps.
 
 ## Why

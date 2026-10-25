@@ -18,7 +18,7 @@ superseded_by:
 
 ## Context
 
-Recording 2 (`inbox/2026-10-24-recording-2-part1.md` and `-part2.md`), confirmed point by point on 2026-10-25. Mikey: "I think it's almost kind of charming to only have
+Recording 2 (the 2026-10-24 recording (digested; see git history)), confirmed point by point on 2026-10-25. Mikey: "I think it's almost kind of charming to only have
 like the front view mainly and the back view." On surgery: "they should
 lay down... it'll make it easier for us to kind of have more tools for
 the surgery."

@@ -29,6 +29,17 @@ learn new skills) by playing.
 - References: Nintendogs; Chao Garden and Monster Rancher for stats
   that grow.
 
+- The play corner (recording 1, 2026-10-24): a small corner of the
+  tent where a friend sits, sleeps, and plays with a ball or a small
+  skateboard; later more toys (Mikey: "we could have say 100 toys").
+- Toys need more than one interaction (recording 2): a ball hits the
+  whole body, a foot sometimes kicks it back, a trained friend still
+  drops it; friends could throw and kick it to each other. A
+  trampoline lets a friend trip at first and bounce high later.
+- Skill numbers stay mostly hidden; casual players just play (0033).
+- Friends speak in noises that sound like talk but aren't, R2-D2
+  style, not robotic voices (recording 1).
+
 ## First questions
 
 - Which skills and stats exist, and what does each change on quests?

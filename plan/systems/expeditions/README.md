@@ -24,6 +24,10 @@ terrain, carrying, what can go wrong, time away and the rewards.
 - Claude's suggestions: Pikmin-style weight affecting speed; expeditions
   that run while the app is closed, like Fallout Shelter.
 
+- Players may carry only one friend to another camp, with slots
+  unlocked later (maybe up to three), so friends stay behind to keep
+  camps clean; Mikey may scrap this (recording 2, 2026-10-24).
+
 ## First questions
 
 - Does the player watch or control a delivery, or only send and wait?

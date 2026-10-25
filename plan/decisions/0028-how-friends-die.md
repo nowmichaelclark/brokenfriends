@@ -19,12 +19,12 @@ superseded_by:
 
 ## Context
 
-Recording 2 (`inbox/2026-10-24-recording-2-part1.md` and `-part2.md`), confirmed point by point on 2026-10-25. Mikey: "It shouldn't necessarily be easy for it to die
+Recording 2 (the 2026-10-24 recording (digested; see git history)), confirmed point by point on 2026-10-25. Mikey: "It shouldn't necessarily be easy for it to die
 because these are creatures that players are going to get attached to...
 But at the same time, it should definitely be able to die and it should
 be a, we could say, a semi-regular part of a normal player's
 experience." The time-away rules are his answer recorded in
-`inbox/2026-10-24-mikey-answers.md`, confirmed.
+Mikey's 2026-10-24 answers (digested; see git history), confirmed.
 
 ## Why
 

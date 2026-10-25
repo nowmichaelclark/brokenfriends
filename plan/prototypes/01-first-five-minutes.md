@@ -16,7 +16,7 @@ the friend is doing (pillar 1)?
 
 ## Smallest build
 
-The first five minutes from `inbox/2026-10-24-recording-1.md`: one
+The first five minutes from the 2026-10-24 recording 1, digested; see git history: one
 friend in the tent, tearing the rotting leg, the bin, the spare in a
 pocket, a four-layer surgery, the dangling eye, sponge, towel, stuffing,
 oil, poke, tickle, pet, and the play corner with a ball they learn to

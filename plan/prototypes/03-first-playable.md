@@ -100,4 +100,4 @@ Not played yet.
 
 ## What changed in the docs
 
-Gate A (`reviews/2026-10-25-gate-a.md`) cut the first playable's scope.
+Gate A (review of 2026-10-25, deleted once its fixes were made; see git history) cut the first playable's scope.

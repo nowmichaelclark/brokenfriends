@@ -21,7 +21,7 @@ superseded_by:
 
 ## Context
 
-Recording 2 (`inbox/2026-10-24-recording-2-part1.md` and `-part2.md`), confirmed point by point on 2026-10-25. Q-017 asked about keepsakes and rebuilding from a dead
+Recording 2 (the 2026-10-24 recording (digested; see git history)), confirmed point by point on 2026-10-25. Q-017 asked about keepsakes and rebuilding from a dead
 friend. Mikey: "you take another creature and you rip its head off.
 And the creature whose personality you like, you put its head on the
 other creature's body."

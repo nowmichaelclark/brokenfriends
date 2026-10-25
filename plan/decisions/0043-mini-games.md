@@ -22,7 +22,7 @@ games that are the most fun." On Claude's list (fishing, tower of
 friends, run the route, keepy-uppy, trampoline, jam session, patchwork
 puzzle, hide and seek): "Yes, I love all of these... Some should
 increase stats, some should give prizes, some should do both. Yes, a
-mini game could hurt a friend." (`inbox/2026-10-25-friend-looks-and-minigames.md`)
+mini game could hurt a friend." (the 2026-10-25 looks and mini games note, digested; see git history)
 
 ## Why
 

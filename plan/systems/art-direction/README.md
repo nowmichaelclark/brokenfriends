@@ -27,6 +27,12 @@ animated, and how wetness, mold and tears show.
   (decision 0037). Front and back views only (0031). Visual
   touchstones also include *Frankenstein*.
 
+- The sketch's friends read as 2D paper dolls; wanted: many head shapes
+  and sizes, silly, demon, ghost and alien looks, fur of different
+  lengths on some parts or all over, and hair with its own physics
+  like Sally's (recording 2, 2026-10-24; looks note, 2026-10-25). Parts
+  such as ears, noses and eyes must also detach and swap.
+
 ## First questions
 
 - How is a friend generated so that parts still fit when swapped

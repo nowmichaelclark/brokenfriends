@@ -10,7 +10,7 @@ tests: [friend-body, play, platforms-tech]
 Are friends fun to push, fling and watch fall over as soft ragdolls
 (head, body, arms and legs joined by springy seams), and does that run
 smoothly on Mikey's Moto G Power 2022 and in its browser? Every mini
-game will stand on this (`inbox/2026-10-25-friend-looks-and-minigames.md`,
+game will stand on this (the 2026-10-25 looks and mini games note, digested; see git history,
 proposed 0043 and 0044), so it comes first.
 
 ## Smallest build

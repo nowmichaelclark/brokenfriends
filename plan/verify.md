@@ -2,7 +2,7 @@
 
 Technical claims waiting for a Verifier session (`kit/sessions/verifier.md`).
 One line each: number, claim, where it's used, how to confirm. Ticked
-items are cleared by Cleanup. Next number: V-017.
+items are cleared by Cleanup. Next number: V-019.
 
 ## Open
 
@@ -22,6 +22,8 @@ items are cleared by Cleanup. Next number: V-017.
 - [ ] V-014: Files an AI session must read in full should stay short (the hot set capped near 450 lines in all; docs at their RULES section 6 budgets), because models attend less well to the middle of long contexts and instruction files that grow long get followed less reliably. (kit/RULES.md section 6) Confirm in: Anthropic's guidance on CLAUDE.md and context, and research on long-context recall ("lost in the middle").
 - [ ] V-015: Code files around 600 lines or less are easier for AI coding agents to read and edit correctly than files over 1,000 lines. (kit/RULES.md section 6) Confirm in: Anthropic's Claude Code best practices and other agent-tool guidance; say if no good evidence exists and the number is a judgment call.
 - [ ] V-016: Deleting digested raw notes and relying on git history loses nothing that can't be recovered, and keeping a few files per folder (inbox 4, log 6, reviews 3, research 6) is a reasonable cap. (kit/RULES.md section 6) Confirm in: git documentation; for the caps, say whether any evidence exists or they are judgment calls.
+- [ ] V-017: In Godot 4.7.1's built-in 2D physics, PinJoint2D's angular limits pulled a ragdoll's seams far apart on landing (up to 18 part widths; under 1 without them). Engine bug, or our misuse? (prototypes/04-physics-test.md) Confirm in: Godot's PinJoint2D docs and issue tracker.
+- [ ] V-018: In Godot 4.7.1, continuous collision detection (cast ray) on jointed RigidBody2D parts made a ragdoll bounce back faster than it landed (about 1.1 to 1.4 times); without it about 0.1. (prototypes/04-physics-test.md) Confirm in: Godot's issue tracker.
 
 ## Done
 

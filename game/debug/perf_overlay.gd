@@ -29,9 +29,10 @@ func _process(delta: float) -> void:
 	_log_t += delta
 	if _t >= 1.0:
 		var avg_ms := _sum / _frames * 1000.0
-		var text := "fps %d  avg %.1f ms  worst %.1f ms\nscript %.1f ms  music %.2f ms/frame\ndraw calls %d  objects %d" % [
+		var text := "fps %d  avg %.1f ms  worst %.1f ms\nscript %.1f ms  physics %.1f ms  music %.2f ms/frame\ndraw calls %d  objects %d" % [
 			Engine.get_frames_per_second(), avg_ms, _worst * 1000.0,
 			Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0,
+			Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0,
 			Music.cost_ms(),
 			Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
 			Performance.get_monitor(Performance.OBJECT_COUNT)]

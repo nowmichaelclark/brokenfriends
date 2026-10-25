@@ -20,6 +20,12 @@ func _ready() -> void:
 		g.out_dir = gallery if gallery != "none" else ""
 		add_child(g)
 		return
+	if Flags.has("physics"):
+		# The physics test (prototype 4), on its own.
+		add_child(PhysicsPlay.new())
+		if Flags.has("perf"):
+			add_child(load("res://debug/perf_overlay.gd").new())
+		return
 	if Flags.has("empty"):
 		# Debug: nothing but the engine, to measure its own cost per frame.
 		add_child(load("res://debug/perf_overlay.gd").new())

@@ -21,10 +21,14 @@ live (land and water), including what each place does to them.
 - Friends that thrive in water and friends that thrive on land.
 - Claude's suggestion: store each species as a data file (Godot calls
   these Resources), so a new species means filling in values, not
-  writing code [unverified].
+  writing code (V-002).
 
 ## First questions
 
 - How many species at first playable?
 - How does a stuffed friend thrive in water?
 - Can species mix or breed?
+
+## Sources
+
+- Godot docs, "Resources" (godot-docs `tutorials/scripting/resources.rst`, master branch, checked 2026-10-25): the Inspector creates and edits custom Resource files, saved as `.tres`. V-002.

@@ -18,7 +18,7 @@ test (`prototypes/04-physics-test.md`) came first; it is built and live.
 How it works: `kit/RULES.md` section 1. Mikey starts a session by
 saying "Run S-NNN" in a new chat of the kind, model and effort shown.
 A session ends by deleting its row, flipping rows it unblocks to
-**ready**, and adding follow-ups at the bottom. Next number: S-011.
+**ready**, and adding follow-ups at the bottom. Next number: S-012.
 
 | # | Session | Where | Model, effort | Status |
 |---|---|---|---|---|
@@ -28,9 +28,9 @@ A session ends by deleting its row, flipping rows it unblocks to
 | S-007 | **Build:** the skateboard grind course, the first real mini game. | Claude Code | Opus 5.5, high | waiting on S-006 |
 | S-008 | **Brain** with Mikey: which mini games, what each gives, where they happen; friend looks (fur, head shapes). | Project | Opus 5.5, medium | waiting on S-004 |
 | S-009 | **Cleanup:** the regular one (RULES section 1). | Claude Code | Sonnet 5.5, medium | waiting until `check.py` says one is due |
-| S-010 | **Verifier:** V-002, V-006, V-007, V-012, V-013 (engine and film claims left open), V-017 (references), and V-018, V-019 (two Godot 4.7.1 physics settings the physics test had to switch off: engine bugs, or our use?). | Claude Code | Sonnet 5.5, medium | **ready** |
+| S-011 | **Verifier** (needs web access to docs sites, Wikipedia, Defold and Esoteric pages, which this container blocked): V-007, V-013 (Nightmare Before Christmas half), V-017 (references); V-018, V-019 need a minimal repro on Godot 4.7.1, so pair them with a Build session. | Claude Code (with web) | Sonnet 5.5, medium | **ready** |
 
-**In tandem now:** S-010, S-005 and S-004 (whenever Mikey wants);
+**In tandem now:** S-005 and S-004 (whenever Mikey wants);
 they touch different files.
 
 ## Blockers

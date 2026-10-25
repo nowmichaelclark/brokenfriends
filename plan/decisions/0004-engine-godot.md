@@ -20,7 +20,7 @@ with Defold as the only serious alternative.
 ## Why
 
 - Built-in tools for what this game needs: 2D skeletons with
-  deformable skins, joints, shaders and particles [unverified, V-006].
+  deformable skins, joints, shaders and particles (V-006).
 - Exports to Android, iOS, web, Windows, Linux and Mac from one project.
 - Large community and well documented; Claude Code works well with
   its text-based scenes and scripts.
@@ -41,3 +41,7 @@ Web builds use the Compatibility renderer (V-003, verified) and run
 noticeably slower than native builds. Driftloom's Rust core would join
 through Godot's extension system, which needs testing on web
 [unverified, V-008].
+
+## Sources
+
+- Godot 4.7.1-stable class reference (`doc/classes/` in godotengine/godot): Skeleton2D, Bone2D, Polygon2D (bones and weights), PinJoint2D, ShaderMaterial, CPUParticles2D, GPUParticles2D all exist; docs "2D skeletons" describes the skin deformation. Checked 2026-10-25. V-006.

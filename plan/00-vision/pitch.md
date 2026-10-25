@@ -39,7 +39,7 @@ by the player (decision 0011).
 
 The player is given a friend with a rotting leg. The player rips the
 leg off themselves (direct and hands-on, like Trauma Center on the DS
-[unverified, V-012]), then sews on a replacement. They feed it, care
+V-012), then sews on a replacement. They feed it, care
 for it and poke it, and watch it react.
 
 Repair is shown before any menu.
@@ -92,3 +92,7 @@ play goes on after (0035).
   designed.
 - The part system is decided in outline (0025, 0026, 0027), not
   designed.
+
+## Sources
+
+- Trauma Center: Under the Knife (DS, 2005): the stylus is the scalpel, suture and other tools (Wikipedia, GamesFirst and PocketGamer pages, seen through search results only, checked 2026-10-25). V-012.

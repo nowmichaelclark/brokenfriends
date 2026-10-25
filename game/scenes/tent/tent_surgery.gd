@@ -1,7 +1,8 @@
 class_name TentSurgery
 extends RefCounted
 ## Sewing in the tent, on the surgery table (decision 0031): a part
-## onto a wound, the dangling eye back in place, a head onto a body.
+## onto a wound, a hole sewn shut, the dangling eye back in place, a
+## head onto a body. The friend stays upright; the camera comes close.
 
 var t: Tent
 
@@ -27,7 +28,7 @@ func start_head(head: FriendData) -> void:
 	t.mode = "surgery"
 	var neck := t.friend.socket("neck")
 	t.friend.surgery = {"slot": "neck", "neck": true, "step": "sew", "done": 0, "points": _seam_points("neck")}
-	t.to_table(neck, 3.2)
+	t.rooms.surgery_zoom(neck, 3.2)
 	t.parts.show_spare()
 	t.build_bench()
 	Save.mark_dirty()
@@ -52,8 +53,21 @@ func _continue_swap() -> void:
 func start(slot: String, part: PartData) -> void:
 	t.mode = "surgery"
 	t.hud.spare_visible = false
+	# Onto a hole sewn shut: the old stitches are cut open first.
+	if not t.friend.wounds.has(slot):
+		t.friend.wounds[slot] = t.friend.make_tufts()
 	t.friend.surgery = {"slot": slot, "part": part, "step": "fluff", "points": [], "done": 0}
-	t.to_table(t.friend.socket(slot) + Vector2(0, 40), 3.2)
+	t.rooms.surgery_zoom(t.friend.socket(slot) + Vector2(0, 40), 3.2)
+	Voice.pop()
+
+
+## Sew a hole shut where a part is missing (Mikey's playtest notes):
+## pull away the loose fluff, then sew across. The friend lives on
+## without that part, and nothing leaks or rots there any more.
+func start_shut(slot: String) -> void:
+	t.mode = "surgery"
+	t.friend.surgery = {"slot": slot, "shut": true, "step": "fluff", "points": [], "done": 0}
+	t.rooms.surgery_zoom(t.friend.socket(slot), 3.2)
 	Voice.pop()
 
 
@@ -65,7 +79,7 @@ func start_eye() -> void:
 		"slot": "eye_r", "eye": true, "step": "sew", "done": 0,
 		"points": [a + Vector2(-15, -15), a + Vector2(15, 15), a + Vector2(15, -15), a + Vector2(-15, 15)],
 	}
-	t.to_table(a, 4.0)
+	t.rooms.surgery_zoom(a, 4.0)
 
 
 func _tol() -> float:
@@ -150,8 +164,13 @@ func _pluck(l: Vector2) -> void:
 			t.fx.spawn("fluff", t.fx.to_local(t.friend.to_global(p)), 4, 6.0)
 			Voice.poof()
 	if tufts.is_empty():
-		s["step"] = "tube"
-		s["tube_end"] = _tube_rest(slot)
+		if s.get("shut", false):
+			s["step"] = "sew"
+			s["points"] = _shut_points(slot)
+			s["done"] = 0
+		else:
+			s["step"] = "tube"
+			s["tube_end"] = _tube_rest(slot)
 		Events.surgery_step.emit("fluff_cleared")
 
 
@@ -182,6 +201,15 @@ func _seam_points(slot: String) -> Array:
 	return pts
 
 
+## Across the hole, side to side: a zigzag that pulls it closed.
+func _shut_points(slot: String) -> Array:
+	var sock := t.friend.socket(slot)
+	var pts: Array = []
+	for i in 7:
+		pts.append(sock + Vector2(-27.0 + i * 9.0, -14.0 if i % 2 == 0 else 14.0))
+	return pts
+
+
 func _sew(l: Vector2) -> void:
 	var s := t.friend.surgery
 	var pts: Array = s["points"]
@@ -207,18 +235,24 @@ func _finish() -> void:
 	elif s.get("neck", false):
 		Events.part_changed.emit("head", "sewn")
 		_continue_swap.call_deferred()
+	elif s.get("shut", false):
+		Save.friend.close_hole(slot)
+		t.friend.wounds.erase(slot)
+		Events.part_changed.emit(slot, "closed")
 	else:
 		var part: PartData = s["part"]
 		part.attached = true
 		part.stitched = true
 		Save.friend.parts[slot] = part
+		Save.friend.part_sewn(slot)
 		t.friend.wounds.erase(slot)
 		Save.camp.spares.erase(part)
-	Events.part_changed.emit(slot, "sewn")
+	if not s.get("shut", false):
+		Events.part_changed.emit(slot, "sewn")
 	Events.surgery_step.emit("sewn")
 	t.friend.surgery = {}
 	t.mode = ""
-	t.off_table()
+	t.rooms.surgery_done()
 	t.friend.set_expression("squint", "open", 1.6)
 	Events.friend_reacted.emit("cheer")
 	var at := t.friend.eye_anchor("eye_r") if slot == "eye_r" else t.friend.socket(slot)

@@ -8,7 +8,8 @@ extends Node
 ## "purr", "wake", "wince", "cheer", "chomp", "glug", "bonk", "catch".
 signal friend_reacted(kind: String)
 
-## A part came off a friend ("torn" or "trashed") or went on ("sewn").
+## A part came off a friend ("torn" or "trashed"), went on ("sewn"),
+## or its hole was sewn shut ("closed").
 signal part_changed(slot: String, change: String)
 
 ## A care action changed the friend's condition ("washed", "dried",
@@ -18,7 +19,8 @@ signal cared(kind: String)
 ## A surgery step finished ("fluff_cleared", "ligament", "soaked", "sewn").
 signal surgery_step(step: String)
 
-## The player moved between places ("tent", "play_corner").
+## The player moved between places ("entrance", "grooming", "table",
+## "play_room", "map", "physics").
 signal place_changed(place: String)
 
 ## A new friend came to camp (its index in `Save.camp.friends`).

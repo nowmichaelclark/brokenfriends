@@ -23,6 +23,10 @@ species.
 tools and tents. A friend that is not on a quest is at camp. *Owned
 by:* no system yet. *Not to be confused with:* habitat, expedition.
 
+**Dev menu**: the dev release's menu of every mini game and test
+friend, reached from the entrance; words are fine there (0045).
+*Owned by:* ui-ux.
+
 **Donation**: moving a part from one friend to another: a rotting
 limb replaced, or a healthy spare part given. The donor is left without
 the part (0025). A sewn part is permanent (0011). *Owned by:* no system yet. *Not to be confused with:*
@@ -59,6 +63,10 @@ to be confused with:* repair.
 feeding, minigames, watching it react. The preferred word over
 "train". *Owned by:* no system yet.
 
+**Play room**: a room at camp where friends wander and play together,
+the camera zooming in and out (Mikey, Q-036). *Owned by:* play. *Not
+to be confused with:* mini game.
+
 **Quest**: a task a friend is sent on and comes back from changed.
 *Owned by:* no system yet. *Not to be confused with:* minigame.
 
@@ -74,6 +82,11 @@ by:* no system yet. *Not to be confused with:* donation.
 enough, and the part comes off (0025). The physics test also counts a
 hard landing as a pull (a guess, prototype 4). *Owned by:* no system
 yet. *Not to be confused with:* stitches (the thread of a repair).
+
+**Sewn shut**: a hole where a part is missing, closed with thread: the
+friend lives on without the part, and nothing leaks or rots there
+(Mikey, 2026-10-25). *Owned by:* friend-body. *Not to be confused
+with:* donation, repair.
 
 ## Planning terms
 

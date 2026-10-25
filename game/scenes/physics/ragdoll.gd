@@ -4,9 +4,10 @@ extends Node2D
 ## are each a body in Godot's built-in 2D physics (decision 0005),
 ## pinned together at the seams. The friend's data sets the physics:
 ## stuffing its weight and bounce, wetness more weight. A limb that
-## hits something hard counts as a hard pull on its seam (decision
-## 0025), so a loose seam tears, and the torn part stays torn in the
-## friend's data.
+## hits something hard, or is hit hard, counts as a hard pull on its
+## seam (decision 0025), so a loose seam tears, and the torn part stays
+## torn in the friend's data. The neck takes only very hard hits, and
+## more of them.
 ## Each part is drawn once into a picture and then only moved (Baked).
 
 ## Friend units to pixels, at size 1.
@@ -18,10 +19,17 @@ const LIMBS := ["arm_l", "arm_r", "leg_l", "leg_r"]
 const MASS := {"body": 1.0, "head": 0.6, "arm": 0.12, "leg": 0.18}
 ## How hard gravity pulls, times the engine's default.
 const GRAVITY := 2.0
-## How fast a part must be going when something stops it (pixels a
-## second) for the landing to count as a hard pull on its seam. A drop
-## from the top of the screen lands at about 1700.
+## How hard a part must be hit (pixels a second: the speed at which it
+## and what it touched met) to count as a hard pull on its seam. A drop
+## from the top of the screen lands at about 1700. It is the speed of
+## the two together, not the part's own, so a board hitting a still
+## friend counts too (DeepSeek review, finding 7).
 const HARD := 2500.0
+## The neck (0025, Mikey 2026-10-25): only a very hard hit on the head
+## pulls its seam, and it takes more of them than a limb, so heads come
+## off rarely.
+const NECK_HARD := 3000.0
+const NECK_PULLS := 6
 ## A change of speed within one physics step this big means it hit
 ## something.
 const JOLT := 800.0
@@ -39,15 +47,22 @@ const FLING_MAX := 4200.0
 var data: FriendData
 var size := 1.0
 var fx: FxLayer
-## "body", "head" and limb slots -> RigidBody2D.
+## "body", "head" and limb slots -> RigidBody2D, while still joined.
 var bodies: Dictionary = {}
-## Parts torn off here, by slot.
+## Parts torn off here, by slot ("neck" for the head), and their
+## bodies, which fall free and no longer count as the friend moving.
 var torn: Dictionary = {}
+var loose: Dictionary = {}
+## The friend's head. Once it comes off, `data` is the body left
+## behind and this is the friend, living on in the head (0026).
+var head_data: FriendData
 ## The fastest any limb has hit something, pixels a second (for tests
 ## and tuning).
 var max_impact := 0.0
+## The same for the head.
+var max_head_impact := 0.0
 
-## Seam name ("neck" or a limb slot) -> {joint, a, b, at_a, rest, kind, last_vel, cooldown}.
+## Seam name ("neck" or a limb slot) -> {joint, a, b, at_a, rest, kind, cooldown, last_vel}.
 var _seams: Dictionary = {}
 var _pics: Dictionary = {}
 var _grab: RigidBody2D
@@ -64,6 +79,7 @@ func k() -> float:
 ## Build the ragdoll with its body's centre at `at` (world).
 func setup(friend: FriendData, at: Vector2, friend_size := 1.0) -> void:
 	data = friend
+	head_data = friend
 	size = friend_size
 	var kk := k()
 	var s := FriendArt.body_scale(data)
@@ -77,6 +93,7 @@ func setup(friend: FriendData, at: Vector2, friend_size := 1.0) -> void:
 		var hry := FriendArt.head_ry(data)
 		var head := _make("head", _ellipse_shape(hrx * kk, hry * kk), Vector2.ZERO, MASS["head"], (hrx * hrx + hry * hry) * kk * kk / 4.0)
 		head.position = at + FriendRig.HEAD_C * kk
+		_add_collar(head, hrx, hry, rx, ry)
 		_picture("head", head, Rect2(-150, -280, 300, 430), _paint_head)
 		_seam("neck", body, head, FriendArt.socket(data, "neck") * kk, "head")
 	for slot in LIMBS:
@@ -88,6 +105,23 @@ func setup(friend: FriendData, at: Vector2, friend_size := 1.0) -> void:
 	for i in all.size():
 		for j in range(i + 1, all.size()):
 			all[i].add_collision_exception_with(all[j])
+
+
+## Fill the notch between the head's chin and the body's shoulders.
+## Two ellipses leave a wedge there, about 20 pixels wide, that a
+## skateboard's deck slid into and stuck (V-020). The collar goes with
+## the head, from the sides of its lower half down onto the shoulders.
+func _add_collar(head: RigidBody2D, hrx: float, hry: float, rx: float, ry: float) -> void:
+	var kk := k()
+	var down := -FriendRig.HEAD_C.y
+	var cs := CollisionShape2D.new()
+	var shape := ConvexPolygonShape2D.new()
+	shape.points = PackedVector2Array([
+		Vector2(-hrx * 0.92, hry * 0.4) * kk, Vector2(hrx * 0.92, hry * 0.4) * kk,
+		Vector2(rx * 0.8, down - ry * 0.5) * kk, Vector2(-rx * 0.8, down - ry * 0.5) * kk,
+	])
+	cs.shape = shape
+	head.add_child(cs)
 
 
 func _add_limb(slot: String, part: PartData, body: RigidBody2D, at: Vector2) -> void:
@@ -142,6 +176,9 @@ func _make(id: String, shape: Shape2D, shape_at: Vector2, base_mass: float, iner
 	# bouncing higher than they fell (Godot 4.7). The walls are thick.
 	b.collision_layer = 2
 	b.collision_mask = 3
+	# Contacts are reported so a hit can be measured.
+	b.contact_monitor = true
+	b.max_contacts_reported = 4
 	var cs := CollisionShape2D.new()
 	cs.shape = shape
 	cs.position = shape_at
@@ -176,7 +213,7 @@ func _seam(id: String, a: RigidBody2D, b: RigidBody2D, at_a: Vector2, kind: Stri
 	j.node_b = j.get_path_to(b)
 	_seams[id] = {
 		"joint": j, "a": a, "b": b, "at_a": at_a, "rest": b.rotation - a.rotation,
-		"kind": kind, "last_vel": Vector2.ZERO, "cooldown": 0.0,
+		"kind": kind, "cooldown": 0.0, "last_vel": Vector2.ZERO,
 	}
 
 
@@ -215,26 +252,55 @@ func _physics_process(delta: float) -> void:
 	_last_vel = body.linear_velocity
 
 
-## A limb that hits something hard (a hard landing) counts once as a
-## hard pull on its seam; enough pulls (or one, on a rotting part) and
-## the part tears off.
-func _check_jolt(id: String, sm: Dictionary, delta: float) -> void:
-	if id == "neck":
-		return
-	var b: RigidBody2D = sm["b"]
+## How hard a part was hit in the last step (pixels a second): the
+## larger of how fast it was going when something stopped it, and how
+## fast something that touched it was closing on it, so a board hitting
+## a still part counts as much as the part hitting the floor. Contacts
+## come with the speeds from before the step resolved them. Straight-
+## line speeds only: the spin's share, at the contact point, comes out
+## far too large (Godot 4.7.1).
+func impact(b: RigidBody2D, sm: Dictionary) -> float:
 	var before: Vector2 = sm["last_vel"]
+	var top := before.length() if (b.linear_velocity - before).length() >= JOLT else 0.0
+	var st := PhysicsServer2D.body_get_direct_state(b.get_rid())
+	if st:
+		for i in st.get_contact_count():
+			# Not from another friend's parts: their spin makes the speed
+			# at the contact far too large (friends bumping each other
+			# still count, as a sudden stop).
+			var other := st.get_contact_collider_object(i)
+			if other and other.has_meta("ragdoll"):
+				continue
+			var rel: Vector2 = before - st.get_contact_collider_velocity_at_position(i)
+			top = maxf(top, absf(rel.dot(st.get_contact_local_normal(i))))
 	sm["last_vel"] = b.linear_velocity
+	return top
+
+
+## A part hit hard (a hard landing, or something hitting it) counts once
+## as a hard pull on its seam; enough pulls (or one, on a rotting part)
+## and the part tears off. The neck needs a very hard hit, and more.
+func _check_jolt(id: String, sm: Dictionary, delta: float) -> void:
+	var b: RigidBody2D = sm["b"]
 	sm["cooldown"] = float(sm["cooldown"]) - delta
-	if b == _grab or (b.linear_velocity - before).length() < JOLT:
-		return
-	max_impact = maxf(max_impact, before.length())
-	if before.length() < HARD or float(sm["cooldown"]) > 0.0:
+	var hit := impact(b, sm)
+	var neck := id == "neck"
+	if neck:
+		max_head_impact = maxf(max_head_impact, hit)
+	else:
+		max_impact = maxf(max_impact, hit)
+	if b == _grab or hit < (NECK_HARD if neck else HARD) or float(sm["cooldown"]) > 0.0:
 		return
 	sm["cooldown"] = 0.4
+	_fx("fluff", sm["a"].to_global(sm["at_a"]), 4 if neck else 3, 8.0 if neck else 6.0)
+	Voice.tear(0.3 if neck else 0.15)
+	if neck:
+		data.neck_pulls += 1
+		if data.neck_pulls >= (1 if data.dead else NECK_PULLS):
+			tear("neck")
+		return
 	var part: PartData = data.part(id)
 	part.pulls += 1
-	_fx("fluff", sm["a"].to_global(sm["at_a"]), 3, 6.0)
-	Voice.tear(0.15)
 	if part.pulls >= _pulls_needed(part):
 		tear(id)
 
@@ -244,12 +310,25 @@ func _pulls_needed(part: PartData) -> int:
 
 
 ## Rip a part off: the seam goes, the part falls free, and the friend's
-## data loses it (an open wound, a little stuffing gone).
+## data loses it (an open wound, a little stuffing gone). The head comes
+## off as in the tent (0026): the friend lives on in the head, and
+## `data` becomes the body left behind, without one.
 func tear(slot: String) -> void:
 	var sm: Dictionary = _seams[slot]
 	var at: Vector2 = sm["a"].to_global(sm["at_a"])
 	(sm["joint"] as Node).queue_free()
 	_seams.erase(slot)
+	var id := "head" if slot == "neck" else slot
+	loose[id] = bodies[id]
+	bodies.erase(id)
+	if slot == "neck":
+		data = head_data.take_head(Save.now())
+		torn["neck"] = head_data
+		_pics["body"].refresh(["headless"])
+		_fx("fluff", at, 20, 14.0)
+		Voice.tear(1.0)
+		Events.part_changed.emit("head", "torn")
+		return
 	var part: PartData = data.part(slot)
 	torn[slot] = part
 	data.parts[slot] = null
@@ -287,7 +366,7 @@ func speed() -> float:
 func push(velocity: Vector2) -> void:
 	for b in bodies.values():
 		(b as RigidBody2D).linear_velocity = velocity
-	# A push is not a jolt.
+	# A push is not a hit.
 	for sm in _seams.values():
 		sm["last_vel"] = velocity
 
@@ -330,10 +409,15 @@ func _paint_body(ci: CanvasItem) -> void:
 			PlushArt.ellipse(ci, at, 24.0, 13.0, Color(0.14, 0.09, 0.07), false)
 			for t in 3:
 				PlushArt.fluff(ci, at + Vector2(-12 + t * 12, -2 + (t % 2) * 5), 8.0)
+	if data.headless:
+		var neck := FriendArt.socket(data, "neck")
+		PlushArt.ellipse(ci, neck, 30.0, 14.0, Color(0.14, 0.09, 0.07), false)
+		for t in 4:
+			PlushArt.fluff(ci, neck + Vector2(-18 + t * 12, -4 + (t % 2) * 6), 9.0)
 
 
 func _paint_head(ci: CanvasItem) -> void:
-	FriendArt.draw_loose_head(ci, data, Transform2D.IDENTITY, false)
+	FriendArt.draw_loose_head(ci, head_data, Transform2D.IDENTITY, false)
 
 
 func _paint_limb(ci: CanvasItem, slot: String, part: PartData) -> void:

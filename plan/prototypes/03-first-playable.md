@@ -76,6 +76,13 @@ this build" in `game/README.md` and are asked, never decided.
   a friend made well, a return, a death, the time of day; never on a
   timer. *Done when:* a test logs each change with its reason.
 - [x] **B12. Mikey plays for a few days**, and the result goes below.
+- [x] **B13. Mikey's first notes, built** (S-012; Result below): the
+  entrance and the grooming screen apart, surgery upright and closer,
+  a play room where friends wander together, a dev menu (0045), holes
+  sewn shut or left to rot. *Done when:* the playthrough starts at the
+  entrance, goes through both rooms and the play room, sews a hole
+  shut, shows an open one rotting, and the stress test prints frame
+  time for 10, 20 and 40 more friends.
 
 Mikey plays after B6 (the core loop) and again after B11.
 
@@ -123,6 +130,17 @@ like to address... but it's a good start"):
   (`systems/friend-body`).
 - Surgery's interactions and feedback "can still certainly be
   improved, but it's a nice start."
+
+**Built (S-012):** all of the above but patches and new body plans;
+`game/README.md` has the details and the guesses. Stress test in the
+play room, zoomed out, on the test machine's software drawing (only
+for comparing): camp alone 6 ms a frame, 29 draw calls; 10 more
+friends 10 ms, 137; 20 more 13 ms, 237; 40 more 21 ms, 459. Each
+friend costs about ten draw calls, so draw calls, not physics, will
+set the limit on the phone: `#crowd=20&perf` there answers it. The
+grooming screen and the table cost what the old tent did (12 to 14 ms
+here); the table's lamp light, drawn every frame, had doubled it until
+it was baked.
 
 ## What changed in the docs
 

@@ -1,7 +1,50 @@
 class_name TentCues
 extends RefCounted
 ## What could be done next in the tent: as words for the developer
-## (`#hints`), and without words for the player (decision 0032).
+## (`#hints`), and without words for the player (decision 0032). Work
+## for the other room glows on the button to it.
+
+
+## Something only the surgery table can do for the friend in front:
+## a rotting limb to take off, a part off or in the pocket, an open
+## hole, a dangling eye, a body waiting for a head.
+static func table_work(t: Tent) -> bool:
+	return not t.loose_parts.is_empty() or needs(Save.friend) == "table"
+
+
+## Which room a friend needs most: "table", "grooming" or "" (the
+## entrance glows that room's button; data only).
+static func needs(c: FriendData) -> String:
+	if c == null or c.dead:
+		return ""
+	if c.headless:
+		return "table" if not Save.camp.heads.is_empty() else ""
+	for slot in ["leg_l", "leg_r", "arm_l", "arm_r"]:
+		var part: PartData = c.part(slot)
+		if part and part.rot > 0.5 and part.attached:
+			return "table"
+		if c.is_open(slot) and (Save.camp.has("thread") or not Save.camp.spares.is_empty()):
+			return "table"
+	var eye: PartData = c.part("eye_r")
+	if eye != null and not eye.attached and Save.camp.has("thread"):
+		return "table"
+	return "grooming" if grooming_work(c) else ""
+
+
+## Something the grooming screen is for: mud, wet, hungry, stiff, moldy,
+## footprints.
+static func grooming_work(c: FriendData) -> bool:
+	if c == null or c.dead or c.headless:
+		return false
+	if not c.mud.is_empty() or c.wetness > 0.3 or not Save.camp.tracks.is_empty():
+		return true
+	if c.stuffing < 0.9 and Save.camp.has("stuffing") or c.fluid < 0.6 and Save.camp.has("oil"):
+		return true
+	for slot in ["arm_l", "arm_r", "leg_l", "leg_r"]:
+		var part: PartData = c.part(slot)
+		if part and not part.mold.is_empty() and Save.camp.has("spray"):
+			return true
+	return false
 
 
 ## Gentle guidance for the first five minutes. (Later the body alone
@@ -31,6 +74,8 @@ static func hint(t: Tent) -> String:
 			"sew": return "Sew it on: follow the glowing points."
 	if c.asleep:
 		return "Your friend isn't well. Poke them gently to wake them."
+	if not t.rooms.on_table() and table_work(t):
+		return "That needs the surgery table: tap the needle."
 	if t.held and not t.held.from_pocket:
 		return "Toss it in the bin."
 	if t.held and t.held.from_pocket:
@@ -45,6 +90,11 @@ static func hint(t: Tent) -> String:
 	var eye: PartData = c.part("eye_r")
 	if eye and not eye.attached:
 		return "An eye is hanging by a thread. Drag it back into place."
+	for slot in ["leg_l", "leg_r", "arm_l", "arm_r"]:
+		if c.is_open(slot):
+			return "An open hole. Drag thread to it to sew it shut, or sew a part on."
+	if t.rooms.on_table() and grooming_work(c):
+		return "Done here. Tap the sponge to go back to grooming."
 	if not c.mud.is_empty():
 		return "Rub the mud off with the sponge."
 	if c.wetness > 0.3:
@@ -63,7 +113,7 @@ static func show(t: Tent) -> void:
 	t.guide.clear()
 	t.hud.glow = ""
 	var c := Save.friend
-	if c == null or t.on_table and t.mode != "surgery":
+	if c == null:
 		return
 	if t.held_head:
 		t.hud.glow = "pocket"
@@ -90,11 +140,18 @@ static func show(t: Tent) -> void:
 			"soak":
 				_cue(t, srg.get("spill_pos", Vector2.ZERO), 30.0)
 		return
-	if Save.camp.bugs > 0 and not t.traces._bugs.is_empty():
+	if Save.camp.bugs > 0 and not t.traces._bugs.is_empty() and not t.rooms.on_table():
 		t.guide.show_cue(t.traces._bugs[0].global_position, 26.0)
 		return
 	if c.asleep:
 		_cue(t, Vector2(40, 10), 60.0)
+		return
+	var table := t.rooms.on_table()
+	if not table:
+		if table_work(t):
+			t.hud.glow = "room"
+			return
+		_show_grooming(t, c)
 		return
 	if t.held and not t.held.from_pocket:
 		t.hud.glow = "bin"
@@ -125,6 +182,18 @@ static func show(t: Tent) -> void:
 	if eye and not eye.attached and Save.camp.has("thread"):
 		_cue(t, t.friend.eye_position(), 26.0, t.friend.eye_anchor("eye_r"))
 		return
+	# An open hole and thread: sew it shut (Mikey's playtest notes).
+	for slot in ["leg_l", "leg_r", "arm_l", "arm_r"]:
+		if c.is_open(slot) and Save.camp.has("thread"):
+			t.hud.glow = "thread"
+			_cue(t, t.friend.socket(slot), 36.0)
+			return
+	if grooming_work(c):
+		t.hud.glow = "room"
+
+
+## The grooming screen's cues: mud, footprints, wet, hungry, stiff, mold.
+static func _show_grooming(t: Tent, c: FriendData) -> void:
 	if not c.mud.is_empty():
 		t.hud.glow = "sponge"
 		return

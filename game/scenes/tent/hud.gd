@@ -3,19 +3,22 @@ extends Node2D
 ## Everything drawn over the tent in screen space: the tool tray, the
 ## pocket where a spare part waits, the bin, the buttons and the tool
 ## in the player's hand. Not an inventory screen (pillar 1): things sit
-## on the side of the view, ready to grab.
+## on the side of the view, ready to grab. Each room has its own shelf:
+## grooming things in the grooming screen; thread, the pocket and the bin
+## at the surgery table.
 
-const TOOLS := ["sponge", "towel", "stuffing", "oil", "spray"]
-## On the shelf but not picked up: used up by sewing.
-const SHOWN := ["thread"]
+const ROOM_TOOLS := {"grooming": ["sponge", "towel", "stuffing", "oil", "spray"], "table": ["thread"]}
 const LABELS := {"sponge": "Sponge", "towel": "Towel", "stuffing": "Stuffing", "oil": "Oil", "spray": "Mold spray", "thread": "Thread"}
 ## Water is free; these are counted (decision 0027).
 const COUNTED := ["stuffing", "oil", "spray", "thread"]
 
 ## The camp's supplies, shown by how full each thing on the shelf looks.
 var supplies: Dictionary = {}
+## "grooming" or "table" (TentRooms).
+var room := "grooming"
 ## What to glow, showing what could be used next (no words, 0032): a
-## shelf item's name, "pocket", "bin", "play" or "map". "" for none.
+## shelf item's name, "pocket", "bin" or "room" (the button to the
+## other room). "" for none.
 var glow := ""
 var _glow_t := 0.0
 ## A shelf item to shake (tapped or needed when empty).
@@ -34,8 +37,6 @@ var trash_visible := false
 var trash_hover := false
 var held_tool := ""
 var tool_pos := Vector2.ZERO
-var reset_armed := false
-var play_label := "Play corner"
 
 var _trash_pop := 0.0
 
@@ -44,9 +45,14 @@ func screen_size() -> Vector2:
 	return get_viewport_rect().size
 
 
+## What's on this room's shelf.
+func tools() -> Array:
+	return ROOM_TOOLS[room]
+
+
 func tool_center(i: int) -> Vector2:
 	var s := screen_size()
-	var n := TOOLS.size() + SHOWN.size()
+	var n := tools().size()
 	return Vector2(s.x * 0.5 + (i - (n - 1) * 0.5) * 112.0, s.y - 100.0)
 
 
@@ -76,44 +82,40 @@ func glow_center() -> Vector2:
 		"": return Vector2.INF
 		"pocket": return pocket_center()
 		"bin": return trash_center()
-		"play": return play_rect().get_center()
-		"map": return map_rect().get_center()
-	var i: int = (TOOLS + SHOWN).find(glow)
+		"room": return room_rect().get_center()
+	var i: int = tools().find(glow)
 	return tool_center(i) if i >= 0 else Vector2.INF
 
 
-func play_rect() -> Rect2:
+## The button to the other room: the table from grooming, and back.
+func room_rect() -> Rect2:
 	return Rect2(screen_size().x - 104.0, 24.0, 80.0, 80.0)
 
 
-func map_rect() -> Rect2:
-	return Rect2(screen_size().x - 200.0, 24.0, 80.0, 80.0)
-
-
-func reset_rect() -> Rect2:
-	return Rect2(28.0, 28.0, 64.0, 64.0)
+## Back out to the entrance.
+func entrance_rect() -> Rect2:
+	return Rect2(24.0, 24.0, 80.0, 80.0)
 
 
 func over_pocket(p: Vector2) -> bool:
 	return p.distance_to(pocket_center()) < 90.0
 
 
-## What's under a screen point: "tool:<name>", "head", "spare", "play",
-## "reset" or "".
+## What's under a screen point: "tool:<name>", "head", "spare",
+## "room", "entrance" or "".
 func hit(p: Vector2) -> String:
-	if play_rect().grow(10).has_point(p):
-		return "play"
-	if map_rect().grow(6).has_point(p):
-		return "map"
-	if reset_rect().grow(10).has_point(p):
-		return "reset"
-	if pocket_head and p.distance_to(pocket_center()) < 70.0:
+	if room_rect().grow(10).has_point(p):
+		return "room"
+	if entrance_rect().grow(10).has_point(p):
+		return "entrance"
+	if room == "table" and pocket_head and p.distance_to(pocket_center()) < 70.0:
 		return "head"
-	if spare_visible and p.distance_to(pocket_center()) < 70.0:
+	if room == "table" and spare_visible and p.distance_to(pocket_center()) < 70.0:
 		return "spare"
-	for i in TOOLS.size():
+	var items := tools()
+	for i in items.size():
 		if p.distance_to(tool_center(i)) < 70.0:
-			return "tool:" + TOOLS[i]
+			return "tool:" + items[i]
 	return ""
 
 
@@ -132,9 +134,9 @@ func _process(delta: float) -> void:
 	if glow != "":
 		_glow_t += delta
 		queue_redraw()
-	var key := [glow, pocket_head.get_instance_id() if pocket_head else 0, pocket_open, spare_count, spare_visible, spare_part.get_instance_id() if spare_part else 0, trash_visible,
+	var key := [glow, room, pocket_head.get_instance_id() if pocket_head else 0, pocket_open, spare_count, spare_visible, spare_part.get_instance_id() if spare_part else 0, trash_visible,
 		trash_hover, held_tool, Vector2i(tool_pos) if held_tool != "" else Vector2i.ZERO,
-		reset_armed, play_label, screen_size(), int(_trash_pop * 20.0)]
+		screen_size(), int(_trash_pop * 20.0)]
 	if key != _key:
 		_key = key
 		queue_redraw()
@@ -163,8 +165,8 @@ func _bake_static() -> void:
 		# Under what's drawn live (the pocket, the bin, the tool in hand).
 		_shelf.show_behind_parent = true
 		_buttons.show_behind_parent = true
-	_shelf.refresh([supplies.duplicate(), held_tool, shake_item if _shake > 0.0 else "", int(_shake * 30.0)])
-	_buttons.refresh([play_label, reset_armed])
+	_shelf.refresh([room, supplies.duplicate(), held_tool, shake_item if _shake > 0.0 else "", int(_shake * 30.0)])
+	_buttons.refresh([room])
 
 
 func _paint_shelf(ci: CanvasItem) -> void:
@@ -173,7 +175,7 @@ func _paint_shelf(ci: CanvasItem) -> void:
 	# Tray: a wooden shelf along the bottom
 	ci.draw_rect(Rect2(0, s.y - 190.0, s.x, 190.0), Color(0.33, 0.22, 0.14))
 	ci.draw_rect(Rect2(0, s.y - 196.0, s.x, 10.0), Color(0.48, 0.33, 0.2))
-	var items: Array = TOOLS + SHOWN
+	var items: Array = tools()
 	for i in items.size():
 		var tool_name: String = items[i]
 		var c := tool_center(i)
@@ -188,10 +190,11 @@ func _paint_shelf(ci: CanvasItem) -> void:
 
 
 func _paint_buttons(ci: CanvasItem) -> void:
-	Icons.button(ci, play_rect().get_center(), Color(0.42, 0.55, 0.38), "ball")
-	Icons.button(ci, map_rect().get_center(), Color(0.5, 0.42, 0.3), "map")
-	Icons.button(ci, reset_rect().get_center(), Color(0.55, 0.3, 0.27) if reset_armed else Color(0.3, 0.24, 0.2, 0.85),
-		"again_armed" if reset_armed else "again", 32.0)
+	Icons.button(ci, entrance_rect().get_center(), Color(0.42, 0.55, 0.38), "tent")
+	if room == "table":
+		Icons.button(ci, room_rect().get_center(), Color(0.5, 0.62, 0.7), "sponge")
+	else:
+		Icons.button(ci, room_rect().get_center(), Color(0.62, 0.42, 0.42), "needle")
 
 
 func _draw() -> void:
@@ -201,8 +204,8 @@ func _draw() -> void:
 		var pulse := 0.5 + 0.5 * sin(_glow_t * 4.0)
 		draw_circle(gc, 54.0 + 6.0 * pulse, Color(1.0, 0.9, 0.55, 0.12 + 0.14 * pulse))
 		draw_arc(gc, 54.0 + 6.0 * pulse, 0, TAU, 32, Color(1.0, 0.92, 0.55, 0.5 + 0.4 * pulse), 4.0, true)
-	# Pocket with spare parts and heads in it
-	if (spare_visible and spare_part) or pocket_head or pocket_open:
+	# Pocket with spare parts and heads in it (at the table)
+	if room == "table" and ((spare_visible and spare_part) or pocket_head or pocket_open):
 		var pc := pocket_center()
 		var glow := 1.4 if pocket_open else 0.6
 		draw_circle(pc, 76.0, Color(1.0, 0.9, 0.6, 0.12 * glow))

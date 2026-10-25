@@ -1,8 +1,8 @@
 class_name PhysicsPlay
 extends Node2D
 ## The physics test (prototype 4), reached by `#physics` (or
-## `-- --physics`; `&three` starts with three friends), never from the
-## tent: friends as soft ragdolls to drag and fling, with a ramp, a
+## `-- --physics`; `&three` starts with three friends), or from the dev
+## menu (0045), with a button back: friends as soft ragdolls to drag and fling, with a ramp, a
 ## step and a skateboard to land on, ride down and fall off. Debug
 ## buttons (words are fine here) change the friend. The friends are
 ## copies or made up: nothing here is saved.
@@ -14,6 +14,11 @@ const RAMP_FOOT := Vector2(495, FLOOR_Y)
 const STEP := Rect2(620, 1100, 100, 80)
 ## Where friends are dropped in: over the floor between ramp and step.
 const DROP_AT := Vector2(560, 300)
+
+signal go_to(place: String)
+
+## Opened from the game (the dev menu), not on its own: a way back.
+var in_game := false
 
 var fx: FxLayer
 var camera: Camera2D
@@ -30,9 +35,7 @@ var _label: Label
 
 func _ready() -> void:
 	_build_world()
-	board = Skateboard.new()
-	board.position = _board_spot()
-	add_child(board)
+	new_board(_board_spot())
 	fx = FxLayer.new()
 	fx.floor_y = FLOOR_Y
 	add_child(fx)
@@ -46,7 +49,10 @@ func _ready() -> void:
 	row.position = Vector2(12, 14)
 	row.add_theme_constant_override("separation", 8)
 	layer.add_child(row)
-	for b in [["next friend", show_next], ["three at once", show_three], ["board", reset_board], ["drop", drop_again]]:
+	var buttons := [["next friend", show_next], ["three at once", show_three], ["board", reset_board], ["drop", drop_again]]
+	if in_game:
+		buttons.push_front(["back", func(): go_to.emit("entrance")])
+	for b in buttons:
 		var button := Button.new()
 		button.text = b[0]
 		button.add_theme_font_size_override("font_size", 24)
@@ -174,7 +180,19 @@ func show_three() -> void:
 
 
 func reset_board() -> void:
-	board.place(_board_spot())
+	new_board(_board_spot())
+
+
+## A new board at a spot, standing still. Moving the old one doesn't
+## work: its wheels are pinned to it, and moved together they snap back
+## to where they were (Godot 4.7.1; DeepSeek review, finding 12).
+func new_board(at: Vector2) -> void:
+	if board:
+		remove_child(board)
+		board.queue_free()
+	board = Skateboard.new()
+	board.position = at
+	add_child(board)
 
 
 ## On the ledge, at the top of the ramp.

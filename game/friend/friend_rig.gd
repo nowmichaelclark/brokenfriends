@@ -281,6 +281,8 @@ func _update_parts(wb: float) -> void:
 	for slot in wounds:
 		wound_key.append(slot)
 		wound_key.append((wounds[slot] as Array).size())
+		wound_key.append(_q(float(data.hole_rot.get(slot, 0.0)), 0.1))
+	wound_key.append(data.closed.duplicate())
 	var back := facing == "back"
 	_body.refresh([_q(s, 0.02), wq, wet, mud_body, wound_key, back, data.body_look.hash(), data.body_fabric])
 
@@ -370,6 +372,9 @@ func _paint_body(ci: CanvasItem) -> void:
 	_paint_mud(ci, false, s, Vector2.ZERO)
 	for slot in wounds:
 		_paint_wound(ci, slot)
+	for slot in data.closed:
+		if data.part(slot) == null:
+			_paint_sewn_shut(ci, slot)
 
 
 func _paint_heart(ci: CanvasItem) -> void:
@@ -469,6 +474,14 @@ func _paint_mud(ci: CanvasItem, on_head: bool, s: float, origin: Vector2) -> voi
 
 func _paint_wound(ci: CanvasItem, slot: String) -> void:
 	var at := socket(slot)
+	# An open hole rots (Mikey's playtest notes): a dark, green-brown
+	# stain spreads around it.
+	var rot := float(data.hole_rot.get(slot, 0.0))
+	if rot > 0.05:
+		var stain := Color(0.3, 0.33, 0.16, 0.25 + 0.5 * rot)
+		PlushArt.ellipse(ci, at + Vector2(0, 4), 30.0 + 26.0 * rot, 18.0 + 16.0 * rot, stain, false)
+		for k in int(rot * 5.0):
+			ci.draw_circle(at + Vector2(cos(k * 2.3) * (34.0 + 10.0 * rot), sin(k * 2.3) * (20.0 + 6.0 * rot)), 5.0 + 2.0 * rot, Color(0.42, 0.5, 0.22, 0.7))
 	PlushArt.ellipse(ci, at, 27.0, 15.0, Color(0.14, 0.09, 0.07), false)
 	var rim := PackedVector2Array()
 	for i in 13:
@@ -483,6 +496,16 @@ func _paint_wound(ci: CanvasItem, slot: String) -> void:
 	ci.draw_circle(at + Vector2(3, 6), 6.0, fluid)
 	for tuft in wounds[slot]:
 		PlushArt.fluff(ci, at + tuft, 9.0)
+
+
+## Where a part is missing and the hole was sewn shut: a puckered seam.
+func _paint_sewn_shut(ci: CanvasItem, slot: String) -> void:
+	var at := socket(slot)
+	PlushArt.ellipse(ci, at, 24.0, 10.0, data.body_fabric.darkened(0.25), false)
+	ci.draw_line(at + Vector2(-26, 0), at + Vector2(26, 0), data.body_fabric.darkened(0.45), 3.0, true)
+	for i in 6:
+		var x := -22.0 + i * 8.8
+		ci.draw_line(at + Vector2(x - 3, -7), at + Vector2(x + 3, 7), PlushArt.THREAD, 2.5, true)
 
 
 ## The surgery overlay: the new part waiting below the wound, the

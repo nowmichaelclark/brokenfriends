@@ -53,19 +53,6 @@ func _wheel_at(i: int) -> Vector2:
 	return Vector2((-1.0 if i == 0 else 1.0) * (LENGTH * 0.5 - 26.0), DECK * 0.5 + WHEEL_R - 2.0)
 
 
-## Put the board (and its wheels) at a spot, standing still.
-func place(at: Vector2) -> void:
-	global_position = at
-	rotation = 0.0
-	linear_velocity = Vector2.ZERO
-	angular_velocity = 0.0
-	for i in wheels.size():
-		wheels[i].global_position = at + _wheel_at(i)
-		wheels[i].rotation = 0.0
-		wheels[i].linear_velocity = Vector2.ZERO
-		wheels[i].angular_velocity = 0.0
-
-
 func _draw() -> void:
 	var half := LENGTH * 0.5
 	var deck := PackedVector2Array([Vector2(-half, -DECK * 0.5), Vector2(half, -DECK * 0.5),

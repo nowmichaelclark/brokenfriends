@@ -72,7 +72,7 @@ func _open_slot_near(w: Vector2, kind: String) -> String:
 	for slot in ["leg_l", "leg_r", "arm_l", "arm_r"]:
 		if not slot.begins_with(kind):
 			continue
-		if Save.friend.is_open(slot) and t.friend.to_global(t.friend.socket(slot)).distance_to(w) < 140.0:
+		if Save.friend.is_missing(slot) and t.friend.to_global(t.friend.socket(slot)).distance_to(w) < 140.0:
 			return slot
 	return ""
 

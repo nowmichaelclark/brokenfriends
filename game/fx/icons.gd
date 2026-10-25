@@ -34,6 +34,28 @@ static func draw(ci: CanvasItem, icon: String, c: Vector2, k := 1.0) -> void:
 		"tent":
 			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-26, 18) * k, c + Vector2(0, -22) * k, c + Vector2(26, 18) * k]), Color(0.86, 0.75, 0.56))
 			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-6, 18) * k, c + Vector2(0, 0) * k, c + Vector2(6, 18) * k]), Color(0.36, 0.28, 0.2))
+		"needle":
+			# Needle and thread: the surgery table.
+			ci.draw_line(c + Vector2(-18, 20) * k, c + Vector2(18, -20) * k, Color(0.88, 0.9, 0.94), 5.0 * k, true)
+			ci.draw_circle(c + Vector2(15, -17) * k, 3.0 * k, Color(0.3, 0.3, 0.35))
+			ci.draw_polyline(PackedVector2Array([c + Vector2(15, -17) * k, c + Vector2(24, -4) * k, c + Vector2(10, 8) * k, c + Vector2(18, 20) * k]), Color(0.85, 0.25, 0.25), 3.0 * k, true)
+		"sponge":
+			# A sponge: the grooming screen.
+			ci.draw_rect(Rect2(c + Vector2(-24, -16) * k, Vector2(48, 32) * k), Color(0.96, 0.82, 0.32))
+			for h in [Vector2(-12, -6), Vector2(6, -8), Vector2(14, 6), Vector2(-4, 6)]:
+				ci.draw_circle(c + h * k, 4.0 * k, Color(0.8, 0.62, 0.2))
+		"gear":
+			# The dev menu (0045).
+			for i in 8:
+				var a := TAU * i / 8.0
+				ci.draw_line(c + Vector2(cos(a), sin(a)) * 12.0 * k, c + Vector2(cos(a), sin(a)) * 24.0 * k, INK, 7.0 * k)
+			ci.draw_circle(c, 16.0 * k, INK)
+			ci.draw_circle(c, 7.0 * k, Color(0.3, 0.3, 0.32))
+		"room":
+			# The play room: a little house with a ball in its door.
+			ci.draw_rect(Rect2(c + Vector2(-22, -4) * k, Vector2(44, 26) * k), Color(0.86, 0.75, 0.56))
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-28, -2) * k, c + Vector2(0, -26) * k, c + Vector2(28, -2) * k]), Color(0.75, 0.36, 0.3))
+			ci.draw_circle(c + Vector2(0, 12) * k, 8.0 * k, Color(0.3, 0.5, 0.7))
 		"again":
 			# A circling arrow: start over.
 			ci.draw_arc(c, 18.0 * k, -PI * 0.15, PI * 1.45, 24, INK, 5.0 * k, true)

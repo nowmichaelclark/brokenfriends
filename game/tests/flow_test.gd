@@ -18,7 +18,16 @@ func _run() -> void:
 		_finish()
 		return
 	var c: FriendView = tent.friend
+	# The entrance first: the friend standing outside, the surgery
+	# table's button glowing (a rotting leg; Mikey's playtest notes).
+	var entrance: Entrance = main.entrance
 	await _wait(0.8)
+	_check(entrance.visible and entrance.standing.size() == 1, "the game opens at the entrance, the friend outside")
+	_check(entrance.hud.glow == "table", "the entrance glows the way to the surgery table")
+	await _shot("00_entrance")
+	await _tap(entrance.hud.go_center(1))
+	await _wait(0.6)
+	_check(tent.visible and tent.rooms.on_table(), "the needle opens the surgery table")
 	await _shot("01_start")
 
 	# Wake them with a gentle poke on the body.
@@ -135,7 +144,14 @@ func _run() -> void:
 		await _touch(_last, false)
 	await _wait(0.8)
 	_check(Save.friend.part("eye_r").attached, "the eye is stitched back on")
+	await _wait(0.6)
+	_check(tent.hud.glow == "room", "with the surgery done, the way to grooming glows")
+	await _shot("14b_table_upright")
 
+	# To the grooming screen: wash, dry, feed.
+	await _tap(tent.hud.room_rect().get_center())
+	await _wait(0.6)
+	_check(not tent.rooms.on_table() and tent.hud.tools().has("sponge"), "the sponge goes to the grooming screen")
 	# Wash with the sponge: scrub each mud spot.
 	await _scrub_mud(c)
 	_check(Save.friend.mud.is_empty(), "the sponge washes off all the mud")
@@ -156,18 +172,29 @@ func _run() -> void:
 		"two sewings, two handfuls of stuffing and one dose of oil came off the shelf")
 	print("wellbeing at end of tent: ", Save.friend.wellbeing())
 
-	# Play corner.
-	await _tap(tent.hud.play_rect().get_center())
+	# Out to the entrance, then the play room.
+	await _tap(tent.hud.entrance_rect().get_center())
+	await _wait(0.6)
+	_check(entrance.visible, "the tent's door goes back out to the entrance")
+	await _tap(entrance.hud.go_center(2))
 	await _wait(1.0)
-	var play: Node2D = main.play
-	_check(play.visible, "the play corner opens")
-	await _shot("17_play_corner")
+	var play: PlayRoom = main.play
+	_check(play.visible, "the play room opens")
+	await _shot("17_play_room")
 	var ball: RigidBody2D = play.ball
+	var me := play.wanderer_of(Save.friend)
+	me.hold = true
 	for throw in 4:
 		await _wait(1.2)
+		# The ball near them, in view.
+		ball.freeze = true
+		ball.global_position = me.view.position + Vector2(160, -200)
+		ball.freeze = false
+		play.camera.position = me.view.position
+		await _wait(0.3)
 		var b := _screen(ball.global_position)
 		await _touch(b, true)
-		var head := _screen(play.friend.to_global(play.friend.head_center()))
+		var head := _screen(me.view.to_global(me.view.head_center()))
 		var from := head + Vector2(260, 120)
 		await _drag_path(b, from, 6)
 		await _drag_path(from, head, 4)
@@ -178,6 +205,8 @@ func _run() -> void:
 	await _wait(1.0)
 	await _shot("19_after_play")
 	print("catch skill after play: ", Save.friend.catch_skill)
+	me.hold = false
+	await _room_steps(play)
 	await _camp_steps()
 	await _physics_steps()
 	_finish()
@@ -196,7 +225,7 @@ func _finish() -> void:
 # --- B1: a camp of friends -------------------------------------------
 
 func _camp_steps() -> void:
-	main.go_to("tent")
+	main.go_to("grooming")
 	await _wait(0.6)
 	var camp: CampData = Save.camp
 	# The second friend of the first day is on the way once the first
@@ -228,7 +257,7 @@ func _camp_steps() -> void:
 	# (Three days away may also have brought a newcomer.)
 	_check(Save.camp.friends.size() >= 3 and "Test friend 7" in Save.camp.friends.map(func(f): return f.name), "three friends survive a quit and reopen")
 	_check(Save.camp.current == 1, "the friend being looked after is remembered")
-	main.go_to("tent")
+	main.go_to("grooming")
 	tent.build_bench()
 	tent.friend.setup(Save.friend)
 	await _wait(0.6)
@@ -338,6 +367,7 @@ func _supply_steps() -> void:
 	await _touch(tc, false)
 	_check(tent.hud.held_tool == "" and tent.mode == "", "an empty spray stays on the shelf")
 	# No thread: a dangling eye can't be sewn back on (decision 0042).
+	main.go_to("table")
 	Save.friend.part("eye_r").attached = false
 	await _wait(1.0)
 	var eye_at := _screen(c.to_global(c.eye_position()))
@@ -388,17 +418,6 @@ func _do_surgery(c: FriendView, slot: String) -> void:
 	await _sew_points(c)
 
 
-func _sew_points(c: FriendView) -> void:
-	await _wait(0.2)
-	var pts: Array = c.surgery.get("points", [])
-	if pts.size() > 0:
-		await _touch(_screen(c.to_global(pts[0])), true)
-		for i in range(1, pts.size()):
-			await _drag_path(_last, _screen(c.to_global(pts[i])), 5)
-		await _touch(_last, false)
-	await _wait(0.8)
-
-
 func _parts_steps() -> void:
 	var camp := CampData.new()
 	var a := FriendData.test_friend(11)
@@ -411,8 +430,8 @@ func _parts_steps() -> void:
 	tent.traces.setup(camp)
 	tent.friend.setup(Save.friend)
 	tent.build_bench()
-	tent.parts.show_spare()
-	tent._zoom_reset()
+	main.go_to("table")
+	tent.rooms.zoom_reset()
 	await _wait(0.8)
 	var c: FriendView = tent.friend
 
@@ -487,4 +506,4 @@ func _parts_steps() -> void:
 	_check(camp.headless_bodies().is_empty() and camp.heads.is_empty(), "two friends, each on the other's body")
 	_check(a.body_fabric != a.head_color(), "the first friend now has the second's body")
 	await _shot("30_swapped")
-	await _quest_steps()
+	await _hole_steps()

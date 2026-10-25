@@ -73,9 +73,8 @@ It works pretty well." Once the skateboard got caught in a friend's
 neck; he'd expect "the head to come off... or for it to not get caught
 in the neck". He chose: fix the snag, and let a very hard hit on the
 neck count as a pull on its seam, with the neck taking more pulls than
-a limb (0025), so heads come off rarely and only after a hard hit. The
-snag is likely the board overlapping the gap at the joint [unverified,
-V-020]. That counts as the play (S-005). Not reported: whether tiny,
+a limb (0025), so heads come off rarely and only after a hard hit.
+Both done in S-012 (below). That counts as the play (S-005). Not reported: whether tiny,
 huge, soaked and legless friends felt different, whether tearing felt
 fair, and smoothness with three friends on the phone (S-012's stress
 test covers speed). Open `#physics` (`&three` for three friends, `&perf`
@@ -115,8 +114,27 @@ Each a range over 20 seconds from the start, so the drop, landing and
 settling; music off (no extension in the local build). Physics stays
 small next to drawing; the real test is Mikey's phone.
 
+**The neck and hits** (S-012, with the DeepSeek review's findings 1,
+3, 7, 10, 12 and 14, `reviews/2026-10-25-physics-deepseek.md`):
+- The snag (V-020, true): the head and body ellipses leave a wedge
+  about 20 pixels wide under the chin, wider than the board's deck. A
+  collar on the head now fills it; the playthrough checks it.
+- A hit is the larger of a part's own speed when something stops it
+  and the speed something not part of a friend closes on it, so a board
+  dropped on a still friend's head counts (3,300 pixels a second). The
+  speed at the contact point, with spin, read far too high (V-022).
+- The neck counts hits of 3,000 or more (a hard drop lands the head at
+  about 3,400; an ordinary one at 1,760) and gives at the sixth. The
+  friend lives on in the head, the body left without one, as in the
+  tent (0026). These friends are still never saved.
+- Moving the board with its wheels pinned made it snap back to where
+  it was (seen in the test, Godot 4.7.1): a new board is made instead.
+- A torn part no longer counts as the friend moving; a mouse drags
+  and flings (natively; the browser is V-021).
+- Not done: the review's other findings, for S-014.
+
 ## What changed in the docs
 
 - `game/README.md`: the physics test and its guesses.
 - `glossary.md`: ragdoll, seam.
-- `verify.md`: V-018, V-019.
+- `verify.md`: V-018, V-019; V-020 checked, V-021 and V-022 (S-012).

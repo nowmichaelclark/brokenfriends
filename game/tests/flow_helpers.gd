@@ -88,6 +88,18 @@ func _feed(index: int, c: FriendView) -> void:
 	await _wait(0.4)
 
 
+## Sew along the glowing points of a surgery.
+func _sew_points(c: FriendView) -> void:
+	await _wait(0.2)
+	var pts: Array = c.surgery.get("points", [])
+	if pts.size() > 0:
+		await _touch(_screen(c.to_global(pts[0])), true)
+		for i in range(1, pts.size()):
+			await _drag_path(_last, _screen(c.to_global(pts[i])), 5)
+		await _touch(_last, false)
+	await _wait(0.8)
+
+
 func _shot(name: String) -> void:
 	if out_dir == "":
 		return

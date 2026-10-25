@@ -1,19 +1,16 @@
 class_name Tent
 extends Node2D
-## The tent at the starting camp: the friend being looked after,
-## front-on, with the camp's other friends sitting further back (tap
-## one to bring them forward), and the first five minutes from Mikey's
-## recording (2026-10-24). Rip off the
-## rotting leg, toss it in the bin, sew on the spare in a layered
-## surgery, put the dangling eye back, wash, dry, feed stuffing and oil,
-## and poke, tickle and pet them. Double-tap to zoom in or out.
+## The tent at the starting camp, in two rooms (TentRooms). In the
+## grooming screen the friend being looked after stands front-on, the
+## camp's other friends sitting further back (tap one to bring them
+## forward): wash, dry, feed stuffing and oil, spray mold, and poke,
+## tickle and pet them. On the surgery table: rip off the rotting leg,
+## toss it in the bin, sew on the spare in a layered surgery or sew the
+## hole shut, put the dangling eye back, swap heads. The first five
+## minutes from Mikey's recording (2026-10-24). Double-tap to zoom.
 
 signal go_to(place: String)
 
-const FRIEND_POS := Vector2(360, 650)
-## Where a friend lies on the surgery table (decision 0031).
-const TABLE_POS := Vector2(360, 640)
-const VIEW_CENTER := Vector2(360, 640)
 ## Tools are held a little above the finger so it doesn't hide them.
 const TOOL_OFFSET := Vector2(0, -80)
 
@@ -30,6 +27,9 @@ var camera: Camera2D
 var hud: TentHud
 var layer: CanvasLayer
 var hint: Label
+## The rooms and the camera; the shelf's tools.
+var rooms := TentRooms.new()
+var tools := TentTools.new()
 
 ## What the current touch is doing: "", "empty", "touch", "limb",
 ## "eye", "tool", "part" or "surgery".
@@ -42,14 +42,12 @@ var loose_parts: Array = []
 ## Sewing on the table, and parts and heads in the hand.
 var surgery := TentSurgery.new()
 var parts := TentParts.new()
-var zoomed := false
 
 var parts_layer: Node2D
-var _bg: Node2D
-var _table: Node2D
-var _fade: ColorRect
-var on_table := false
-var _bench_layer: Node2D
+var bg: Node2D
+var table_art: Node2D
+var fade: ColorRect
+var bench_layer: Node2D
 var _now := 0.0
 var _press_pos := Vector2.ZERO
 var _press_time := 0.0
@@ -59,31 +57,29 @@ var _last_tap_pos := Vector2.ZERO
 var _last_world := Vector2.ZERO
 var drag_vel := Vector2.ZERO
 var sound_cd := 0.0
-var _reset_timer := 0.0
 var _hint_timer := 0.0
-var _sprayed := false
 var _press_region := ""
 var _press_world := Vector2.ZERO
 var _friend_count := 0
-var _cam_tween: Tween
 
 
 func _ready() -> void:
 	surgery.t = self
 	parts.t = self
-	var bg := TentBackground.new()
+	rooms.t = self
+	tools.t = self
+	bg = TentBackground.new()
 	add_child(bg)
-	_bg = bg
-	_table = SurgeryTable.new()
-	_table.visible = false
-	add_child(_table)
+	table_art = SurgeryTable.new()
+	table_art.visible = false
+	add_child(table_art)
 	traces = CampTraces.new()
 	add_child(traces)
 	traces.setup(Save.camp)
-	_bench_layer = Node2D.new()
-	add_child(_bench_layer)
+	bench_layer = Node2D.new()
+	add_child(bench_layer)
 	friend = FriendView.new()
-	friend.position = FRIEND_POS
+	friend.position = TentRooms.FRIEND_POS
 	add_child(friend)
 	parts_layer = Node2D.new()
 	add_child(parts_layer)
@@ -93,10 +89,10 @@ func _ready() -> void:
 	add_child(guide)
 	friend.fx = fx
 	friend.setup(Save.friend)
-	fx.floor_y = FRIEND_POS.y + friend.feet_y()
-	bg.floor_y = FRIEND_POS.y + friend.feet_y() + 4.0
+	fx.floor_y = TentRooms.FRIEND_POS.y + friend.feet_y()
+	bg.floor_y = TentRooms.FRIEND_POS.y + friend.feet_y() + 4.0
 	camera = Camera2D.new()
-	camera.position = VIEW_CENTER
+	camera.position = TentRooms.VIEW_CENTER
 	add_child(camera)
 
 	layer = CanvasLayer.new()
@@ -114,15 +110,16 @@ func _ready() -> void:
 	layer.add_child(hint)
 	# Words only for the developer (#hints); the game shows instead (0032).
 	hint.visible = Flags.has("hints")
-	_fade = ColorRect.new()
-	_fade.color = Color(0.08, 0.05, 0.04, 0.0)
-	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_fade.set_anchors_preset(Control.PRESET_FULL_RECT)
-	layer.add_child(_fade)
+	fade = ColorRect.new()
+	fade.color = Color(0.08, 0.05, 0.04, 0.0)
+	fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	layer.add_child(fade)
 
 	hud.supplies = Save.camp.supplies
 	parts.show_spare()
 	build_bench()
+	rooms.set_room("grooming", true)
 	Events.friend_arrived.connect(_on_friend_arrived)
 	Events.quest_ended.connect(_on_quest_ended)
 	_update_hint()
@@ -132,11 +129,16 @@ func _ready() -> void:
 	layer.visible = not Flags.has("nohud")
 
 
-func set_active(on: bool) -> void:
+## Shown or not; `room` is "grooming" or "table".
+func set_active(on: bool, room := "grooming") -> void:
 	visible = on
 	layer.visible = on and not Flags.has("nohud")
 	process_mode = Node.PROCESS_MODE_INHERIT if on else Node.PROCESS_MODE_DISABLED
 	if on:
+		if friend.data != Save.friend and mode != "surgery":
+			friend.setup(Save.friend)
+		build_bench()
+		rooms.set_room(room, true)
 		camera.make_current()
 
 
@@ -168,20 +170,11 @@ func _press(sp: Vector2) -> void:
 		surgery.press(l)
 		return
 	var h: String = hud.hit(sp)
-	if h == "play":
-		if not Save.friend.dead and not Save.friend.headless:
-			go_to.emit("play_corner")
+	if h == "entrance":
+		go_to.emit("entrance")
 		return
-	if h == "map":
-		go_to.emit("map")
-		return
-	if h == "reset":
-		if hud.reset_armed:
-			Save.new_game()
-			get_tree().reload_current_scene()
-		else:
-			hud.reset_armed = true
-			_reset_timer = 3.0
+	if h == "room":
+		go_to.emit("grooming" if rooms.on_table() else "table")
 		return
 	if h.begins_with("tool:"):
 		if hud.amount(h.substr(5)) <= 0:
@@ -207,11 +200,12 @@ func _press(sp: Vector2) -> void:
 		mode = "part"
 		Voice.pop()
 		return
-	var sitting := _bench_at(w)
+	var table := rooms.on_table()
+	var sitting := -1 if table else _bench_at(w)
 	if sitting >= 0 and not friend.is_on_friend(l) and held == null:
 		choose_friend(sitting)
 		return
-	if held == null and traces.shoo(w):
+	if held == null and not table and traces.shoo(w):
 		Voice.squish()
 		Save.mark_dirty()
 		mode = "empty"
@@ -219,8 +213,8 @@ func _press(sp: Vector2) -> void:
 	if (Save.friend.dead or Save.friend.headless) and held == null:
 		# A friend who has died doesn't answer any more (0011), and a body
 		# without a head is only a body; their parts can still be taken
-		# (0026).
-		var part_slot := friend.part_at(l)
+		# on the table (0026).
+		var part_slot := friend.part_at(l) if table else ""
 		if part_slot.begins_with("arm") or part_slot.begins_with("leg"):
 			friend.grab_limb(part_slot)
 			mode = "limb"
@@ -237,9 +231,10 @@ func _press(sp: Vector2) -> void:
 	if _now - _last_tap_time < 0.32 and sp.distance_to(_last_tap_pos) < 70.0:
 		_last_tap_time = -10.0
 		mode = ""
-		_toggle_zoom(w)
+		rooms.toggle_zoom(w)
 		return
-	var slot := friend.part_at(l)
+	# Parts are pulled on the table, not in the grooming screen.
+	var slot := friend.part_at(l) if table else ""
 	if slot == "eye_r" and not Save.friend.asleep:
 		friend.grab_eye()
 		mode = "eye"
@@ -274,7 +269,7 @@ func _drag(sp: Vector2, rel: Vector2, vel: Vector2) -> void:
 		"touch":
 			# Pulling hard on the head, away from the body: the neck
 			# takes the strain (0026). Otherwise it's petting.
-			if _press_region in ["head", "head_top"] and not Save.friend.asleep \
+			if _press_region in ["head", "head_top"] and not Save.friend.asleep and rooms.on_table() \
 					and (w - _press_world).length() > 90.0 and (w - _press_world).y < 0.0:
 				friend.end_pet()
 				friend.grab_head()
@@ -289,7 +284,7 @@ func _drag(sp: Vector2, rel: Vector2, vel: Vector2) -> void:
 			hud.trash_hover = hud.over_trash(sp)
 		"tool":
 			hud.tool_pos = sp + TOOL_OFFSET
-			_use_tool(friend.to_local(to_world(hud.tool_pos)))
+			tools.use(tool, friend.to_local(to_world(hud.tool_pos)))
 		"part":
 			held.position = w
 			hud.trash_hover = not held.from_pocket and hud.over_trash(sp)
@@ -328,7 +323,8 @@ func _release(sp: Vector2) -> void:
 			_last_tap_time = _now
 			_last_tap_pos = sp
 		"tool":
-			_finish_tool(friend.to_local(to_world(hud.tool_pos)))
+			tools.finish(tool, friend.to_local(to_world(hud.tool_pos)))
+			tool = ""
 			hud.held_tool = ""
 		"part":
 			parts.release_part(sp, w)
@@ -344,7 +340,7 @@ const BENCH_SCALE := 0.42
 
 
 func _bench_pos(n: int) -> Vector2:
-	var floor_y := FRIEND_POS.y + friend.feet_y()
+	var floor_y := TentRooms.FRIEND_POS.y + friend.feet_y()
 	return Vector2(BENCH_X[n], floor_y - 26.0 - friend.feet_y() * BENCH_SCALE)
 
 
@@ -363,7 +359,7 @@ func build_bench() -> void:
 			continue
 		var v := BenchFriend.new()
 		v.position = _bench_pos(n)
-		_bench_layer.add_child(v)
+		bench_layer.add_child(v)
 		v.setup(Save.camp.friends[i], BENCH_SCALE)
 		bench[i] = v
 		n += 1
@@ -387,8 +383,8 @@ func choose_friend(i: int) -> void:
 	build_bench()
 	friend.scale = Vector2(0.85, 0.85)
 	create_tween().tween_property(friend, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	if zoomed:
-		_zoom_reset()
+	if rooms.zoomed:
+		rooms.zoom_reset()
 	Voice.pop()
 	Save.mark_dirty()
 	Events.friend_chosen.emit(i)
@@ -431,144 +427,11 @@ func _maybe_schedule_arrival() -> void:
 		Save.mark_dirty()
 
 
-# --- Tools --------------------------------------------------------------
-
-func _use_tool(l: Vector2) -> void:
-	if tool == "sponge" and not friend.is_on_friend(l):
-		# Scrub footprints off the floor.
-		if traces.scrub(friend.to_global(l), 0.08) and sound_cd <= 0.0:
-			Voice.squish()
-			sound_cd = 0.35
-			Save.mark_dirty()
-		return
-	if Save.friend.dead:
-		return
-	match tool:
-		"spray":
-			if friend.spray(l):
-				_sprayed = true
-				Voice.poof()
-		"sponge":
-			if friend.sponge(l) and sound_cd <= 0.0:
-				Voice.splash()
-				sound_cd = 0.35
-		"towel":
-			if friend.towel(l) and sound_cd <= 0.0:
-				Voice.squish()
-				sound_cd = 0.3
-		"stuffing", "oil":
-			if l.distance_to(friend.mouth_pos()) < 80.0 and not Save.friend.asleep:
-				friend.set_expression("open", "open", 0.15)
-
-
-func _finish_tool(l: Vector2) -> void:
-	if Save.friend.dead:
-		tool = ""
-		return
-	match tool:
-		"stuffing", "oil":
-			if l.distance_to(friend.mouth_pos()) < 80.0:
-				friend.wake()
-				if not Save.camp.use(tool):
-					hud.shake(tool)
-				elif tool == "stuffing":
-					friend.feed_stuffing()
-				else:
-					friend.feed_oil()
-		"spray":
-			if _sprayed:
-				Save.camp.use("spray")
-				Save.mark_dirty()
-			_sprayed = false
-		"sponge":
-			if Save.friend.mud.is_empty():
-				Events.cared.emit("washed")
-		"towel":
-			if Save.friend.wetness < 0.05:
-				Events.cared.emit("dried")
-	tool = ""
-
-
-# --- The surgery table (decision 0031) ----------------------------------
-
-## Lay the friend on the surgery table, in its own place, and come in
-## close on `focus` (a point on the friend). A quick fade, as Trauma
-## Center does between views.
-func to_table(focus: Vector2, z: float) -> void:
-	_fade_through(func():
-		on_table = true
-		_table.visible = true
-		for n in [_bg, traces, _bench_layer, parts_layer]:
-			n.visible = false
-		friend.position = TABLE_POS
-		friend.rotation = -PI * 0.5
-		friend.set_detail(4.0)
-		zoomed = true
-		if _cam_tween:
-			_cam_tween.kill()
-		camera.position = friend.to_global(focus)
-		camera.zoom = Vector2(z, z))
-
-
-func off_table() -> void:
-	_fade_through(func():
-		on_table = false
-		_table.visible = false
-		for n in [_bg, traces, _bench_layer, parts_layer]:
-			n.visible = true
-		friend.position = FRIEND_POS
-		friend.rotation = 0.0
-		friend.set_detail(2.0)
-		zoomed = false
-		if _cam_tween:
-			_cam_tween.kill()
-		camera.position = VIEW_CENTER
-		camera.zoom = Vector2.ONE)
-
-
-func _fade_through(swap: Callable) -> void:
-	var tw := create_tween()
-	tw.tween_property(_fade, "color:a", 1.0, 0.12)
-	tw.tween_callback(swap)
-	tw.tween_property(_fade, "color:a", 0.0, 0.22)
-
-
-# --- Camera -------------------------------------------------------------
-
-func _zoom_to(world: Vector2, z: float) -> void:
-	zoomed = true
-	_tween_camera(world, z)
-
-
-func _zoom_reset() -> void:
-	zoomed = false
-	_tween_camera(VIEW_CENTER, 1.0)
-
-
-func _toggle_zoom(world: Vector2) -> void:
-	if zoomed:
-		_zoom_reset()
-	else:
-		_zoom_to(world, 2.0)
-
-
-func _tween_camera(pos: Vector2, z: float) -> void:
-	if _cam_tween:
-		_cam_tween.kill()
-	_cam_tween = create_tween().set_parallel().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	_cam_tween.tween_property(camera, "position", pos, 0.45)
-	_cam_tween.tween_property(camera, "zoom", Vector2(z, z), 0.45)
-
-
 # --- Every frame --------------------------------------------------------
 
 func _process(delta: float) -> void:
 	_now += delta
 	sound_cd -= delta
-	if hud.reset_armed:
-		_reset_timer -= delta
-		if _reset_timer <= 0.0:
-			hud.reset_armed = false
 	_hint_timer -= delta
 	if _hint_timer <= 0.0:
 		_hint_timer = 0.25

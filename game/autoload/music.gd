@@ -156,11 +156,11 @@ func _decide() -> void:
 		"map":
 			_switch(PIECE["map"], "the map")
 			return
-		"play_corner":
+		"play_room":
 			if _clock - _place_since > 120.0:
 				_switch(PIECE["play_long"], "playing a while")
 			else:
-				_switch(PIECE["play"], "the play corner")
+				_switch(PIECE["play"], "the play room")
 			return
 	if _is_night():
 		_switch(PIECE["night"], "night at camp")

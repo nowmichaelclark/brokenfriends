@@ -107,7 +107,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	var sp: Vector2 = event.position
 	var h := hud.hit(sp)
 	if h == "back":
-		go_to.emit("tent")
+		go_to.emit("entrance")
 		return
 	if h == "go":
 		send()

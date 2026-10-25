@@ -1,10 +1,15 @@
 extends Node
-## Holds the places the player can be and switches between them.
-## For now: the tent, and the play corner inside it.
+## Holds the places the player can be and switches between them: the
+## entrance (the starting screen), the tent's grooming screen and surgery
+## table, the play room, the map, and the physics test (from the dev
+## menu).
 
-var tent: Node2D
-var play: Node2D
+var entrance: Entrance
+var tent: Tent
+var play: PlayRoom
 var map: Node2D
+## The physics test, while it's open (made fresh each time).
+var physics: PhysicsPlay
 
 
 func _ready() -> void:
@@ -30,17 +35,21 @@ func _ready() -> void:
 		# Debug: nothing but the engine, to measure its own cost per frame.
 		add_child(load("res://debug/perf_overlay.gd").new())
 		return
+	entrance = Entrance.new()
+	add_child(entrance)
+	entrance.go_to.connect(go_to)
 	tent = preload("res://scenes/tent/tent.gd").new()
 	add_child(tent)
 	tent.go_to.connect(go_to)
-	if ResourceLoader.exists("res://scenes/play/play_corner.gd"):
-		play = load("res://scenes/play/play_corner.gd").new()
-		add_child(play)
-		play.go_to.connect(go_to)
+	play = PlayRoom.new()
+	add_child(play)
+	play.go_to.connect(go_to)
 	map = load("res://scenes/map/map.gd").new()
 	add_child(map)
 	map.go_to.connect(go_to)
-	go_to("tent")
+	# `#place=table` (or grooming, play_room, map) opens straight there;
+	# `#crowd=N` opens the play room with N more friends.
+	go_to(Flags.value("place", "play_room" if Flags.has("crowd") else "entrance"))
 	if Flags.has("perf"):
 		add_child(load("res://debug/perf_overlay.gd").new())
 	var music_test := "--music-test" in OS.get_cmdline_user_args()
@@ -55,9 +64,18 @@ func _ready() -> void:
 		add_child(test)
 
 
+## "entrance", "grooming", "table", "play_room", "map" or "physics".
 func go_to(place: String) -> void:
-	tent.set_active(place == "tent")
-	if play:
-		play.set_active(place == "play_corner")
+	entrance.set_active(place == "entrance")
+	tent.set_active(place in ["grooming", "table"], place if place == "table" else "grooming")
+	play.set_active(place == "play_room")
 	map.set_active(place == "map")
+	if place == "physics" and physics == null:
+		physics = PhysicsPlay.new()
+		physics.in_game = true
+		physics.go_to.connect(go_to)
+		add_child(physics)
+	elif place != "physics" and physics:
+		physics.queue_free()
+		physics = null
 	Events.place_changed.emit(place)

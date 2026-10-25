@@ -28,6 +28,12 @@ const SLOTS := ["leg_l", "leg_r", "arm_l", "arm_r", "eye_l", "eye_r"]
 ## Kicking a ball back, learned the same way (0033).
 @export var kick_skill := 0.05
 @export var parts: Dictionary = {}
+## Limb slots whose hole has been sewn shut: the part is gone and the
+## friend lives without it; nothing leaks (Mikey's playtest notes).
+@export var closed: Array = []
+## How far each open hole has rotted, 0..1 (slot -> rot). A hole left
+## open rots (Mikey's playtest notes).
+@export var hole_rot: Dictionary = {}
 ## The chip brain, the friend's personality (decision 0026). 1 is
 ## well; it fails only when the body is falling apart (0028).
 @export var brain := 1.0
@@ -55,6 +61,9 @@ const SLOTS := ["leg_l", "leg_r", "arm_l", "arm_r", "eye_l", "eye_r"]
 ## for about a day (0026). `off_at` is when it came off (game time).
 @export var head_only := false
 @export var off_at := 0.0
+## Very hard hits the neck's seam has taken (0025): a few more than a
+## limb's, and the head comes off (the ragdoll, Ragdoll.NECK_PULLS).
+@export var neck_pulls := 0
 
 
 ## One value of the head's look.
@@ -75,9 +84,26 @@ func part(slot: String) -> PartData:
 	return parts.get(slot)
 
 
-## A slot with no part in it: an open wound.
+## A slot with no part in it, not sewn shut: an open wound.
 func is_open(slot: String) -> bool:
+	return parts.get(slot) == null and not slot in closed
+
+
+## A slot with no part in it, open or sewn shut: a part can go there.
+func is_missing(slot: String) -> bool:
 	return parts.get(slot) == null
+
+
+## Sew a hole shut (or, with a part sewn on, the slot is whole again).
+func close_hole(slot: String) -> void:
+	if not slot in closed:
+		closed.append(slot)
+	hole_rot.erase(slot)
+
+
+func part_sewn(slot: String) -> void:
+	closed.erase(slot)
+	hole_rot.erase(slot)
 
 
 ## How well they are, 0..1. Shown only on the body, never as a number
@@ -87,7 +113,8 @@ func wellbeing() -> float:
 	for slot in SLOTS:
 		var p: PartData = parts.get(slot)
 		if p == null:
-			w -= 0.22
+			# A hole sewn shut is healed: only the part is missed.
+			w -= 0.06 if slot in closed else 0.22 + float(hole_rot.get(slot, 0.0)) * 0.1
 		else:
 			w -= p.rot * 0.35
 			if not p.attached:
@@ -124,6 +151,10 @@ func take_head(now: float) -> FriendData:
 	for slot in ["arm_l", "arm_r", "leg_l", "leg_r"]:
 		body.parts[slot] = parts.get(slot)
 		parts[slot] = null
+	body.closed = closed
+	body.hole_rot = hole_rot
+	closed = []
+	hole_rot = {}
 	body.parts["eye_l"] = null
 	body.parts["eye_r"] = null
 	head_fabric = head_color()
@@ -140,6 +171,8 @@ func take_head(now: float) -> FriendData:
 func join_body(body: FriendData) -> void:
 	for slot in ["arm_l", "arm_r", "leg_l", "leg_r"]:
 		parts[slot] = body.parts.get(slot)
+	closed = body.closed
+	hole_rot = body.hole_rot
 	body_look = body.body_look
 	body_fabric = body.body_fabric
 	trim = body.trim
@@ -174,8 +207,10 @@ func decay() -> float:
 	for slot in SLOTS:
 		var part: PartData = parts.get(slot)
 		var weight := 0.5 if slot.begins_with("eye") else 1.0
-		if part == null:
-			d += 0.25 if weight == 1.0 else 0.05
+		if part == null and slot in closed:
+			d += 0.08
+		elif part == null:
+			d += (0.25 + float(hole_rot.get(slot, 0.0)) * 0.15) if weight == 1.0 else 0.05
 		else:
 			d += part.rot * weight / 5.0
 	d += clampf(0.8 - stuffing, 0.0, 0.8) * 0.5
@@ -230,13 +265,18 @@ func step(hours: float, dirt: float, rng: RandomNumberGenerator) -> void:
 	stuffing = maxf(0.35, stuffing - days * 0.1)
 	fluid = maxf(0.2, fluid - days * 0.12)
 	var open := 0
-	for slot in ["arm_l", "arm_r", "leg_l", "leg_r"]:
-		if parts.get(slot) == null:
-			open += 1
-	# Open wounds leak stuffing.
-	stuffing = maxf(0.2, stuffing - open * 0.02 * hours)
+	var hole_rotting := 0.0
 	var hunger := clampf((0.7 - stuffing) / 0.35, 0.0, 1.0)
 	var speed := (1.0 + 0.5 * dirt) * (1.0 + 0.5 * hunger)
+	for slot in ["arm_l", "arm_r", "leg_l", "leg_r"]:
+		if is_open(slot):
+			open += 1
+			# An open hole rots: fully in about four days, faster in a hungry
+			# friend or a dirty camp (a guess).
+			hole_rot[slot] = minf(1.0, float(hole_rot.get(slot, 0.0)) + 0.01 * speed * hours)
+			hole_rotting += float(hole_rot[slot])
+	# Open wounds leak stuffing; a hole sewn shut doesn't.
+	stuffing = maxf(0.2, stuffing - open * 0.02 * hours)
 	var mud_src := minf(mud_amount(), 3.0) / 3.0
 	for slot in SLOTS:
 		var part: PartData = parts.get(slot)
@@ -251,7 +291,7 @@ func step(hours: float, dirt: float, rng: RandomNumberGenerator) -> void:
 			src += 0.0015
 		src += 0.0015 * maxf(0.0, wetness - 0.3)
 		src += 0.001 * mud_src
-		src += 0.001 * open
+		src += 0.001 * open + 0.002 * hole_rotting
 		part.rot = minf(1.0, part.rot + src * speed * hours)
 		if part.rot > 0.5 and part.mold.size() < 6 and rng.randf() < 0.02 * hours:
 			part.mold.append([rng.randf_range(0.2, 0.9), rng.randf_range(-0.4, 0.4), rng.randf_range(0.1, 0.2)])
@@ -282,6 +322,7 @@ func to_dict() -> Dictionary:
 		"stamina": stamina, "met": met, "mourned": mourned, "head_look": head_look, "body_look": body_look,
 		"brain": brain, "dead": dead, "head_fabric": head_color().to_html(),
 		"headless": headless, "head_only": head_only, "off_at": off_at,
+		"neck_pulls": neck_pulls, "closed": closed, "hole_rot": hole_rot,
 	}
 
 
@@ -311,6 +352,9 @@ static func from_dict(d: Dictionary) -> FriendData:
 	c.headless = d.get("headless", false)
 	c.head_only = d.get("head_only", false)
 	c.off_at = float(d.get("off_at", 0.0))
+	c.neck_pulls = int(d.get("neck_pulls", 0))
+	c.closed = d.get("closed", [])
+	c.hole_rot = d.get("hole_rot", {})
 	var pd: Dictionary = d.get("parts", {})
 	for slot in SLOTS:
 		var v = pd.get(slot)

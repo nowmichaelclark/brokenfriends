@@ -2,7 +2,7 @@
 
 Technical claims waiting for a Verifier session (`kit/sessions/verifier.md`).
 One line each: number, claim, where it's used, how to confirm. Ticked
-items are cleared by Cleanup. Next number: V-020.
+items are cleared by Cleanup. Next number: V-023.
 
 ## Open
 
@@ -15,7 +15,9 @@ items are cleared by Cleanup. Next number: V-020.
 - [ ] V-018: In Godot 4.7.1's built-in 2D physics, PinJoint2D's angular limits pulled a ragdoll's seams far apart on landing (up to 18 part widths; under 1 without them). Engine bug, or our misuse? (prototypes/04-physics-test.md) **Unclear:** the 4.7.1 class reference documents the limits as plain min/max rotation with nothing about a caveat. The open issue godotengine/godot#91691 (4.2.2; labels bug, topic:2d, topic:physics) reports the limits having no effect, and forum posts through 4.5.1 report them unreliable: a different symptom from ours, but evidence the feature is shaky. No issue found for seams pulling apart. Needs: a minimal repro on 4.7.1, then an issue report if it holds.
 - [ ] V-019: In Godot 4.7.1, continuous collision detection (cast ray) on jointed RigidBody2D parts made a ragdoll bounce back faster than it landed (about 1.1 to 1.4 times); without it about 0.1. (prototypes/04-physics-test.md) **Unclear:** the class reference only says CCD predicts the collision instead of correcting after it; no issue or doc about jointed bodies or extra bounce was found (searched, checked 2026-10-25). Needs: a minimal repro on 4.7.1, then an issue report if it holds.
 
-- [ ] V-020: The skateboard caught in a friend's neck because it slipped into the gap between head and body at the seam's joint, which the parts' collision shapes leave open. (prototypes/04-physics-test.md) Confirm in: a repro in the `#physics` scene, checking the collision shapes at the neck.
+- [x] V-020: **True.** The skateboard caught in a friend's neck because the parts' collision shapes leave a notch between head and body. Checked in the `#physics` scene on Godot 4.7.1 (S-012, 2026-10-25): the head and body ellipses meet only about half a head-width from the middle, leaving a wedge about 20 pixels wide at the side, wider than the board's 12-pixel deck; a point in it hits no shape. A collar on the head fills it; the playthrough checks the point now hits the head. (prototypes/04-physics-test.md)
+- [ ] V-021: In the web build, a desktop browser's mouse drags and flings friends, because the project setting `input_devices/pointing/emulate_touch_from_mouse` turns it into touch there too. Checked only natively (S-012: mouse events through `Input.parse_input_event` pick up and fling a friend). (game/README.md; DeepSeek review finding 10) Confirm in: the web build in a desktop browser.
+- [ ] V-022: In Godot 4.7.1, a contact's speed at its point (`get_contact_local_velocity_at_position`, `get_contact_collider_velocity_at_position`) comes out far too large for a spinning part: 7,600 pixels a second on a drop that lands at 1,760 (S-012). The ragdoll uses straight-line speeds instead. Engine bug, or our misuse (center of mass set in code)? (game/scenes/physics/ragdoll.gd) Confirm in: a minimal repro, and the 2D physics server's source for how the point is measured.
 
 ## Done
 

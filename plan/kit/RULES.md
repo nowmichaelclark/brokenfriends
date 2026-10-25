@@ -23,7 +23,7 @@ stop and say so rather than picking one.
   at the end of each phase (`kit/PHASES.md`).
 - **Where it runs** (Mikey, 2026-10-25): back-and-forth sessions
   (Brain) are **Project chats**; mostly-working-alone ones (Build,
-  Cleanup, Verifier, Red team) are **Claude Code**. Models: Opus, Sonnet, Haiku 5.5 only.
+  Cleanup, Verifier, Red team) are **Claude Code**. Models: Claude 5.5 (no Fable); DeepSeek chat for red teams.
 
 ## 2. Output format
 

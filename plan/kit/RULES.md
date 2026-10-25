@@ -24,9 +24,7 @@ stop and say so rather than picking one.
 - **Where it runs** (Mikey, 2026-10-25): back-and-forth sessions
   (Brain) are **Project chats**; mostly-working-alone ones (Build,
   Cleanup, Verifier, Red team) are **Claude Code**. Both edit the repo.
-- **Models** (Mikey, 2026-10-25): his plan has Opus 5.5 and Sonnet
-  5.5 (Haiku 5.5 for small jobs), not Fable or Mythos. Agenda rows
-  use only these; the hardest work gets Opus 5.5, high.
+  Models: only Opus, Sonnet and Haiku 5.5 (no Fable); hardest: Opus, high.
 
 ## 2. Output format
 

@@ -22,8 +22,9 @@ from Rapier.
 ## Why
 
 - Fewer moving parts while learning Godot, Linux and Android export.
-- The physics engine is a project setting, so switching later shouldn't
-  mean rewriting game code [unverified, V-009].
+- The physics engine is a project setting (`physics/2d/physics_engine`),
+  so switching later shouldn't mean rewriting game code. Behavior can
+  still differ: Rapier has no asymmetric collision layers (V-009).
 
 ## Alternatives rejected
 

@@ -107,9 +107,9 @@ Every line a session must read costs time and attention, and long
 files get skimmed. So:
 
 - **Read on demand.** Every session reads only the hot set
-  (`START-HERE.md`, this file, `STATE.md`, `CLAUDE.md`; 450 lines in
-  all [unverified, V-014]), then follows links to what its task
-  needs. Never read a folder whole.
+  (`START-HERE.md`, this file, `STATE.md`, `CLAUDE.md`; no file over
+  200 lines, 450 in all; the 450 is a judgment call, V-014), then
+  follows links to what its task needs. Never read a folder whole.
 - **One fact, one home.** A fact lives in one doc; others link to it
   or cite the decision number instead of restating it.
 - **Digest, then delete.** Raw material (`inbox/`, `research/`, old
@@ -118,15 +118,15 @@ files get skimmed. So:
   system's seed notes), delete the raw file.
 - **Git is the archive.** No `old/` or `archive/` folders, no copies of
   past versions, no commented-out code. To find something deleted:
-  `git log --all -- <path>`.
+  `git log --all -- <path>` (shallow clone: `git fetch --unshallow`).
 - **Code too.** `game/README.md` says what the build is and assumes
   now, not a history of steps (220 lines). A script over 600 lines
-  [unverified, V-015] is split before more is added. Sketch code
+  is split before more is added (a judgment call, V-015). Sketch code
   that's replaced is deleted, not kept beside the new version.
 - **Nothing generated is committed**: screenshots, builds, packs.
 
-`check.py` warns when a folder holds too many files [unverified,
-V-016], the hot set or a script is too long, or a doc is over its
+`check.py` warns when a folder holds too many files (judgment calls,
+V-016), the hot set or a script is too long, or a doc is over its
 budget below. A warning is a job for the next Cleanup session
 (`kit/sessions/cleanup.md`) or, for code, the next Build session. Over
 budget means split or cut; a limit changes only on evidence, in a

@@ -1,13 +1,8 @@
-extends Node
+extends "res://tests/flow_world.gd"
 ## Plays through the first five minutes with real touch events and
 ## saves screenshots. Run with a display (or Xvfb):
 ##   godot --path game -- --flow-test=/tmp/shots
 ## Prints FLOW OK, or FLOW FAILED with what went wrong, then quits.
-
-var out_dir := ""
-var main: Node
-var tent: Node2D
-var failures: Array[String] = []
 
 
 func _ready() -> void:
@@ -18,6 +13,10 @@ func _ready() -> void:
 
 
 func _run() -> void:
+	if "--physics-only" in OS.get_cmdline_user_args():
+		await _physics_steps()
+		_finish()
+		return
 	var c: FriendView = tent.friend
 	await _wait(0.8)
 	await _shot("01_start")
@@ -180,7 +179,11 @@ func _run() -> void:
 	await _shot("19_after_play")
 	print("catch skill after play: ", Save.friend.catch_skill)
 	await _camp_steps()
+	await _physics_steps()
+	_finish()
 
+
+func _finish() -> void:
 	if failures.is_empty():
 		print("FLOW OK")
 	else:
@@ -226,7 +229,7 @@ func _camp_steps() -> void:
 	_check(Save.camp.friends.size() >= 3 and "Test friend 7" in Save.camp.friends.map(func(f): return f.name), "three friends survive a quit and reopen")
 	_check(Save.camp.current == 1, "the friend being looked after is remembered")
 	main.go_to("tent")
-	tent._build_bench()
+	tent.build_bench()
 	tent.friend.setup(Save.friend)
 	await _wait(0.6)
 	_check(tent.bench.size() == mini(Save.camp.friends.size() - 1, tent.BENCH_X.size()), "the other friends sit further back")
@@ -275,7 +278,7 @@ func _change_steps() -> void:
 	Save.camp = camp
 	tent.traces.setup(camp)
 	tent.friend.setup(Save.friend)
-	tent._build_bench()
+	tent.build_bench()
 	await _wait(1.0)
 	await _shot("23_after_weeks_away")
 
@@ -407,8 +410,8 @@ func _parts_steps() -> void:
 	Save.camp = camp
 	tent.traces.setup(camp)
 	tent.friend.setup(Save.friend)
-	tent._build_bench()
-	tent._show_spare()
+	tent.build_bench()
+	tent.parts.show_spare()
 	tent._zoom_reset()
 	await _wait(0.8)
 	var c: FriendView = tent.friend
@@ -485,266 +488,3 @@ func _parts_steps() -> void:
 	_check(a.body_fabric != a.head_color(), "the first friend now has the second's body")
 	await _shot("30_swapped")
 	await _quest_steps()
-
-
-# --- B5: quests ---------------------------------------------------------
-
-## Move the game's clock on, as if time had passed.
-func _jump(seconds: float) -> void:
-	Save._offset += seconds
-	Save.advance_to(Save.now())
-	await _wait(0.4)
-
-
-func _twenty(make: Callable, place: String, route: int) -> Dictionary:
-	var counts := {"well": 0, "hurt": 0, "died": 0}
-	for i in 20:
-		var camp := CampData.new()
-		camp.friends.append(make.call())
-		camp.friends.append(FriendData.test_friend(99))
-		camp.clock = 5000000.0 + i * 977.0
-		camp.send(0, place, route, camp.clock)
-		camp.advance(6 * 3600.0, camp.clock + 6 * 3600.0)
-		counts[camp.just_returned[0].result] += 1
-	return counts
-
-
-func _quest_steps() -> void:
-	var strong := _twenty(func(): return FriendData.test_friend(3), "ruins", 1)
-	var weak := _twenty(func():
-		var f := FriendData.test_friend(3)
-		f.parts["leg_r"] = null
-		f.stuffing = 0.45
-		return f, "ruins", 1)
-	print("20 quests over the ridge: strong ", strong, ", weak ", weak)
-	_check(strong["well"] > weak["well"] and weak["hurt"] + weak["died"] > strong["hurt"] + strong["died"],
-		"20 quests: a weak friend fares worse than a strong one on the same route")
-	var safe := _twenty(func(): return FriendData.test_friend(3), "ruins", 0)
-	_check(safe["died"] == 0 and strong["died"] > 0, "the safe route never kills; the ridge sometimes does")
-
-	var camp := CampData.new()
-	camp.friends.append(FriendData.test_friend(21))
-	camp.friends.append(FriendData.test_friend(40))
-	camp.clock = Save.now()
-	Save.camp = camp
-	tent.traces.setup(camp)
-	tent.friend.setup(Save.friend)
-	tent._build_bench()
-	tent._show_spare()
-	await _wait(0.5)
-	await _tap(tent.hud.map_rect().get_center())
-	await _wait(0.6)
-	var map: Node2D = main.map
-	_check(map.visible, "the map opens from the tent")
-	await _tap(_screen(Quests.PLACES["woods"]["at"]))
-	var thorny := Quests.route_points("woods", 1)
-	await _tap(_screen(Quests.along(thorny, 0.3)))
-	_check(map.place == "woods" and map.route == 1, "tapping a place and a route chooses them")
-	await _shot("31_map_route")
-	await _tap(map.hud.go_center())
-	_check(camp.quests.size() == 1 and camp.friends.size() == 1, "the footprints send the friend off")
-	await _jump(10.0 * 60.0)
-	await _shot("32_out_on_a_quest")
-	var supplies_before: int = 0
-	for k in camp.supplies:
-		supplies_before += int(camp.supplies[k])
-	await _jump(15.0 * 60.0)
-	_check(camp.quests.is_empty() and camp.friends.size() >= 2, "the friend comes home when the time is up")
-	main.go_to("tent")
-	tent.choose_friend(1)
-	await _wait(0.8)
-	await _shot("33_home_from_the_woods")
-	await _arrival_steps()
-
-
-# --- B6: arrivals -------------------------------------------------------
-
-func _arrival_steps() -> void:
-	var gifts := 0
-	var most := 0
-	var arrivals := 0
-	var newcomers_died := 0
-	for m in 6:
-		var camp := CampData.first_camp(3000000.0 + m * 1000.0)
-		camp.arrivals = 1
-		camp.advance(30.0 * 86400.0, camp.clock + 30.0 * 86400.0)
-		gifts += camp.gifts
-		arrivals += camp.arrivals - 1
-		most = maxi(most, camp.friends.size())
-		for i in range(1, camp.friends.size()):
-			if camp.friends[i].dead:
-				newcomers_died += 1
-	print("six months away, one camp each: ", arrivals, " newcomers, ", gifts, " gifts, at most ", most, " friends")
-	_check(arrivals >= 12, "a month brings newcomers")
-	_check(most <= CampData.LIMIT, "the camp never holds more than its limit")
-	_check(gifts > 0, "now and then a newcomer brings something")
-	_check(newcomers_died == 0, "a newcomer nobody has seen yet waits, no worse")
-	# One turns up while the tent is open.
-	var c := Save.camp
-	while c.friends.size() >= CampData.LIMIT:
-		c.remove_friend(c.friends.size() - 1)
-	var before := c.friends.size()
-	c.arrive(FriendData.newcomer(77))
-	Save.advance_to(Save.now())
-	await _wait(2.2)
-	_check(c.friends.size() == before + 1 and c.friends.back().met, "a newcomer walks into the tent and is seen")
-	await _shot("34_a_newcomer")
-	await _play_steps()
-
-
-# --- B9: play, second cut ---------------------------------------------
-
-func _play_steps() -> void:
-	var skill := 0.05
-	var throws := 0
-	while skill < 0.5:
-		skill = FriendData.learn(skill)
-		throws += 1
-	print("throws to catch half the time: ", throws)
-	_check(throws > 20, "catching takes many throws to learn")
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 5
-	var tally := {"catch": 0, "fumble": 0, "miss": 0}
-	for i in 300:
-		tally[FriendData.try_skill(0.95, rng)] += 1
-	_check(tally["fumble"] > 0 and tally["miss"] > 0, "even a skilled friend fumbles and misses sometimes")
-
-	# The ball at a foot: a kick (or a try at one), learned the same way.
-	var c := Save.camp
-	# A friend with both legs, awake, standing still.
-	var kicker := FriendData.test_friend(55)
-	c.friends.append(kicker)
-	c.current = c.friends.size() - 1
-	main.go_to("play_corner")
-	var play: Node2D = main.play
-	play.friend.setup(Save.friend)
-	await _wait(0.6)
-	var kick := Save.friend.kick_skill
-	var ball: RigidBody2D = play.ball
-	for t in 3:
-		play._walk_timer = 99.0
-		play._walk_target = play.friend.position.x
-		play._away = false
-		play._cooldown = 0.0
-		await _wait(0.8)
-		var foot: Vector2 = play.friend.to_global(play.friend.tip("leg_r"))
-		ball.freeze = true
-		ball.global_position = foot + Vector2(160, -40)
-		ball.freeze = false
-		ball.linear_velocity = (foot - ball.global_position).normalized() * 700.0
-		await _wait(0.5)
-	_check(Save.friend.kick_skill > kick, "a ball at the foot gets kicked back (and kicking is learned)")
-	await _shot("35_kick")
-	main.go_to("tent")
-	await _music_steps()
-
-
-# --- B11: music at moments ------------------------------------------------
-
-func _music_steps() -> void:
-	await _wait(1.2)
-	var reasons: Array = Music.changes.map(func(ch): return ch[2])
-	print("music changes: ", Music.changes.size())
-	for ch in Music.changes:
-		print("  ", ch[0], "s  ", ch[1], "  (", ch[2], ")")
-	_check(reasons.has("the play corner") and reasons.has("the map"), "music changes going to the play corner and the map")
-	_check(reasons.has("the tent") or reasons.has("night at camp"), "the tent has its own music")
-	_check(reasons.has("a friend made well") or reasons.has("night at camp"), "a friend made well changes the music (by day)")
-	_check(reasons.any(func(r): return r.begins_with("a friend came home")), "a friend home from a quest changes the music")
-	_check(Music.changes.all(func(ch): return ch[2] != ""), "every change has a reason")
-	# Nothing happens for half a minute: the music stays put.
-	var before := Music.changes.size()
-	await _wait(30.0)
-	_check(Music.changes.size() == before, "no change on a timer")
-
-
-# --- Helpers ------------------------------------------------------------
-
-var _last := Vector2.ZERO
-
-
-func _screen(world: Vector2) -> Vector2:
-	return get_viewport().get_canvas_transform() * world
-
-
-func _check(ok: bool, what: String) -> void:
-	print(("  ok   " if ok else "  FAIL ") + what)
-	if not ok:
-		failures.append(what)
-
-
-func _wait(seconds: float) -> void:
-	await get_tree().create_timer(seconds).timeout
-
-
-func _touch(p: Vector2, pressed: bool) -> void:
-	var ev := InputEventScreenTouch.new()
-	ev.index = 0
-	ev.position = p
-	ev.pressed = pressed
-	get_viewport().push_input(ev, true)
-	_last = p
-	await get_tree().process_frame
-
-
-func _drag_to(p: Vector2) -> void:
-	var ev := InputEventScreenDrag.new()
-	ev.index = 0
-	ev.position = p
-	ev.relative = p - _last
-	ev.velocity = (p - _last) * 60.0
-	get_viewport().push_input(ev, true)
-	_last = p
-	await get_tree().process_frame
-
-
-func _drag_path(a: Vector2, b: Vector2, steps: int) -> void:
-	for i in range(1, steps + 1):
-		await _drag_to(a.lerp(b, float(i) / steps))
-
-
-func _tap(p: Vector2) -> void:
-	await _touch(p, true)
-	await _touch(p, false)
-	await _wait(0.12)
-
-
-func _use_tool(index: int, c: FriendView, strokes: int) -> void:
-	var tc: Vector2 = tent.hud.tool_center(index)
-	await _touch(tc, true)
-	var offset := Vector2(0, 80)
-	for i in strokes:
-		var a := float(i) * 0.37
-		var target := c.to_global(Vector2(sin(a * 1.7) * 100.0, -260.0 + fmod(i * 23.0, 380.0)))
-		await _drag_to(_screen(target) + offset)
-	await _touch(_last, false)
-
-
-func _scrub_mud(c: FriendView) -> void:
-	var tc: Vector2 = tent.hud.tool_center(0)
-	await _touch(tc, true)
-	var offset := Vector2(0, 80)
-	for m in Save.friend.mud.duplicate():
-		var y := float(m["y"])
-		var at := Vector2(float(m["x"]) * (c.body_scale() if y > -110.0 else 1.0), y)
-		for i in 26:
-			var p := at + Vector2(sin(i * 1.3) * 14.0, cos(i * 1.1) * 10.0)
-			await _drag_to(_screen(c.to_global(p)) + offset)
-	await _touch(_last, false)
-
-
-func _feed(index: int, c: FriendView) -> void:
-	var tc: Vector2 = tent.hud.tool_center(index)
-	await _touch(tc, true)
-	var mouth := _screen(c.to_global(c.mouth_pos())) + Vector2(0, 80)
-	await _drag_path(tc, mouth, 10)
-	await _touch(mouth, false)
-	await _wait(0.4)
-
-
-func _shot(name: String) -> void:
-	if out_dir == "":
-		return
-	await RenderingServer.frame_post_draw
-	var img := get_viewport().get_texture().get_image()
-	img.save_png(out_dir.path_join(name + ".png"))

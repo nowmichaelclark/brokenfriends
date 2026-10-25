@@ -32,6 +32,29 @@ static func mouth_pos(f: FriendData) -> Vector2:
 	return Vector2(0, 40.0 * float(f.hl("h")) + (10.0 * m if m > 0.0 else 0.0))
 
 
+
+## How much the stuffing fills the body out: thin friends are narrower.
+static func body_scale(f: FriendData) -> float:
+	return clampf(0.75 + 0.25 * f.stuffing, 0.62, 1.12)
+
+
+## Where a limb or the neck joins the body, in the body's units.
+static func socket(f: FriendData, slot: String) -> Vector2:
+	var s := body_scale(f) * float(f.bl("w"))
+	var h := float(f.bl("h"))
+	match slot:
+		"arm_l": return Vector2(-98.0 * s, -62.0 * h)
+		"arm_r": return Vector2(98.0 * s, -62.0 * h)
+		"leg_l": return Vector2(-46.0 * s, 108.0 * h)
+		"leg_r": return Vector2(46.0 * s, 108.0 * h)
+		"neck": return Vector2(0, -128.0 * h)
+	return Vector2.ZERO
+
+
+static func limb_width(f: FriendData, slot: String) -> float:
+	var w := 50.0 if slot.begins_with("leg") else 42.0
+	return w * (0.82 + 0.18 * body_scale(f))
+
 ## Where an ear joins the head, and the way it points at rest (radians,
 ## 0 is straight up).
 static func ear_base(f: FriendData, side: float) -> Vector2:

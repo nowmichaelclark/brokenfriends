@@ -2,7 +2,7 @@
 
 Technical claims waiting for a Verifier session (`kit/sessions/verifier.md`).
 One line each: number, claim, where it's used, how to confirm. Ticked
-items are cleared by Cleanup. Next number: V-018.
+items are cleared by Cleanup. Next number: V-020.
 
 ## Open
 
@@ -21,6 +21,8 @@ items are cleared by Cleanup. Next number: V-018.
 - [x] V-015: **Unclear: a judgment call.** No controlled study of code-file length against agent accuracy was found. The nearest is one blog benchmark (DEV Community, ceaksan, 378- and 1,053-line files) saying whole-file rewrites cost more and can drop content on bigger files; anecdotal. Anthropic's general advice (context fills, performance degrades) supports small files only indirectly. The 600 stays as a judgment call, and `kit/RULES.md` says so. Checked 2026-10-25.
 - [x] V-016: **True for history, judgment calls for caps.** A committed file stays recoverable while any ref reaches the commit; git gc only prunes unreachable objects, after a 2-week grace (`gc.pruneExpire`, default 2.weeks.ago). Source: git `Documentation/config/gc.adoc`, checked 2026-10-25. Caveats: lost if history is rewritten, force-pushed over or squashed away, and a shallow clone doesn't hold old commits (this repo's cloud clones can be shallow: run `git fetch --unshallow` before `git log --all`). No evidence exists for the folder caps (inbox 4, log 6, reviews 3, research 6); they stay as judgment calls.
 - [ ] V-017: The games, films and talks in `00-vision/references.md` are named and described correctly (written from memory in Phase 0; Gate A finding 6). Confirm in: a Research session, one source per entry.
+- [ ] V-018: In Godot 4.7.1's built-in 2D physics, PinJoint2D's angular limits pulled a ragdoll's seams far apart on landing (up to 18 part widths; under 1 without them). Engine bug, or our misuse? (prototypes/04-physics-test.md) Confirm in: Godot's PinJoint2D docs and issue tracker.
+- [ ] V-019: In Godot 4.7.1, continuous collision detection (cast ray) on jointed RigidBody2D parts made a ragdoll bounce back faster than it landed (about 1.1 to 1.4 times); without it about 0.1. (prototypes/04-physics-test.md) Confirm in: Godot's issue tracker.
 
 ## Done
 

@@ -3,207 +3,139 @@
 The Godot project. Godot **4.7.1**, GDScript, the Compatibility
 renderer (so it runs in browsers and on cheap phones), portrait 720×1280.
 
-**This is a sketch** (Mikey, 2026-10-24; decision 0021). Any
-of it may be reworked or thrown out as planning settles the game. The
-plans lead; the build is evidence about feel, never a reason.
+**This is a sketch** (Mikey, 2026-10-24; decision 0021). Any of it may
+be reworked or thrown out as planning settles the game. The plans lead;
+the build is evidence about feel, never a reason. It follows
+`plan/prototypes/03-first-playable.md` (the first playable) and
+`plan/prototypes/04-physics-test.md` (friends as soft ragdolls).
 
-## What's in it now: the first five minutes
+## What's in it now
 
-Built from Mikey's recording of 2026-10-24
-(recording 1, 2026-10-24, digested; see git history).
+**The tent.** The friend being looked after stands in front; the
+camp's other friends (up to four) sit further back, and tapping one
+brings them forward. The first friend starts passed out, muddy, with a
+rotting leg and an eye hanging by a thread.
+- **Poke** to wake them: the top of the head (they shake it, no), the
+  tickle spot (they giggle), anywhere else (a boop). **Stroke** to pet:
+  they close their eyes and purr. **Double-tap** to zoom.
+- **Parts come off** (0025, 0026): each hard pull, held, loosens an arm
+  or leg, and the third takes it off (a rotting one tears at once). Keep
+  a part in the pocket and sew it onto another friend, or bin it. Pull
+  the head up hard three times and it comes off: the friend lives on in
+  the head, which can go on a body without one.
+- **Surgery** on its own table (0031), zoomed in: pull away the loose
+  fluff, connect the ligament tube, soak up the spill, sew along the
+  glowing points. Stitches stay. The dangling eye is dragged back and
+  stitched the same way.
+- **The shelf:** sponge (mud off, gets them wet; also scrubs the
+  floor), towel, stuffing (fills them out), oil (loosens squeaky
+  joints), mold spray. Stuffing, oil, thread and spray run out (0027,
+  0042); with none left the thing shakes and the treatment can't be
+  done. Water is free.
+- **No words** (0032): what could be done next glows (a ring where to
+  touch, a dotted line where to drag, a glow on the shelf, pocket or
+  bin). Buttons are pictures. `#hints` brings the words back.
 
-**In the tent**
-- A sick friend, passed out and shaking, front-on. Mud, a rotting
-  leg torn open with fluff poking out, mold, a button eye hanging by
-  a thread, a little thin, with stiff, squeaky joints.
-- **Poke** to wake them. Tap the top of the head (they shake it, no),
-  the tickle spot on the belly (they giggle), anywhere else (a soft
-  boop). **Stroke** across them to pet: they close their eyes and purr.
-- **Grab the rotting leg and pull.** It stretches, fluff starts
-  escaping, and it tears off with a burst of fluff and hydraulic fluid.
-  Healthy limbs stretch a little and protest, but don't come off
-  (decision 0025 says they should, after several hard pulls).
-- **Toss it in the bin.** A spare leg (different fabric: they're never
-  the same) then waits in a pocket on the right.
-- **Drag the spare onto the wound** to start surgery, which zooms in:
-  1. pull away the loose fluff,
-  2. connect the ligament tube to the port,
-  3. soak up the spilled fluid with the cloth,
-  4. sew along the glowing points.
-  The stitches stay for good.
-- **The dangling eye:** drag it back into place, then stitch it.
-- **Tools on the shelf:** drag the sponge over mud (it gets them wet),
-  the towel to dry, stuffing to their mouth (they eat stuffing; it
-  fills them out), and oil for the joints.
-- **Double-tap** anywhere to zoom in or out.
+**Change over time** (0028, 0029). Rot needs a source (a tear, mold,
+mud, soaking, an open wound) and grows faster in a dirty camp and a
+hungry friend. Mold spreads. When the body falls far enough apart the
+chip brain fails and the friend dies, for good. Rot draws bugs (tap
+them); muddy friends track footprints (scrub them). Time passes while
+the game is closed; a healthy, clean friend never rots. Newcomers turn
+up now and then with something wrong (0034); a camp holds five (0013).
 
-**In the play corner**
-- They walk around (if both legs are on), nap if left alone, and you
-  can poke and pet them.
-- **Throw the ball** with a flick. At first they miss and laugh when it
-  bonks their head; every throw teaches them, until they catch it and
-  toss it back.
+**The play corner.** They walk around (hop on one leg, crawl with
+none), nap if left alone, and can be poked and petted. Flick the ball:
+at the head they try to catch, at a foot they kick, off the body it
+bounces. Catching and kicking are learned slowly by doing (0033).
 
-**The camp** (first playable, step B1): friends live at camp
-together. The one being looked after stands in front; the others sit
-further back, and tapping one brings them forward. A couple of minutes
-after the first friend is patched up, a second, muddy friend walks in.
-Time passes while the game is closed: on opening, the camp catches up.
+**Quests** (0034, 0035). **Map** shows the meadow, the woods, the river
+and the old toy shop, each with two routes and their dangers. Choose a
+route; a pie shows the chance of coming back well and a clock the
+time. The friend walks it in real time and comes home changed (soaked,
+muddy, torn, missing a limb, or fitter) with supplies, parts, sometimes
+a new friend. A friend can die out there.
 
-**Change over time** (step B2, decisions 0028 and 0029): rot needs a
-source (a tear, mold, mud, soaking, an open wound, a part already
-rotting) and grows faster in a dirty camp and in a hungry friend. Mold
-creeps across a friend and on to other friends. When the body falls
-far enough apart the chip brain fails, and the friend dies: grey,
-still, slumped, for good. Rot draws bugs (tap them to chase them off);
-muddy friends track footprints across the floor (scrub them with the
-sponge). A healthy, clean friend never rots, however long you're away.
+**Generated friends** (0037): made by maths from a seed (`data/looks.gd`
+holds the weights: the developer's sliders). Six body plans (bear,
+bunny, cat, monster, alien, a plush ghost-like one), each with its own
+head, ears, muzzle, eyes, build and colours, and its own voice. Any
+head fits any body. `#gallery` shows twenty side by side.
 
-**Supplies run out** (step B3, decisions 0027 and 0042): stuffing,
-oil, thread and mold spray are counted, and the shelf shows how much is
-left (tufts in the box, oil and spray levels, spools of thread). Each
-feeding uses a handful or a dose, each sewing a length of thread, each
-spraying a squirt. With none left the thing on the shelf shakes and the
-treatment can't be done. Water (sponge, towel) is free. More will come
-from quests and newcomers (steps B5, B6).
-
-**Parts** (step B4, decisions 0025 and 0026): any arm or leg comes off,
-healthy ones too: each hard pull, held, loosens it (it hangs lower),
-and the third pull takes it off. Drop a part in the pocket to keep it
-and sew it onto another friend later; the friend who gave it hops on
-one leg or crawls with none. A part rotted past repair only goes in the
-bin. Pull a friend's head hard upward three times and it comes off: the
-friend lives on in the head. Keep it in the pocket, bin it, or sew it
-onto a body without a head; then the game carries straight on with the
-other head and the other body. A friend who has died, or a body without
-a head, gives up its parts at the first pull, and is laid to rest once
-nothing is left to take. Torn wounds drip hydraulic fluid.
-
-**Quests** (step B5, decisions 0034 and 0035): **Map** in the tent
-opens a map of the first camp's surroundings: a meadow, the woods, the
-river, the ruins of an old toy shop. Tap a place to see its two routes,
-with their dangers drawn on them (water, mud, thorns, wolves, a
-cliff); tap a route to choose it. At the bottom: who goes (the friend
-who was in front in the tent), a pie for the chance of coming back
-well (green), and a clock for how long it takes. The footprints send
-them. They walk the route on the map in real time, then come home
-changed: soaked, muddy, torn, missing a limb, or a little fitter, with
-supplies for the shelf, parts for the pocket, sometimes a new friend.
-A friend can die out there; then only a part or two comes back.
-
-**Generated friends** (step B8, decision 0037): every newcomer, found
-friend and test friend is made by maths from a seed, weighted like
-Driftloom (`data/looks.gd` holds the weights and ranges: the
-developer's sliders). Six body plans so far: bear, bunny, cat,
-monster, alien, and a plush ghost-like one; each with its own head
-shape, ears (round, long, floppy, pointy, horns, antennae), muzzle,
-nose, eye size and spacing, sometimes cheeks or a patch, body build,
-belly and tail, and colours. Thin friends wobble, plump ones bounce,
-long ears swing. Each friend has its own voice: one of three timbres
-and its own pitch. Friends can be seen from the back (in the play
-corner they sometimes wander off facing away), and any head fits any
-body. `-- --gallery=/tmp/gallery` (or `#gallery`) shows twenty side by
-side, from the back, and with heads swapped. The first two friends of
-the first day stay bears.
-
-**No words** (step B10, decision 0032): the hint text is gone, and so
-are the words on buttons and the shelf. What could be done next glows
-instead: a soft pulsing ring where to touch, a dotted line where to
-drag, a glow on the thing on the shelf (or the pocket, or the bin) to
-use. Buttons are pictures: a circling arrow (start over; tap twice), a
-map, a ball (the play corner), a tent (back). `#hints` (or `-- --hints`)
-brings the words back, for development.
-
-**Play, second cut** (step B9, decision 0033, pillar 6): the ball
-meets any part of a friend. At the head they try to catch it; at a
-foot they try to kick it back; off an arm or the belly it bounces with
-a little "oof". Catching and kicking are learned by doing them, slowly
-(about 25 throws to catch half the time), and even a good catcher
-sometimes fumbles the ball out of its arms or misses.
-
-**The surgery table** (step B7, decision 0031): sewing happens with
-the friend lying on its own table, under a lamp, after a quick fade;
-the camera comes in close enough to see each stitch, and the friend is
-drawn twice as sharp while it's there. (Surgery on the back, for tails,
-brains and capes, comes with the back view, step B8.)
-
-**Newcomers** (step B6, decision 0034): after the first day's second
-friend, others turn up now and then, each with something wrong (mud,
-too little stuffing, soaked, a rotting limb, a missing limb, a dangling
-eye, passed out); about one in seven brings supplies or a part. A camp
-holds five friends (decision 0013); a full camp turns newcomers away.
-A newcomer who arrives while you're away waits, no worse, until you've
-seen them (pillar 4).
+**Music** (0038; when the Driftloom extension is built): a piece
+repeats until something happens (the tent's state, the play corner,
+the map, late night, a friend coming home or dying). Each change prints
+its reason. See `rust/README.md`.
 
 The game saves on its own. **Start over** (tap twice) begins again.
 
-**Music** (step B11, decision 0038; when the Driftloom extension is
-built): Driftloom's own core plays its golden loops, but now a piece
-repeats until something happens: the tent has one piece while someone
-needs looking after and another once the friend in front is well; the
-play corner, a long play, the map and late night (22:00 to 06:00) each
-have their own; a friend coming home or dying plays a moment's piece
-for about 20 seconds. Never on a timer. Each change prints its reason
-(`Music: <piece> (<reason>)`). See `rust/README.md`.
+## The physics test (`#physics`)
+
+Prototype 4, on its own, not reached from the tent. A friend as a soft
+ragdoll: body, head, arms and legs are each a body in Godot's built-in
+2D physics (decision 0005), pinned together at the seams, drawn from
+the friend's real generated look. **Drag** any part with a finger and
+let go mid-swipe to **fling**. A ramp with a skateboard at the top, and
+a step at the bottom. Debug buttons: **next friend** (a copy of the
+friend in front at camp, then tiny, huge, no legs, one arm, soaked, a
+loose seam), **three at once**, **board** (back to the top), **drop**
+(the same friends again). `&three` starts with three; `&perf` shows
+speed, physics included.
+
+The friend's body sets the physics: stuffing its weight and bounce,
+wetness more weight and less bounce. A limb that hits something hard
+counts as a hard pull on its seam (0025): a loose seam tears off, a
+healthy one after a few. A torn part stays torn in that friend's data.
 
 ## Play it
 
 - **Phone browser:** https://nowmichaelclark.github.io/brokenfriends/
-  (rebuilt on every push that changes `game/`, once GitHub Pages is
-  switched on; see below).
+  (rebuilt on every push to `main` that changes `game/`). The physics
+  test: add `#physics` to the address.
 - **Laptop:** open this folder in Godot 4.7.1 and press F5. The mouse
-  acts as a finger.
-- **Android app:** every push builds it. On the phone, open
+  acts as a finger. `-- --physics` for the physics test.
+- **Android app:** every push to `main` builds it. On the phone, open
   https://github.com/nowmichaelclark/brokenfriends/releases/tag/android-latest
-  and tap `broken-friends.apk` (allow installs from the browser when
-  Android asks). Each new build installs over the last. It is signed
-  with a test key kept in `.github/android-test.keystore`, fine for
-  testing; before the game is shared, make a private key and add it as
-  the repository secrets `ANDROID_KEYSTORE_BASE64`,
-  `ANDROID_KEYSTORE_USER` and `ANDROID_KEYSTORE_PASSWORD` (players would
-  then reinstall once).
+  and tap `broken-friends.apk`. Each build installs over the last. It
+  is signed with a test key (`.github/android-test.keystore`); before
+  the game is shared, add a private key as the repository secrets
+  `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_USER` and
+  `ANDROID_KEYSTORE_PASSWORD` (players would then reinstall once).
 - **Android, from the laptop:** set up the Android SDK once (Godot docs,
-  "Exporting for Android"), plug in the phone with USB debugging on,
-  then press the Android button at the top right of the editor
-  (one-click deploy). The **Android** export preset is ready.
-- **Android, from the phone:** the Godot Android editor can open this
-  project and export it.
+  "Exporting for Android"), then the editor's one-click deploy. The
+  **Android** export preset is ready.
 
-### Switching on GitHub Pages (once)
-
-On GitHub, as nowmichaelclark: the repo → **Settings** → **Pages** →
-under **Build and deployment**, set **Source** to **GitHub Actions**.
-Then **Actions** → **web** → **Run workflow** (or just push).
+GitHub Pages must be switched on once: the repo → **Settings** →
+**Pages** → **Source**: **GitHub Actions**.
 
 ## How the code is laid out
 
 | Folder | What |
 |---|---|
-| `autoload/` | Always-loaded: `Events` (the event bus), `Voice` (sounds, synthesized), `Save`, `Music` (Driftloom) |
-| `data/` | `CampData`, `FriendData` and `PartData`: the camp and its friends as plain data, saved as JSON |
-| `friend/` | `FriendView` (drawing and body reactions) and `PlushArt` (drawing helpers) |
-| `fx/` | `FxLayer`: fluff, fluid, bubbles, drips, sparkles; `Baked`: a drawing made once into a picture |
-| `scenes/tent/` | The tent: care, the bin, the spare pocket, surgery, the tool shelf, friends sitting further back (`BenchFriend`) |
+| `autoload/` | Always loaded: `Events` (the event bus), `Voice` (sounds, synthesized), `Save`, `Music` (Driftloom) |
+| `data/` | `CampData`, `FriendData`, `PartData`, `Looks`, quests: the camp as plain data, saved as JSON |
+| `friend/` | `FriendRig` (how a friend is drawn), `FriendView` (how it reacts), `FriendArt` and `PlushArt` (drawing helpers) |
+| `fx/` | `FxLayer` (fluff, fluid, bubbles, sparkles), `Baked` (a drawing made once into a picture), icons |
+| `scenes/tent/` | `Tent`, with `TentSurgery`, `TentParts` (parts and heads in the hand) and `TentCues` (what to do next); the shelf, the bench, the table |
 | `scenes/play/` | The play corner and the ball |
-| `addons/driftloom/` | The Driftloom extension's config and its golden loops (`rust/` builds it) |
+| `scenes/map/` | The map and quests |
+| `scenes/physics/` | The physics test: `PhysicsPlay`, `Ragdoll`, `Skateboard` |
+| `addons/driftloom/` | The Driftloom extension's config and golden loops (`rust/` builds it) |
 | `debug/` | `Flags` (debug switches) and the `#perf` overlay |
-| `tests/` | `flow_test.gd` plays the first five minutes; `music_test.gd` checks Driftloom's hashes |
+| `tests/` | The playthrough (`flow_test.gd`, `flow_world.gd`, `flow_helpers.gd`), the gallery, `music_test.gd` |
 
 Rules the code follows:
 - **Data and drawing are separate.** `FriendData` knows nothing about
-  screens; `FriendView` draws whatever the data says.
-- **Systems talk through `Events`.** Driftloom music will listen there
-  (decision 0016) without the rest of the game knowing.
+  screens; the views draw whatever the data says.
+- **Systems talk through `Events`.** Music listens there (0016)
+  without the rest of the game knowing.
 - **No image or sound files.** Everything is drawn and synthesized in
-  code, a first step toward generated art (decision 0037).
-- **Draw once, then move** (Driftloom's habit). Nothing redraws every
-  frame. Detailed drawings are baked into a picture with `Baked` and
-  re-baked only when what they show changes; motion is done by moving
-  and turning them. Sounds are made while the game starts, not during
-  play. A cheap phone (Mikey's Moto G Power 2022) is the yardstick.
-- **The body is the interface** (pillar 1). No health bars; health shows
-  as shaking, droopy lids, a slow heart patch, a pale or wet coat. The
-  text hints are a crutch for now.
+  code (0037).
+- **Draw once, then move** (Driftloom's habit). Detailed drawings are
+  baked into a picture with `Baked` and re-baked only when what they
+  show changes; motion is moving and turning them. Sounds are made at
+  start-up. A cheap phone (Mikey's Moto G Power 2022) is the yardstick.
+- **The body is the interface** (pillar 1). No health bars.
 
 ## Testing
 
@@ -213,73 +145,60 @@ godot --headless --path game --quit-after 120
 
 # The full playthrough with screenshots (needs a display or xvfb-run)
 godot --path game --resolution 720x1280 -- --flow-test=/tmp/shots
-```
 
-The playthrough prints `ok` or `FAIL` for each step and ends with
-`FLOW OK`. Run it before pushing changes to the tent or the friend.
+# Only its physics part (prototype 4)
+godot --path game --resolution 720x1280 -- --flow-test=/tmp/shots --physics-only
 
-```bash
 # Driftloom's golden loops, rendered in the game (needs rust/build.sh linux)
 godot --headless --path game -- --music-test
 ```
 
-Speed: add `#perf` to the web address (or `-- --perf` on the command
-line) for frame time, the music's cost and draw calls, printed as
-`PERF` lines too. Add `&nobg`, `&nofriend`, `&nohud`, `&nomusic` or
-`&empty` to see what each part costs. Numbers are in
-`plan/systems/platforms-tech/README.md`.
+The playthrough prints `ok` or `FAIL` for each step and ends with
+`FLOW OK`. Run it before pushing game changes. It ends with the physics
+test: every test friend dropped from a height lands, settles and stays
+whole; a loose seam dropped hard tears; a finger flings; the board
+rolls; three at once hold together.
 
-Time: `#days=3` pretends three more days passed since the last save;
-`#fast=60` runs the clock 60 times faster; `#friends=3` starts a new
-game with three friends (after **Start over**, or with no save).
+Speed: `#perf` on the web address (or `-- --perf`) shows frame time,
+script, physics and music cost and draw calls, printed as `PERF` lines
+too. `&nobg`, `&nofriend`, `&nohud`, `&nomusic` or `&empty` show what
+each part costs. Numbers: `plan/systems/platforms-tech/README.md` and
+`plan/prototypes/04-physics-test.md`.
 
-The build follows `plan/prototypes/03-first-playable.md`, step by step.
+Time: `#days=3` pretends three more days passed; `#fast=60` runs the
+clock 60 times faster; `#friends=3` starts a new game with three
+friends; `#hour=N` pretends it is that hour; `#supplies=N` sets the
+supplies on a new game.
 
 ## Assumed in this build, waiting on Mikey
 
-These are guesses from the recording (see the numbered list in the
-planning chat). Each is easy to change.
+Each is easy to change.
 
-- Front view only; the friend never turns sideways (0031 adds the
-  back view).
-- Stuffing is weight: eating stuffing fills them out, losing it makes
-  them thin (assumption 8).
-- Oil and hydraulic fluid keep joints loose; dry joints squeak and move
-  stiffly (assumption 9).
-- A spare leg appears in the pocket once the rotten one is in the bin.
-- Each camp has a tent; surgery and play happen inside it (assumption
-  16; 0031 moves surgery to its own table, lying down).
+- Stuffing is weight; oil and hydraulic fluid keep joints loose.
+- Surgery and play happen inside the tent; surgery on its own table.
+- A spare leg appears in the pocket once the rotten one is binned.
 - The friend naps after about 40 seconds alone in the play corner.
-- A friend loses about a tenth of its stuffing and a bit more oil each
-  day; open wounds leak stuffing fast; wet friends stay wet until dried.
-- How fast things go (step B2): left alone, the first friend dies in
-  about two and a half weeks; one muddy and soaked, or with its rotten
-  leg torn off and the wound left open, in about two. A dead friend
-  stays at camp until parts can be taken (step B4).
-- The sponge also scrubs the floor; bugs leave when tapped.
-- Which loop goes with which moment is in `autoload/music.gd`
-  (`PIECE`); `#hour=N` pretends it is that hour.
-- Body plans turn up bear 30%, bunny 18%, cat 18%, monster 14%,
-  alien 10%, ghost-like 10%; cheeks one in four, a head patch one in
-  seven.
+- Each day a friend loses about a tenth of its stuffing and some oil;
+  open wounds leak stuffing fast; wet friends stay wet until dried.
+  Left alone, the first friend dies in about two and a half weeks.
+- Body plans: bear 30%, bunny 18%, cat 18%, monster 14%, alien 10%,
+  ghost-like 10%; cheeks one in four, a head patch one in seven.
 - Healthy parts take 3 hard pulls (4 for good parts, 5 for the best);
-  a head takes 3. Pulling a head means dragging up and away from it;
-  stroking it is petting.
-- A head without a body dies after a day of game time. The pocket
-  offers the oldest head first.
-- Quests take 3 minutes (the meadow's short way) to 4 hours (the
-  ruins' long way). The chance comes from the route and the friend's
-  shape: missing legs, hunger, stiff joints and a sick body lower it;
-  trips that went well raise it a little. Only routes with wolves or a
-  cliff can kill. What happens is decided as the friend leaves.
-- Someone must stay at camp: the last friend at camp can't be sent.
-- A newcomer turns up about once every day and a half while there's
-  room; a camp holds five (the one in front and four further back).
-- A friend who has died stays until all four limbs are taken, then is
-  laid to rest.
-- A new camp starts with 6 handfuls of stuffing, 3 doses of oil, 4
-  lengths of thread and 2 squirts of mold spray (`#supplies=N` sets all
-  four on a new game). One squirt cleans every moldy part touched in
-  one stroke. Spray clears mold but not the rot already in a part.
-- The second friend of the first day arrives two minutes after the
-  first is patched up; up to four friends sit at the back.
+  a head takes 3. A head without a body dies after a day.
+- Quests take 3 minutes to 4 hours; only routes with wolves or a cliff
+  can kill; the last friend at camp can't be sent.
+- A newcomer about every day and a half while there's room.
+- A new camp starts with 6 stuffing, 3 oil, 4 thread, 2 spray.
+- **The physics test** (all guesses, to tune by playing):
+  - A friend is 0.42 of its tent size; tiny is 0.6 of that, huge 1.5.
+  - Weights: body 1, head 0.6, an arm 0.12, a leg 0.18; times size²;
+    stuffing from 0.6× (thin) to 1.3× (plump); soaked doubles it.
+  - Bounce 0.02 to 0.4 by stuffing, cut by wetness; gravity twice
+    Godot's default.
+  - Seams are Godot pin joints; parts spring back to their pose
+    (arms loosely, legs and head more firmly) and swing freely up to
+    a limit (arms 2.4, legs 1.1, head 0.55 radians).
+  - A limb hitting something at 2500 pixels a second or more is a hard
+    pull (a drop from the top of the screen lands at about 1700). A
+    rotting part tears at the first. The head never comes off here.
+  - Its friends are copies or made up, and never saved.

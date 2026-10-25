@@ -1,3 +1,4 @@
+class_name Tent
 extends Node2D
 ## The tent at the starting camp: the friend being looked after,
 ## front-on, with the camp's other friends sitting further back (tap
@@ -38,9 +39,12 @@ var held: LoosePart
 ## A head in the player's hand (0026).
 var held_head: LooseHead
 var loose_parts: Array = []
+## Sewing on the table, and parts and heads in the hand.
+var surgery := TentSurgery.new()
+var parts := TentParts.new()
 var zoomed := false
 
-var _parts_layer: Node2D
+var parts_layer: Node2D
 var _bg: Node2D
 var _table: Node2D
 var _fade: ColorRect
@@ -53,11 +57,10 @@ var _touch_moved := 0.0
 var _last_tap_time := -10.0
 var _last_tap_pos := Vector2.ZERO
 var _last_world := Vector2.ZERO
-var _drag_vel := Vector2.ZERO
-var _sound_cd := 0.0
+var drag_vel := Vector2.ZERO
+var sound_cd := 0.0
 var _reset_timer := 0.0
 var _hint_timer := 0.0
-var _tube_drag := false
 var _sprayed := false
 var _press_region := ""
 var _press_world := Vector2.ZERO
@@ -66,6 +69,8 @@ var _cam_tween: Tween
 
 
 func _ready() -> void:
+	surgery.t = self
+	parts.t = self
 	var bg := TentBackground.new()
 	add_child(bg)
 	_bg = bg
@@ -80,8 +85,8 @@ func _ready() -> void:
 	friend = FriendView.new()
 	friend.position = FRIEND_POS
 	add_child(friend)
-	_parts_layer = Node2D.new()
-	add_child(_parts_layer)
+	parts_layer = Node2D.new()
+	add_child(parts_layer)
 	fx = FxLayer.new()
 	add_child(fx)
 	guide = Guide.new()
@@ -116,8 +121,8 @@ func _ready() -> void:
 	layer.add_child(_fade)
 
 	hud.supplies = Save.camp.supplies
-	_show_spare()
-	_build_bench()
+	parts.show_spare()
+	build_bench()
 	Events.friend_arrived.connect(_on_friend_arrived)
 	Events.quest_ended.connect(_on_quest_ended)
 	_update_hint()
@@ -158,9 +163,9 @@ func _press(sp: Vector2) -> void:
 	_press_time = _now
 	_touch_moved = 0.0
 	_last_world = w
-	_drag_vel = Vector2.ZERO
+	drag_vel = Vector2.ZERO
 	if mode == "surgery":
-		_surgery_press(l)
+		surgery.press(l)
 		return
 	var h: String = hud.hit(sp)
 	if h == "play":
@@ -191,13 +196,13 @@ func _press(sp: Vector2) -> void:
 		Voice.pop()
 		return
 	if h == "head":
-		held_head = _spawn_head(Save.camp.heads[0], w)
+		held_head = parts.spawn_head(Save.camp.heads[0], w)
 		mode = "head_held"
 		hud.trash_visible = true
 		Voice.pop()
 		return
 	if h == "spare":
-		held = _spawn_loose(hud.spare_part, w, true)
+		held = parts.spawn_loose(hud.spare_part, w, true)
 		hud.spare_visible = false
 		mode = "part"
 		Voice.pop()
@@ -253,15 +258,15 @@ func _drag(sp: Vector2, rel: Vector2, vel: Vector2) -> void:
 	var w := to_world(sp)
 	var l := friend.to_local(w)
 	var moved := (w - _last_world).length()
-	_drag_vel = vel / camera.zoom.x
+	drag_vel = vel / camera.zoom.x
 	_touch_moved += rel.length()
 	match mode:
 		"surgery":
-			_surgery_drag(l, moved)
+			surgery.drag(l, moved)
 		"limb":
 			var torn := friend.drag_limb(l, get_process_delta_time())
 			if torn:
-				held = _spawn_loose(torn, w, false)
+				held = parts.spawn_loose(torn, w, false)
 				mode = "part"
 				hud.trash_visible = true
 		"eye":
@@ -278,7 +283,7 @@ func _drag(sp: Vector2, rel: Vector2, vel: Vector2) -> void:
 				friend.pet(l, moved)
 		"neck":
 			if friend.drag_head(l, get_process_delta_time()):
-				_head_off(w)
+				parts.head_off(w)
 		"head_held":
 			held_head.position = w
 			hud.trash_hover = hud.over_trash(sp)
@@ -297,19 +302,19 @@ func _release(sp: Vector2) -> void:
 	var l := friend.to_local(w)
 	match mode:
 		"surgery":
-			_surgery_release(l)
+			surgery.release(l)
 			return
 		"limb":
 			friend.release_limb()
 		"neck":
 			friend.release_head()
 		"head_held":
-			_release_head(sp, w)
+			parts.release_head(sp, w)
 		"eye":
 			if friend.release_eye():
 				if Save.camp.use("thread"):
 					Save.mark_dirty()
-					_start_eye_sew()
+					surgery.start_eye()
 					return
 				hud.shake("thread")
 				Voice.thud()
@@ -326,7 +331,7 @@ func _release(sp: Vector2) -> void:
 			_finish_tool(friend.to_local(to_world(hud.tool_pos)))
 			hud.held_tool = ""
 		"part":
-			_release_part(sp, w)
+			parts.release_part(sp, w)
 	if mode != "surgery":
 		mode = ""
 
@@ -345,7 +350,7 @@ func _bench_pos(n: int) -> Vector2:
 
 ## Sit every friend but the one being looked after further back.
 ## Everyone shown here has now been seen (FriendData.met).
-func _build_bench() -> void:
+func build_bench() -> void:
 	if visible:
 		for f in Save.camp.friends:
 			f.met = true
@@ -379,7 +384,7 @@ func choose_friend(i: int) -> void:
 		return
 	Save.camp.current = i
 	friend.setup(Save.friend)
-	_build_bench()
+	build_bench()
 	friend.scale = Vector2(0.85, 0.85)
 	create_tween().tween_property(friend, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	if zoomed:
@@ -392,7 +397,7 @@ func choose_friend(i: int) -> void:
 
 ## A new friend walks in and sits down.
 func _on_friend_arrived(i: int) -> void:
-	_build_bench()
+	build_bench()
 	if bench.has(i):
 		var v: BenchFriend = bench[i]
 		var to := v.position
@@ -406,8 +411,8 @@ func _on_friend_arrived(i: int) -> void:
 ## body shows what happened; what they found is on the shelf and in the
 ## pocket (0034).
 func _on_quest_ended(_place: String, result: String) -> void:
-	_build_bench()
-	_show_spare()
+	build_bench()
+	parts.show_spare()
 	hud.supplies = Save.camp.supplies
 	fx.spawn("sparkle", fx.to_local(to_world(hud.tool_center(2))), 8, 30.0)
 	match result:
@@ -421,7 +426,7 @@ func _on_quest_ended(_place: String, result: String) -> void:
 func _maybe_schedule_arrival() -> void:
 	var camp := Save.camp
 	if camp.arrivals == 0 and camp.next_arrival == 0.0 and camp.friends.size() == 1 \
-			and current_hint().begins_with("All patched up"):
+			and TentCues.hint(self).begins_with("All patched up"):
 		camp.next_arrival = Save.now() + 120.0
 		Save.mark_dirty()
 
@@ -431,9 +436,9 @@ func _maybe_schedule_arrival() -> void:
 func _use_tool(l: Vector2) -> void:
 	if tool == "sponge" and not friend.is_on_friend(l):
 		# Scrub footprints off the floor.
-		if traces.scrub(friend.to_global(l), 0.08) and _sound_cd <= 0.0:
+		if traces.scrub(friend.to_global(l), 0.08) and sound_cd <= 0.0:
 			Voice.squish()
-			_sound_cd = 0.35
+			sound_cd = 0.35
 			Save.mark_dirty()
 		return
 	if Save.friend.dead:
@@ -444,13 +449,13 @@ func _use_tool(l: Vector2) -> void:
 				_sprayed = true
 				Voice.poof()
 		"sponge":
-			if friend.sponge(l) and _sound_cd <= 0.0:
+			if friend.sponge(l) and sound_cd <= 0.0:
 				Voice.splash()
-				_sound_cd = 0.35
+				sound_cd = 0.35
 		"towel":
-			if friend.towel(l) and _sound_cd <= 0.0:
+			if friend.towel(l) and sound_cd <= 0.0:
 				Voice.squish()
-				_sound_cd = 0.3
+				sound_cd = 0.3
 		"stuffing", "oil":
 			if l.distance_to(friend.mouth_pos()) < 80.0 and not Save.friend.asleep:
 				friend.set_expression("open", "open", 0.15)
@@ -484,396 +489,16 @@ func _finish_tool(l: Vector2) -> void:
 	tool = ""
 
 
-# --- Loose parts, the bin and the spare ---------------------------------
-
-func _spawn_loose(part: PartData, w: Vector2, pocket: bool) -> LoosePart:
-	var lp := LoosePart.new()
-	lp.part = part
-	lp.trim = Save.friend.trim
-	lp.from_pocket = pocket
-	lp.floor_y = fx.floor_y
-	lp.position = w
-	_parts_layer.add_child(lp)
-	if not pocket:
-		loose_parts.append(lp)
-	return lp
-
-
-func _release_part(sp: Vector2, w: Vector2) -> void:
-	var lp := held
-	held = null
-	hud.trash_hover = false
-	hud.trash_visible = false
-	hud.pocket_open = false
-	if lp == null:
-		return
-	if not lp.from_pocket and hud.over_pocket(sp):
-		if lp.part.is_dead():
-			# Past repair (0025): only the bin will take it.
-			hud.shake("")
-			lp.drop(Vector2.ZERO)
-			Voice.thud()
-			return
-		# Keep it for another friend (donation, 0025).
-		loose_parts.erase(lp)
-		lp.part.pulls = 0
-		Save.camp.spares.push_front(lp.part)
-		lp.queue_free()
-		Save.mark_dirty()
-		_show_spare()
-		Voice.pop()
-		return
-	if lp.from_pocket:
-		var slot := _open_slot_near(w, lp.part.kind)
-		lp.queue_free()
-		if slot != "" and Save.camp.use("thread"):
-			Save.mark_dirty()
-			start_surgery(slot, lp.part)
-		elif slot != "":
-			# No thread: the spare goes back to the pocket (0042).
-			hud.shake("thread")
-			_show_spare()
-			Voice.thud()
-		else:
-			_show_spare()
-			Voice.pop()
-		return
-	if hud.over_trash(sp) or sp.distance_to(hud.trash_center()) < 120.0:
-		_trash(lp)
-	else:
-		lp.drop(_drag_vel * 0.6)
-		Voice.thud()
-
-
-func _open_slot_near(w: Vector2, kind: String) -> String:
-	for slot in ["leg_l", "leg_r", "arm_l", "arm_r"]:
-		if not slot.begins_with(kind):
-			continue
-		if Save.friend.is_open(slot) and friend.to_global(friend.socket(slot)).distance_to(w) < 140.0:
-			return slot
-	return ""
-
-
-func _trash(lp: LoosePart) -> void:
-	loose_parts.erase(lp)
-	var target := to_world(hud.trash_center())
-	var tw := create_tween().set_parallel()
-	tw.tween_property(lp, "position", target, 0.25).set_trans(Tween.TRANS_SINE)
-	tw.tween_property(lp, "scale", Vector2(0.15, 0.15), 0.25)
-	tw.chain().tween_callback(lp.queue_free)
-	Voice.clunk()
-	Events.part_changed.emit(lp.part.slot, "trashed")
-	_offer_spare()
-
-
-## Once the first rotten leg is gone, a spare waits on the side. It
-## comes once: after that, parts are found on quests (decision 0027).
-func _offer_spare() -> void:
-	if Save.camp.spare_given:
-		return
-	for slot in ["leg_l", "leg_r"]:
-		if Save.friend.is_open(slot):
-			Save.camp.spare_given = true
-			Save.camp.spares.append(FriendData.spare_leg())
-			Save.mark_dirty()
-			_show_spare()
-			return
-
-
-## Show the first spare part in the pocket, if there is one, and any
-## head kept there.
-func _show_spare() -> void:
-	var spares := Save.camp.spares
-	hud.spare_part = spares[0] if not spares.is_empty() else null
-	hud.spare_visible = not spares.is_empty()
-	hud.spare_count = spares.size()
-	hud.pocket_head = Save.camp.heads[0] if not Save.camp.heads.is_empty() else null
-
-
-# --- Heads (decision 0026) ----------------------------------------------
-
-func _spawn_head(f: FriendData, w: Vector2) -> LooseHead:
-	var lh := LooseHead.new()
-	lh.friend = f
-	lh.position = w
-	_parts_layer.add_child(lh)
-	return lh
-
-
-## The head has come off: the friend lives on in the head, now in the
-## player's hand; what stays is a body without a head.
-func _head_off(w: Vector2) -> void:
-	var head := Save.friend
-	var body := head.take_head(Save.now())
-	Save.camp.friends[Save.camp.current] = body
-	friend.setup(body)
-	fx.spawn("fluff", fx.to_local(friend.to_global(friend.socket("neck"))), 20, 22.0)
-	Voice.tear(1.0)
-	Events.part_changed.emit("head", "torn")
-	held_head = _spawn_head(head, w)
-	mode = "head_held"
-	hud.trash_visible = true
-	hud.pocket_open = true
-	_build_bench()
-	Save.mark_dirty()
-
-
-func _release_head(sp: Vector2, w: Vector2) -> void:
-	var lh := held_head
-	held_head = null
-	hud.trash_hover = false
-	hud.trash_visible = false
-	hud.pocket_open = false
-	mode = ""
-	if lh == null:
-		return
-	var head := lh.friend
-	lh.queue_free()
-	var heads := Save.camp.heads
-	if hud.over_trash(sp) or sp.distance_to(hud.trash_center()) < 120.0:
-		# Thrown away: that friend is gone (0026).
-		heads.erase(head)
-		Voice.clunk()
-		Events.part_changed.emit("head", "trashed")
-	elif Save.friend.headless and w.distance_to(friend.to_global(friend.socket("neck"))) < 150.0:
-		start_head_surgery(head)
-	elif not head in heads:
-		heads.append(head)
-		Voice.pop()
-	Save.mark_dirty()
-	_show_spare()
-
-
-## Sew a head onto the body without one in front: the friend lives on
-## with this body (0026). Takes a length of thread.
-func start_head_surgery(head: FriendData) -> void:
-	if not Save.camp.use("thread"):
-		hud.shake("thread")
-		Voice.thud()
-		if not head in Save.camp.heads:
-			Save.camp.heads.append(head)
-		_show_spare()
-		return
-	Save.camp.heads.erase(head)
-	var body := Save.friend
-	head.join_body(body)
-	Save.camp.friends[Save.camp.current] = head
-	friend.setup(head)
-	friend.wounds.erase("neck")
-	mode = "surgery"
-	var neck := friend.socket("neck")
-	friend.surgery = {"slot": "neck", "neck": true, "step": "sew", "done": 0, "points": _seam_points("neck")}
-	_to_table(neck, 3.2)
-	_show_spare()
-	_build_bench()
-	Save.mark_dirty()
-	Voice.pop()
-
-
-## After one head goes on, the other head and the other body are taken
-## through the same way (Mikey, 2026-10-25).
-func _continue_swap() -> void:
-	var bodies := Save.camp.headless_bodies()
-	if Save.camp.heads.is_empty() or bodies.is_empty():
-		return
-	choose_friend(bodies[0])
-	start_head_surgery(Save.camp.heads.back())
-
-
-# --- Surgery ------------------------------------------------------------
-
-## Sew a part onto an open wound. Four layers, in the spirit of Trauma
-## Center: pull away loose fluff, connect the hydraulic ligament, soak
-## up the spill, then sew along the glowing points.
-func start_surgery(slot: String, part: PartData) -> void:
-	mode = "surgery"
-	hud.spare_visible = false
-	friend.surgery = {"slot": slot, "part": part, "step": "fluff", "points": [], "done": 0}
-	_to_table(friend.socket(slot) + Vector2(0, 40), 3.2)
-	Voice.pop()
-
-
-func _start_eye_sew() -> void:
-	mode = "surgery"
-	friend.snap_eye()
-	var a := friend.eye_anchor("eye_r")
-	friend.surgery = {
-		"slot": "eye_r", "eye": true, "step": "sew", "done": 0,
-		"points": [a + Vector2(-15, -15), a + Vector2(15, 15), a + Vector2(15, -15), a + Vector2(-15, 15)],
-	}
-	_to_table(a, 4.0)
-
-
-func _tol() -> float:
-	return 40.0 / camera.zoom.x
-
-
-func _port(slot: String) -> Vector2:
-	return friend.socket(slot) + Vector2(10, 0)
-
-
-func _tube_rest(slot: String) -> Vector2:
-	return friend.socket(slot) + Vector2(62, 70)
-
-
-func _surgery_press(l: Vector2) -> void:
-	var s := friend.surgery
-	match s["step"]:
-		"fluff":
-			_pluck(l)
-		"tube":
-			var end: Vector2 = s["tube_end"]
-			_tube_drag = l.distance_to(end) < _tol() * 1.3
-		"soak":
-			s["cloth"] = l
-		"sew":
-			s["needle"] = l
-			_sew(l)
-
-
-func _surgery_drag(l: Vector2, moved: float) -> void:
-	var s := friend.surgery
-	match s["step"]:
-		"fluff":
-			_pluck(l)
-		"tube":
-			if _tube_drag:
-				s["tube_end"] = l
-		"soak":
-			s["cloth"] = l
-			_soak(l, moved)
-		"sew":
-			s["needle"] = l
-			_sew(l)
-
-
-func _surgery_release(l: Vector2) -> void:
-	var s := friend.surgery
-	if s.is_empty():
-		mode = ""
-		return
-	match s["step"]:
-		"tube":
-			if _tube_drag:
-				_tube_drag = false
-				var slot: String = s["slot"]
-				if l.distance_to(_port(slot)) < _tol():
-					s["tube_end"] = _port(slot)
-					s["connected"] = true
-					s["spill"] = 1.0
-					s["spill_pos"] = friend.socket(slot) + Vector2(36, 28)
-					s["step"] = "soak"
-					friend.fx.spawn("fluid", fx.to_local(friend.to_global(_port(slot))), 10, 6.0)
-					Voice.pop()
-					Events.surgery_step.emit("ligament")
-				else:
-					s["tube_end"] = _tube_rest(slot)
-		"soak":
-			s["cloth"] = null
-		"sew":
-			s["needle"] = null
-
-
-func _pluck(l: Vector2) -> void:
-	var s := friend.surgery
-	var slot: String = s["slot"]
-	var tufts: Array = friend.wounds.get(slot, [])
-	var sock := friend.socket(slot)
-	for i in range(tufts.size() - 1, -1, -1):
-		var p: Vector2 = sock + tufts[i]
-		if p.distance_to(l) < _tol():
-			tufts.remove_at(i)
-			fx.spawn("fluff", fx.to_local(friend.to_global(p)), 4, 6.0)
-			Voice.poof()
-	if tufts.is_empty():
-		s["step"] = "tube"
-		s["tube_end"] = _tube_rest(slot)
-		Events.surgery_step.emit("fluff_cleared")
-
-
-func _soak(l: Vector2, moved: float) -> void:
-	var s := friend.surgery
-	var sp: Vector2 = s.get("spill_pos", Vector2.ZERO)
-	if l.distance_to(sp) < 56.0:
-		s["spill"] = maxf(0.0, float(s["spill"]) - moved * 0.012)
-		if _sound_cd <= 0.0:
-			Voice.squish()
-			_sound_cd = 0.25
-	if float(s["spill"]) <= 0.03:
-		s["spill"] = 0.0
-		s["cloth"] = null
-		s["step"] = "sew"
-		s["points"] = _seam_points(s["slot"])
-		s["done"] = 0
-		Events.surgery_step.emit("soaked")
-
-
-func _seam_points(slot: String) -> Array:
-	var sock := friend.socket(slot)
-	var a := sock + Vector2(-30, 10)
-	var b := sock + Vector2(30, 10)
-	var pts: Array = []
-	for i in 7:
-		pts.append(a.lerp(b, i / 6.0) + Vector2(0, -10.0 if i % 2 == 0 else 12.0))
-	return pts
-
-
-func _sew(l: Vector2) -> void:
-	var s := friend.surgery
-	var pts: Array = s["points"]
-	var done: int = s["done"]
-	if done >= pts.size():
-		return
-	var target: Vector2 = pts[done]
-	if l.distance_to(target) < _tol():
-		s["done"] = done + 1
-		Voice.pip()
-		fx.spawn("sparkle", fx.to_local(friend.to_global(target)), 1, 2.0)
-		if done + 1 >= pts.size():
-			_finish_sew()
-
-
-func _finish_sew() -> void:
-	var s := friend.surgery
-	var slot: String = s["slot"]
-	if s.get("eye", false):
-		var eye: PartData = Save.friend.part("eye_r")
-		eye.attached = true
-		eye.stitched = true
-	elif s.get("neck", false):
-		Events.part_changed.emit("head", "sewn")
-		_continue_swap.call_deferred()
-	else:
-		var part: PartData = s["part"]
-		part.attached = true
-		part.stitched = true
-		Save.friend.parts[slot] = part
-		friend.wounds.erase(slot)
-		Save.camp.spares.erase(part)
-	Events.part_changed.emit(slot, "sewn")
-	Events.surgery_step.emit("sewn")
-	friend.surgery = {}
-	mode = ""
-	_off_table()
-	friend.set_expression("squint", "open", 1.6)
-	Events.friend_reacted.emit("cheer")
-	var at := friend.eye_anchor("eye_r") if slot == "eye_r" else friend.socket(slot)
-	if slot == "neck":
-		at = friend.socket("neck")
-	fx.spawn("sparkle", fx.to_local(friend.to_global(at)), 8, 20.0)
-	Save.save_now()
-
-
 # --- The surgery table (decision 0031) ----------------------------------
 
 ## Lay the friend on the surgery table, in its own place, and come in
 ## close on `focus` (a point on the friend). A quick fade, as Trauma
 ## Center does between views.
-func _to_table(focus: Vector2, z: float) -> void:
+func to_table(focus: Vector2, z: float) -> void:
 	_fade_through(func():
 		on_table = true
 		_table.visible = true
-		for n in [_bg, traces, _bench_layer, _parts_layer]:
+		for n in [_bg, traces, _bench_layer, parts_layer]:
 			n.visible = false
 		friend.position = TABLE_POS
 		friend.rotation = -PI * 0.5
@@ -885,11 +510,11 @@ func _to_table(focus: Vector2, z: float) -> void:
 		camera.zoom = Vector2(z, z))
 
 
-func _off_table() -> void:
+func off_table() -> void:
 	_fade_through(func():
 		on_table = false
 		_table.visible = false
-		for n in [_bg, traces, _bench_layer, _parts_layer]:
+		for n in [_bg, traces, _bench_layer, parts_layer]:
 			n.visible = true
 		friend.position = FRIEND_POS
 		friend.rotation = 0.0
@@ -939,7 +564,7 @@ func _tween_camera(pos: Vector2, z: float) -> void:
 
 func _process(delta: float) -> void:
 	_now += delta
-	_sound_cd -= delta
+	sound_cd -= delta
 	if hud.reset_armed:
 		_reset_timer -= delta
 		if _reset_timer <= 0.0:
@@ -955,167 +580,14 @@ func _process(delta: float) -> void:
 			_friend_count = Save.camp.friends.size()
 			if friend.data != Save.friend and mode != "surgery":
 				friend.setup(Save.friend)
-			_build_bench()
-			_show_spare()
-	_update_cue()
+			build_bench()
+			parts.show_spare()
+	TentCues.show(self)
 	var vs := get_viewport_rect().size
 	hint.position = Vector2(40, 118)
 	hint.size = Vector2(vs.x - 80, 120)
 
 
 func _update_hint() -> void:
-	hint.text = current_hint()
+	hint.text = TentCues.hint(self)
 	_maybe_schedule_arrival()
-
-
-## Gentle guidance for the first five minutes. (Later the body alone
-## should say all of this; pillar 1.)
-func current_hint() -> String:
-	var c := Save.friend
-	if held_head:
-		return "Put the head on a body without one, keep it in the pocket, or bin it."
-	if c.dead:
-		return "This friend has died. Pull off any parts worth keeping and drop them in the pocket."
-	if c.headless:
-		return "A body without a head. Sew a head on, or take its parts."
-	if held and not held.from_pocket and held.part and not held.part.is_dead() and held.part.rot < 0.5:
-		return "Drop it in the pocket to keep it for another friend, or bin it."
-	if Save.camp.bugs > 0:
-		return "Bugs! Tap them to chase them off."
-	if not Save.camp.tracks.is_empty() and mode != "surgery" and c.part("leg_l") and c.part("leg_l").rot < 0.5:
-		return "Muddy footprints. Scrub the floor with the sponge."
-	if mode == "surgery":
-		var s := friend.surgery
-		if s.get("eye", false):
-			return "Stitch the eye back on: follow the glowing points."
-		match s.get("step", ""):
-			"fluff": return "Pull away the loose fluff around the wound."
-			"tube": return "Connect the ligament tube to the port."
-			"soak": return "Soak up the spilled fluid with the cloth."
-			"sew": return "Sew it on: follow the glowing points."
-	if c.asleep:
-		return "Your friend isn't well. Poke them gently to wake them."
-	if held and not held.from_pocket:
-		return "Toss it in the bin."
-	if held and held.from_pocket:
-		return "Bring it to the wound."
-	var leg: PartData = c.part("leg_l")
-	if leg and leg.rot > 0.5:
-		return "That leg is rotting. Grab it and pull hard."
-	if not loose_parts.is_empty():
-		return "Throw the rotten leg in the bin."
-	if hud.spare_visible:
-		return "A spare leg is waiting on the right. Drag it onto the wound."
-	var eye: PartData = c.part("eye_r")
-	if eye and not eye.attached:
-		return "An eye is hanging by a thread. Drag it back into place."
-	if not c.mud.is_empty():
-		return "Rub the mud off with the sponge."
-	if c.wetness > 0.3:
-		return "They're soaked. Dry them with the towel."
-	if c.stuffing < 0.9:
-		return "They lost stuffing. Drag some to their mouth."
-	if c.fluid < 0.6:
-		return "Stiff, squeaky joints. Give them a little oil."
-	return "All patched up. Poke, tickle or pet them, or visit the play corner."
-
-
-## Show what could be done next, without words (decision 0032): a glow
-## on the shelf or pocket or bin, a pulsing ring on the friend, a dotted
-## line to drag along. The same order of things as `current_hint`.
-func _update_cue() -> void:
-	guide.clear()
-	hud.glow = ""
-	var c := Save.friend
-	if c == null or on_table and mode != "surgery":
-		return
-	if held_head:
-		hud.glow = "pocket"
-		return
-	if c.dead:
-		return
-	if c.headless:
-		if hud.pocket_head:
-			hud.glow = "pocket"
-			_cue(friend.socket("neck"), 50.0)
-		return
-	if held and not held.from_pocket and held.part and not held.part.is_dead() and held.part.rot < 0.5:
-		hud.glow = "pocket"
-		return
-	if mode == "surgery":
-		var srg := friend.surgery
-		match srg.get("step", ""):
-			"fluff":
-				var tufts: Array = friend.wounds.get(srg["slot"], [])
-				if not tufts.is_empty():
-					_cue(friend.socket(srg["slot"]) + tufts[0], 18.0)
-			"tube":
-				_cue(srg.get("tube_end", Vector2.ZERO), 16.0, friend.socket(srg["slot"]) + Vector2(10, 0))
-			"soak":
-				_cue(srg.get("spill_pos", Vector2.ZERO), 30.0)
-		return
-	if Save.camp.bugs > 0 and not traces._bugs.is_empty():
-		guide.show_cue(traces._bugs[0].global_position, 26.0)
-		return
-	if c.asleep:
-		_cue(Vector2(40, 10), 60.0)
-		return
-	if held and not held.from_pocket:
-		hud.glow = "bin"
-		return
-	if held and held.from_pocket:
-		for slot in ["leg_l", "leg_r", "arm_l", "arm_r"]:
-			if c.is_open(slot) and slot.begins_with(held.part.kind):
-				_cue(friend.socket(slot), 40.0)
-				return
-		return
-	for slot in ["leg_l", "leg_r", "arm_l", "arm_r"]:
-		var part: PartData = c.part(slot)
-		if part and part.rot > 0.5 and part.attached:
-			var mid := friend.socket(slot).lerp(friend.tip(slot), 0.6)
-			_cue(mid, 40.0, mid + friend.limb_dir(slot) * 140.0)
-			return
-	if not loose_parts.is_empty():
-		hud.glow = "bin"
-		guide.show_cue(loose_parts[0].global_position, 50.0)
-		return
-	if hud.spare_visible:
-		for slot in ["leg_l", "leg_r", "arm_l", "arm_r"]:
-			if c.is_open(slot) and hud.spare_part and slot.begins_with(hud.spare_part.kind):
-				hud.glow = "pocket"
-				_cue(friend.socket(slot), 40.0)
-				return
-	var eye: PartData = c.part("eye_r")
-	if eye and not eye.attached and Save.camp.has("thread"):
-		_cue(friend.eye_position(), 26.0, friend.eye_anchor("eye_r"))
-		return
-	if not c.mud.is_empty():
-		hud.glow = "sponge"
-		return
-	if not Save.camp.tracks.is_empty():
-		hud.glow = "sponge"
-		var t: Dictionary = Save.camp.tracks[0]
-		guide.show_cue(Vector2(float(t["x"]), float(t["y"])), 40.0)
-		return
-	if c.wetness > 0.3:
-		hud.glow = "towel"
-		return
-	if c.stuffing < 0.9 and Save.camp.has("stuffing"):
-		hud.glow = "stuffing"
-		_cue(friend.mouth_pos(), 30.0)
-		return
-	if c.fluid < 0.6 and Save.camp.has("oil"):
-		hud.glow = "oil"
-		_cue(friend.mouth_pos(), 30.0)
-		return
-	for slot in ["arm_l", "arm_r", "leg_l", "leg_r"]:
-		var part: PartData = c.part(slot)
-		if part and not part.mold.is_empty() and Save.camp.has("spray"):
-			hud.glow = "spray"
-			return
-
-
-## A cue at a point on the friend (its own units), maybe with a drag.
-func _cue(local: Vector2, r: float, drag_local := Vector2.INF) -> void:
-	var to := friend.to_global(drag_local) if drag_local != Vector2.INF else Vector2.INF
-	guide.show_cue(friend.to_global(local), r * friend.global_scale.x, to)

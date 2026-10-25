@@ -1,5 +1,5 @@
 ---
-status: planned
+status: building
 date: 2026-10-25
 tests: [friend-body, play, platforms-tech]
 ---
@@ -68,8 +68,46 @@ instead of physics, or the Rapier plugin, decision 0005).
 
 ## Result
 
-Not built yet.
+**Built, not yet played** (2026-10-25, S-001). Waiting on Mikey's ten
+minutes (S-005). Open `#physics` (`&three` for three friends, `&perf`
+for speed); `game/README.md` says what it does and lists every guess
+(weights, bounce, swing, what counts as a hard landing).
+
+What building it showed:
+- A drop from the top of the screen lands at about 1,700 pixels a
+  second; a hard drop at about 3,000. A part hitting something at 2,500
+  or more counts as a hard pull (0025), so a drop never tears a healthy
+  friend, and a loose seam dropped hard loses its part.
+- Two Godot settings broke the ragdoll and are off: the pin joint's own
+  angular limits wrenched seams far open on landing [unverified,
+  V-018], and continuous collision detection made friends bounce
+  higher than they fell [unverified, V-019]. Each part's swing is
+  limited by a spring in our code instead.
+- Godot's joints have no breaking force; tearing is scripted, as V-010
+  expected (the engine's class list for PinJoint2D shows none).
+
+The physics test in the playthrough (`FLOW OK`): every test friend
+dropped from a height lands, settles and stays whole; a loose seam
+dropped hard loses that part and the others hold; a finger picks a
+friend up and flings it; the board rolls down the ramp with a legless
+friend on it; three at once land and hold together.
+
+Speed at 4x slowdown, in the test browser at the Moto's pixel density
+(the test machine draws in software, so only good for comparing):
+
+| | Frame time (avg) | Physics | Draw calls |
+|---|---|---|---|
+| Tent, before this session | 62–80 ms | (not shown) | 39 |
+| Tent, after (split code) | 65–85 ms | 1–2 ms | 39 |
+| Physics test, one friend | 43–54 ms | 4–8 ms | 43 |
+| Physics test, three friends | 45–56 ms | 4–10 ms | 55 |
+
+Each a range over 20 seconds from the start, so the drop, landing and
+settling; music off (no extension in the local build). Physics stays
+small next to drawing; the real test is Mikey's phone.
 
 ## What changed in the docs
 
-None yet.
+- `game/README.md`: the physics test and its guesses.
+- `glossary.md`: ragdoll, seam.
+- `verify.md`: V-018, V-019.

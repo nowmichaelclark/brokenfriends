@@ -11,7 +11,7 @@ are owned by a system yet; Phase 2 assigns owners.
 Format: **Term**: definition in one or two sentences. *Owned by:*
 system. *Not to be confused with:* other term, if any.
 
-Still to define: species, seam, stuffing, fluff, condition, wetness,
+Still to define: species, stuffing, fluff, condition, wetness,
 mold, habitat, expedition, package, theme.
 
 **Camp**: the place the player mostly stays, with their friends,
@@ -43,9 +43,18 @@ feeding, minigames, watching it react. The preferred word over
 **Quest**: a task a friend is sent on and comes back from changed.
 *Owned by:* no system yet. *Not to be confused with:* minigame.
 
+**Ragdoll**: a friend built as separate physics bodies (body, head,
+limbs) joined at its seams, so it flops, falls and can be flung
+(prototype 4). *Owned by:* no system yet.
+
 **Repair**: ripping off a rotting part and sewing on a replacement or
 an addition. A repaired friend is never the same as before. *Owned
 by:* no system yet. *Not to be confused with:* donation.
+
+**Seam**: where a part joins the body. Each hard pull loosens it;
+enough, and the part comes off (0025). The physics test also counts a
+hard landing as a pull (a guess, prototype 4). *Owned by:* no system
+yet. *Not to be confused with:* stitches (the thread of a repair).
 
 ## Planning terms
 

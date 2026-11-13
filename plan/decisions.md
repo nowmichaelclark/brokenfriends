@@ -25,6 +25,8 @@ version" are still valid.
 | R14 | The outer edge of a zone is a danger zone. The player can go into it a short distance. If the player stays too long or goes too far, the bear can die. Ideas: a thick cloud of dark or strangely coloured smoke that moves into and out of the world in procedural shapes; goo that traps the bear; lava that burns it; or a mix. It must be different from the circle of Fortnite. Later, a catapult can send the player to another zone. | Mikey, 2026-11-14 |
 | R15 | The game is **not** going for a PS1 look. It renders at full 1080p. It does not need to look better than a PS1 game upscaled to 1080p, so it does not need high-resolution textures or many polygons. Performance aim: if a computer runs a well-made PS1 PC port or decomp (for example Silent Hill) at 60 fps and 1080p, it should also run Broken Friends. The visual style is still open. | Mikey, 2026-11-14 |
 | R16 | For now, when the bear dies, it starts again at the start point of the zone. | Mikey, 2026-11-14 |
+| R17 | The bear looks like an old, classic teddy bear (Mikey's reference photos: a jointed mohair bear with felt pads, a stitched nose and button eyes). It can tear, lose stuffing, and get wet fur. It feels soft, plush and a little furry, with simple shapes and parts that move easily. | Mikey, 2026-11-14 |
+| R18 | The bear's animation is procedural. The engine makes the movement from the surface (for example how the bear climbs onto a wall) and from the limbs that the bear still has: with one leg it hops, with one arm it climbs less well and only on less steep surfaces. Mikey asks Claude to choose the method. | Mikey, 2026-11-14 |
 
 ## Proposed, Mikey must decide
 

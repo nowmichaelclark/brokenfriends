@@ -73,7 +73,8 @@ is done when Mikey plays for ten minutes and wants to continue.
   the seed and changes with time: it moves in and out, and it is
   sometimes high and thick, sometimes low and thin.
 - The bear can go into the smoke a short distance. If it stays too
-  long or goes too far, it dies.
+  long or goes too far, it dies. Then it starts again at the start
+  point of the zone (R16).
 - Goo and lava come later (assumed).
 
 **Ground scatter**
@@ -104,7 +105,7 @@ is done when Mikey plays for ten minutes and wants to continue.
       does not get stuck or fall through the ground.
 - [ ] Through the haze, the mountains look like mountains: ridges,
       gullies and silhouettes.
-- [ ] The game runs at 60 fps at 1080p (render scale 0.75) on Mikey's
+- [ ] The game runs at 60 fps at full 1080p on Mikey's
       laptop with integrated graphics. If not, there is a list of the
       causes.
 - [ ] A new seed makes a different zone of the same quality in less
@@ -112,9 +113,11 @@ is done when Mikey plays for ten minutes and wants to continue.
 - [ ] Mikey plays for ten minutes and writes his notes in
       `plan/play-notes.md`.
 
+## The look (R15)
+
+The game renders at full 1080p, with a PS1-like look: low-poly meshes,
+small textures with nearest-pixel filtering, and simple lighting.
+
 ## Questions for Mikey
 
-1. Do you want the PS1-like look for demo 1? (See `decisions.md`,
-   "Proposed".)
-2. What happens when the bear dies in the smoke? For example, the
-   bear starts again at the start point of the same zone.
+None open now.

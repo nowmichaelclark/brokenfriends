@@ -23,6 +23,8 @@ version" are still valid.
 | R12 | There is no fall damage as such. Instead, the bear can come apart as a real teddy bear would, for example lose limbs. Lost limbs do not mean death. A bear without legs can still crawl and climb. | Mikey, 2026-11-14 |
 | R13 | Gamepad first. Mikey wants to sit and use only a gamepad. Button combos or a dev menu are OK. | Mikey, 2026-11-14 |
 | R14 | The outer edge of a zone is a danger zone. The player can go into it a short distance. If the player stays too long or goes too far, the bear can die. Ideas: a thick cloud of dark or strangely coloured smoke that moves into and out of the world in procedural shapes; goo that traps the bear; lava that burns it; or a mix. It must be different from the circle of Fortnite. Later, a catapult can send the player to another zone. | Mikey, 2026-11-14 |
+| R15 | PS1-like look, but not low resolution: the game renders at 1080p. The game does not need high-resolution textures or many polygons. | Mikey, 2026-11-14 |
+| R16 | For now, when the bear dies, it starts again at the start point of the zone. | Mikey, 2026-11-14 |
 
 ## Proposed, Mikey must decide
 
@@ -32,10 +34,9 @@ version" are still valid.
 - **Demo zone:** 2 × 2 km. The biome is scorched highlands.
 - **Camera:** third person.
 - **Art:** no imported art in demo 1. Code makes all art.
-- **Look:** a PS1-like look (low resolution, low-poly shapes,
-  pixelated textures, dithering). The saved GPU time pays for weather,
-  sand, avalanches and other simulations. Mikey is "almost thinking"
-  this; he has not decided.
+- **PS1 details (R15):** nearest-pixel filtering on small textures,
+  vertex lighting, a little dithering. No affine texture warping and no
+  vertex snapping at first; Mikey can ask for them.
 - **Erosion filter:** keep the MPL-2.0 port for now. Write our own
   erosion simulation later, for the dynamic world (avalanches, sand,
   runtime erosion). That is a different tool from the filter.

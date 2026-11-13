@@ -93,6 +93,29 @@ strip = true
 - Hot reload has limits. If you change the fields or the base class of
   a class, restart the editor (Project → Reload Current Project).
 
+## Speed of generation (ideas from TanTan)
+
+TanTan's video "500 million voxels/sec" names four methods. These
+apply to our generation:
+
+- **Bound checks.** Before a block is meshed, find the smallest and
+  largest value that the SDF can have in it. If the block is fully
+  solid or fully empty, skip it. This is very useful for the caves.
+- **Noise up-sampling.** Calculate expensive, slow-changing noise
+  (ridges, domain warp) on a coarse grid, for example every 4 to 8 m.
+  Interpolate between the grid points. Calculate only the fine detail
+  at full resolution.
+- **Noise cache.** Calculate each noise field one time for each zone.
+  Let all steps use the same result.
+- **RLE columns.** RLE (run-length encoding) stores each column as a
+  list of runs, for example "solid from 0 to 120 m, air to 135 m,
+  solid to 300 m." This suits our caves: the surface is a heightmap,
+  and each column stores its cave spans.
+
+Zone generation takes 2 to 5 s now [unverified on Mikey's laptop].
+That is OK for a load. These methods become important for caves and
+for changes while the game runs.
+
 ## Calls from Rust to Terrain3D
 
 godot-rust has typed bindings for Godot's own classes only. Terrain3D
@@ -117,8 +140,11 @@ all of it. This is more work, but it removes the C++ dependency.
   lighter than Forward+. If the Intel Vulkan driver fails, use
   Compatibility. Do not use SDFGI, volumetric fog or SSR. Mobile does
   not have them.
-- **Render scale.** Set the 3D render scale to 0.75 with FSR 1. The UI
-  stays sharp at full resolution.
+- **The look (R15).** Render at full 1080p. Do not use a low internal
+  resolution. Keep the PS1-like look in the content: low-poly meshes,
+  small textures with nearest-pixel filtering, simple flat or vertex
+  lighting. The saved GPU time pays for simulations. A 3D render scale
+  below 1.0 is only a last fallback, if the speed test fails.
 - **Time for each frame.** The limit is 16.6 ms in total. Terrain gets
   4 ms at most. Scatter gets 4 ms at most. All other work gets 5 ms at
   most.

@@ -40,6 +40,35 @@ follow their rules.
 - **Tag guesses.** If a claim about an engine, crate or performance
   hasn't been checked, mark it `[unverified]`.
 
+## Writing style: about 80% Simplified Technical English
+
+Write docs, explanations, session summaries and doc comments about 80%
+of the way to ASD-STE100 (Simplified Technical English). The full
+specification is very strict. Use its main rules, but break a rule
+when the text would otherwise be unclear or unnatural.
+
+- Keep sentences short. Steps: 20 words at most. Descriptions: 25
+  words at most.
+- Write one instruction per sentence. Start instructions with a verb:
+  "Run the tests." not "The tests should be run."
+- Use the active voice and the present tense where you can.
+- Use simple, common words, and use each word with one meaning only.
+  Prefer "use" to "utilize" and "start" to "initiate".
+- Use technical names (clipmap, SDF, MultiMesh) as they are. Explain a
+  technical name the first time you use it in a doc.
+- Keep "the", "a" and "this". Don't write in note-style fragments.
+- Avoid phrasal verbs ("set up", "carry out") when a simple verb works
+  ("make", "do").
+- Write one topic per paragraph, with 6 sentences at most.
+- Use numbered lists for steps that must be done in order. Use bullet
+  lists for everything else that is a list.
+- Put a warning or a condition before the instruction it applies to:
+  "If the build fails, read the log."
+
+This applies to prose only. It doesn't apply to code or to Mikey's own
+files. When you edit an older doc, rewrite the parts you touch in
+this style.
+
 ## Finishing a session
 
 - Run `cargo fmt`, `cargo clippy` and `cargo test` in `rust/`, and fix

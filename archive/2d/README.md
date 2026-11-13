@@ -7,8 +7,8 @@ the Driftloom extension (`rust/`) and the old GitHub workflows
 (`github/`, renamed so they no longer run).
 
 The game was rebooted as 3D in November 2026. Nothing here is built
-on. It's here for ideas. The exact last state is the git tag
-`2d-concept`. Check out that tag to run the old game; paths inside
+on. It's here for ideas. The exact last state is the git branch
+`2d-concept`. Check out that branch to run the old game; paths inside
 this folder assume it sits at the repo root.
 
 The web build last deployed to GitHub Pages stays up until something

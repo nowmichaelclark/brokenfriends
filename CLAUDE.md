@@ -4,8 +4,8 @@ This repo is **Broken Friends**, rebooted in November 2026 as a 3D PC
 game: a teddy-bear-sized friend exploring a procedurally generated,
 hot, smog-choked world. Built with Godot 4 and Rust, from scratch.
 
-The old 2D game and its plans are in `archive/2d/` (also tagged
-`2d-concept`). Read them for ideas only. Don't build on their code or
+The old 2D game and its plans are in `archive/2d/` (also kept
+whole on the `2d-concept` branch). Read them for ideas only. Don't build on their code or
 follow their rules.
 
 ## Start of every session

@@ -12,4 +12,4 @@ walk, jump and climb through (`plan/demo-1.md`).
 | `plan/` | The plans. Start at `plan/STATE.md`. |
 | `rust/` | The game's code: world generation and gameplay (from S-101). |
 | `game/` | The Godot project (from S-101). |
-| `archive/2d/` | The original 2D creature-care game and its plans, kept for ideas. Also tagged `2d-concept`. |
+| `archive/2d/` | The original 2D creature-care game and its plans, kept for ideas. Also kept whole on the `2d-concept` branch. |

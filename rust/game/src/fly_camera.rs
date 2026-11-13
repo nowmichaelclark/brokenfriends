@@ -2,11 +2,14 @@
 
 use crate::terrain::TERRAIN_GROUP;
 use godot::classes::input::MouseMode;
-use godot::classes::{Camera3D, ICamera3D, Input, InputEvent, InputEventMouseMotion};
+use godot::classes::{
+    Camera3D, ICamera3D, Input, InputEvent, InputEventKey, InputEventMouseMotion,
+};
 use godot::global::{Key, MouseButton};
 use godot::prelude::*;
 
-/// A camera that flies. Hold the right mouse button to look around.
+/// A camera that flies. Push F2 to change between this camera and the
+/// camera of the game. Hold the right mouse button to look around.
 /// Move with W, A, S, D. Go down with Q and up with E. Hold Shift to go
 /// faster.
 #[derive(GodotClass)]
@@ -54,6 +57,9 @@ impl ICamera3D for BfFlyCamera {
     }
 
     fn process(&mut self, delta: f64) {
+        if !self.base().is_current() {
+            return;
+        }
         let input = Input::singleton();
         let looking = input.is_mouse_button_pressed(MouseButton::RIGHT);
         let mode = if looking {
@@ -89,6 +95,15 @@ impl ICamera3D for BfFlyCamera {
     }
 
     fn input(&mut self, event: Gd<InputEvent>) {
+        if let Ok(key) = event.clone().try_cast::<InputEventKey>() {
+            if key.is_pressed() && !key.is_echo() && key.get_keycode() == Key::F2 {
+                self.toggle();
+            }
+            return;
+        }
+        if !self.base().is_current() {
+            return;
+        }
         let Ok(motion) = event.try_cast::<InputEventMouseMotion>() else {
             return;
         };
@@ -106,6 +121,28 @@ impl ICamera3D for BfFlyCamera {
 
 #[godot_api]
 impl BfFlyCamera {
+    /// Changes between this camera and the camera of the game (F2).
+    #[func]
+    fn toggle(&mut self) {
+        if self.base().is_current() {
+            // Godot then uses the camera that was active before.
+            self.base_mut().clear_current();
+            Input::singleton().set_mouse_mode(MouseMode::CAPTURED);
+            return;
+        }
+        // Start at the position of the game camera.
+        if let Some(viewport) = self.base().get_viewport() {
+            if let Some(camera) = viewport.get_camera_3d() {
+                let transform = camera.get_global_transform();
+                self.base_mut().set_global_transform(transform);
+                let rotation = self.base().get_rotation();
+                self.pitch = rotation.x;
+                self.yaw = rotation.y;
+            }
+        }
+        self.base_mut().make_current();
+    }
+
     /// Moves the camera up if the new ground is above it.
     #[func]
     fn on_zone_changed(&mut self) {

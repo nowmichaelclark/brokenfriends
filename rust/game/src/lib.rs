@@ -5,7 +5,10 @@
 
 use godot::prelude::*;
 
+mod bear;
 mod fly_camera;
+mod follow_camera;
+mod motion;
 mod overlay;
 mod terrain;
 

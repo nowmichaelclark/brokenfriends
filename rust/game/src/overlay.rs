@@ -100,7 +100,7 @@ impl BfDebugOverlay {
              draw calls {draw_calls:.0}   primitives {primitives:.0}\n\
              video memory {video_mb:.0} MB\n\
              seed {seed}\n\
-             F3: hide   F4: new zone"
+             F2: fly camera   F3: hide   F4: new zone"
         )
     }
 }

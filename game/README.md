@@ -26,12 +26,39 @@ what it assumes.
   addon. Terrain3D draws the ground and makes the collision. Push F4
   to make a new zone with the next seed. The node sends the signal
   `zone_changed` when the zone is on the screen.
+- **`BfBear`** is the teddy bear, a `CharacterBody3D`, 0.40 m tall.
+  Code makes its body from balls and capsules. It walks, jogs and
+  jumps. The jump has coyote time and a jump buffer. When a new zone
+  shows, the bear goes to the flattest place near the centre. If the
+  bear is below the ground, the code puts it back on the ground.
+- **`BfFollowCamera`** is the third-person camera. The mouse or the
+  right stick turns it around the bear. It reads the heightmap and
+  comes nearer when the ground is in the way.
 - **`BfDebugOverlay`** shows fps, frame time, draw calls, primitives,
   video memory and the seed. Push F3 to show or hide it.
-- **`BfFlyCamera`** is a debug camera. Hold the right mouse button to
-  look. Move with W, A, S, D, Q and E. Hold Shift to go faster.
-- **`main.tscn`** is the start scene: terrain, sun, sky, camera and
-  overlay.
+- **`BfFlyCamera`** is a debug camera. Push F2 to use it, and F2 again
+  to go back. Hold the right mouse button to look. Move with W, A, S,
+  D, Q and E. Hold Shift to go faster. The bear does not move while
+  this camera is active.
+- **`main.tscn`** is the start scene: terrain, sun, sky, bear, cameras
+  and overlay.
+
+## Controls
+
+| Action | Keyboard and mouse | Gamepad |
+|---|---|---|
+| Move | W, A, S, D or the arrow keys | left stick |
+| Jog | hold Shift | hold the right shoulder button |
+| Jump | Space | bottom button (A) |
+| Turn the camera | mouse | right stick |
+| Release the mouse | Esc (click the window to hold it again) | |
+| Fly camera | F2 | |
+| Debug overlay | F3 | |
+| New zone | F4 | |
+
+All tuning values of the bear and the camera are in the Inspector
+(select `Bear` or `FollowCamera`). The movement maths is in
+`rust/game/src/motion.rs`, with unit tests.
 
 The ground colours are: pale ochre on flat ground, rust and ash bands
 on rock (steeper than about 35 to 50 degrees), and pale sand in
@@ -127,8 +154,16 @@ These numbers are not valid for Mikey's laptop.
 - **Physics engine: Jolt.** It is the default for new 3D projects in
   Godot 4.7 [unverified].
 - **The window starts maximized** at a base size of 1920 × 1080.
-- **Debug keys are fixed in code** (F3, F4, fly camera keys). They are
-  not in the Input Map.
+- **All keys are fixed in code.** They are not in the Input Map, thus
+  the player cannot change them.
+- **Jog.** The bear walks at 1.4 m/s. It jogs at 3.2 m/s while Shift
+  is down. The jump is 0.55 m high.
+- **Camera.** Third person, 1.8 m behind the bear. The camera avoids
+  the terrain only. It does not avoid other objects yet.
+- **Start point.** The flattest place within 200 m of the centre. This
+  can be a hilltop.
+- **The bear has no animation.** The body turns to the move direction.
+  The arms and legs do not move.
 - **One file has the MPL-2.0 licence.** `erosion_filter.rs` is a port
   of the erosion filter by Rune Skovbo Johansen, as `plan/tech.md`
   says. His code has the MPL-2.0 licence, thus the port keeps it. All

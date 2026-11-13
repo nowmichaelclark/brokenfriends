@@ -5,6 +5,7 @@
 
 use godot::prelude::*;
 
+mod atmosphere;
 mod bear;
 mod climb;
 mod fly_camera;

@@ -1,6 +1,6 @@
 # State
 
-Updated: 2026-11-14 (S-107 done: the bear climbs, with stamina and grip)
+Updated: 2026-11-14 (S-107 climbing and S-105 smog are done and both on `main`)
 
 Write this file again each time. Do not add to the end. Keep it under
 90 lines.
@@ -12,7 +12,9 @@ climbs through one biome under smog. The skeleton is built. Rust makes
 a zone of scorched highlands, and Terrain3D shows it (see
 `game/README.md`). The teddy bear walks and jumps on it, with a
 third-person camera. The bear climbs steep surfaces, with stamina and
-a grip value for each ground type. Smog and scatter are not built yet.
+a grip value for each ground type. Smog, sun, sky, dust and heat
+shimmer are built, but nobody has seen them in the Mobile renderer
+yet. Scatter and the smoke edge are not built yet.
 
 ## Agenda
 
@@ -20,19 +22,18 @@ To start a session, Mikey opens the place in the "Where" column. He
 selects the model and effort, then types "Run S-NNN". At the end of a
 session, the session deletes its row. It changes the rows that it
 unblocks to **ready**. It adds follow-up rows at the bottom.
-Next number: S-118.
+Next number: S-119.
 
 | # | Session | Where | Model, effort | Status |
 |---|---|---|---|---|
 | S-113 | **Build: gamepad and dev menu** (R13). The Back/Select button opens a dev menu. The d-pad and A use it: fly camera, overlay, new zone, seed. All game actions work on the gamepad. | Claude Code | Sonnet 5.5, medium | **ready** |
-| S-105 | **Build: smog and heat** (R7, R15). Distance fog and height fog, the sun, the sky, dust particles, heat shimmer and colour grading. Full 1080p, within the R15 detail budget. No PS1 effects. Only Mobile renderer features. Read `research/smog-and-budget.md` first. | Claude Code | Sonnet 5.5, high | **ready** |
 | S-114 | **Build: tumble and coming apart** (R11, R12). When the bear tumbles, it becomes a simple ragdoll (about 10 Jolt bodies, for the bear only). A hard hit can remove a limb. The limb stays in the world. The bear moves and climbs with the limbs it has: without legs, it crawls. Read `research/ragdoll-and-limbs.md` first. The climb gives the fall velocity in `BfBear::let_go`. | Claude Code | Opus 5.5, high | **ready** |
-| S-115 | **Build: the smoke edge** (R14, `demo-1.md`). The seed and the time set the shape of the smoke wall around the angle of the zone. In the smoke, the fog becomes thick and a timer starts. If the bear stays too long or goes too far, it dies and starts again at the start point (R16). Use cheap smoke: textured cards and a moving mesh, not volumetric fog. Read `research/smog-and-budget.md` first. | Claude Code | Sonnet 5.5, high | waiting on S-105 |
-| S-106 | **Play: the speed test.** Download the newest zip. Run the game at 1080p on both laptops. Walk across the zone with F3 on. Tell Claude the fps, the draw calls at some places, and the time to make a new zone (F4). If you have a well-made PS1 PC port, also note its fps on the same laptop (R15). | Mikey's laptops | Mikey | waiting on S-105 |
-| S-108 | **Build: ground scatter.** Make rocks, pebbles and dead shrubs in Rust. Draw them with MultiMesh and visibility ranges. Stay inside the numbers from S-106. For the shrubs, look at TanTan's `shrubbery` crate (space colonization, deterministic, MIT/Apache) [unverified: whether it works without Bevy]. | Claude Code | Sonnet 5.5, medium | waiting on S-106 |
-| S-109 | **Brain** with Mikey: play the full demo, decide what to fix, and plan demo 2 (caves). | Project chat | Opus 5.5, medium | waiting on S-114, S-115 and S-108 |
-| S-116 | **Play: the climb test.** Download the newest zip. Climb with the gamepad for ten minutes, with F3 on. Tell Claude what you feel: the climb speed, how long the stamina lasts, the slide on ash rock and sand, the jump off, the move onto a ledge, and each place where the bear gets stuck or shakes. | Mikey's laptops | Mikey | **ready** |
+| S-115 | **Build: the smoke edge** (R14, `demo-1.md`). The seed and the time set the shape of the smoke wall around the angle of the zone. In the smoke, the fog becomes thick and a timer starts. If the bear stays too long or goes too far, it dies and starts again at the start point (R16). Use cheap smoke: textured cards and a moving mesh, not volumetric fog. Read `research/smog-and-budget.md` first. | Claude Code | Sonnet 5.5, high | **ready** |
+| S-116 | **Play: climb, smog and speed** (this row also does the old S-106). Download the newest zip. Play for about 15 minutes with the gamepad and F3 on, on both laptops if you can. Tell Claude: (1) the climb: speed, how long the stamina lasts, the slide on ash rock and sand, the jump off, the move onto a ledge, each place where the bear gets stuck or shakes; (2) the smog and the sky: how they look; (3) the speed: fps and draw calls at some places, the time for a new zone (F4), and the laptop. If you have a well-made PS1 PC port, also note its fps on the same laptop (R15). | Mikey's laptops | Mikey | **ready** |
 | S-117 | **Build: climb fixes from the play notes.** Change the climb defaults and fix the problems that S-116 finds. Done when each note of S-116 has a change or a reason. | Claude Code | Sonnet 5.5, medium | waiting on S-116 |
+| S-118 | **Build: tune the smog.** Change the defaults of `BfAtmosphere` after Mikey's notes on the look and the speed (S-116). Remove the heat shimmer if it costs too much. | Claude Code | Sonnet 5.5, medium | waiting on S-116 |
+| S-108 | **Build: ground scatter.** Make rocks, pebbles and dead shrubs in Rust. Draw them with MultiMesh and visibility ranges. Stay inside the speed numbers from S-116. For the shrubs, look at TanTan's `shrubbery` crate (space colonization, deterministic, MIT/Apache) [unverified: whether it works without Bevy]. | Claude Code | Sonnet 5.5, medium | waiting on S-116 |
+| S-109 | **Brain** with Mikey: play the full demo, decide what to fix, and plan demo 2 (caves). | Project chat | Opus 5.5, medium | waiting on S-114, S-115 and S-108 |
 
 ## Combined runs
 

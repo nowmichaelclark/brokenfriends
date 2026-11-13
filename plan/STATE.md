@@ -1,6 +1,6 @@
 # State
 
-Updated: 2026-11-14 (GitHub builds the game; Mikey plays, Claude tunes)
+Updated: 2026-11-14 (S-111 done: Mikey's notes on climbing, coming apart, gamepad and the zone edge)
 
 Write this file again each time. Do not add to the end. Keep it under
 90 lines.
@@ -19,17 +19,18 @@ To start a session, Mikey opens the place in the "Where" column. He
 selects the model and effort, then types "Run S-NNN". At the end of a
 session, the session deletes its row. It changes the rows that it
 unblocks to **ready**. It adds follow-up rows at the bottom.
-Next number: S-114.
+Next number: S-116.
 
 | # | Session | Where | Model, effort | Status |
 |---|---|---|---|---|
-| S-111 | **Play: the first start.** Download the Linux zip from the `game-latest` release and run it (see `game/README.md`, "Play the latest build"). Walk and jump. Use the fly camera (F2) to look at three zones (F4). Write what feels wrong and what looks wrong, in your own words. Answer the questions in `demo-1.md` and in `game/README.md` ("Assumed"). | Mikey's laptop | Mikey | **ready** |
-| S-113 | **Build: tune from the play notes.** Mikey pastes his notes from S-111 at the start. Change the default values (movement, camera, generator) to match the notes. Fix small problems. Write the notes in `play-notes.md`. | Claude Code | Sonnet 5.5, medium | waiting on S-111 |
-| S-105 | **Build: smog and heat.** Add distance fog and height fog, the sun, the sky, dust particles, heat shimmer and colour grading. Set the render scale to 0.75. Use only features of the Mobile renderer. | Claude Code | Sonnet 5.5, medium | **ready** |
+| S-113 | **Build: gamepad and dev menu** (R13). The Back/Select button opens a dev menu. The d-pad and A use it: fly camera, overlay, new zone, seed. All game actions work on the gamepad. | Claude Code | Sonnet 5.5, medium | **ready** |
+| S-107 | **Build: climbing** (R11, `demo-1.md`). Automatic start when the bear pushes into a steep surface. Move in all directions, jump off, automatic stop on flat ground, climb up onto ledges, stamina. A grip value for each surface type: slow slide, full slide, momentum. Keep it cheap: a few ray casts for each frame, no physics bodies while the bear climbs. | Claude Code | Opus 5.5, high (or Fable 5.2, medium) | **ready** |
+| S-105 | **Build: smog and heat.** Distance fog and height fog, the sun, the sky, dust particles, heat shimmer, colour grading, render scale 0.75. Only Mobile renderer features. If Mikey says yes to the PS1-like look, add it here: a low internal resolution, nearest-pixel upscale, dithering and vertex snapping. | Claude Code | Sonnet 5.5, high | waiting on Mikey's answer about the PS1 look |
+| S-114 | **Build: tumble and coming apart** (R11, R12). When the bear tumbles, it becomes a simple ragdoll (about 10 Jolt bodies, for the bear only). A hard hit can remove a limb. The limb stays in the world. The bear moves and climbs with the limbs it has: without legs, it crawls. | Claude Code | Opus 5.5, high | waiting on S-107 |
+| S-115 | **Build: the smoke edge** (R14, `demo-1.md`). The seed and the time set the shape of the smoke wall around the angle of the zone. In the smoke, the fog becomes thick and a timer starts. If the bear stays too long or goes too far, it dies. Use cheap smoke: textured cards and a moving mesh, not volumetric fog. | Claude Code | Sonnet 5.5, high | waiting on S-105 |
 | S-106 | **Play: the speed test.** Download the newest zip. Run the game at 1080p on both laptops. Walk across the zone with F3 on. Tell Claude the fps and the draw calls at some places. | Mikey's laptops | Mikey | waiting on S-105 |
-| S-107 | **Build: climbing.** Find the wall, hold on to it, move along the surface, use stamina, and climb up onto ledges. Use the notes from S-111. | Claude Code | Opus 5.5, high | waiting on S-113 and S-105 |
 | S-108 | **Build: ground scatter.** Make rocks, pebbles and dead shrubs in Rust. Draw them with MultiMesh and visibility ranges. Stay inside the numbers from S-106. | Claude Code | Sonnet 5.5, medium | waiting on S-106 |
-| S-109 | **Brain** with Mikey: play the full demo, decide what to fix, and plan demo 2 (caves). | Project chat | Opus 5.5, medium | waiting on S-107 and S-108 |
+| S-109 | **Brain** with Mikey: play the full demo, decide what to fix, and plan demo 2 (caves). | Project chat | Opus 5.5, medium | waiting on S-114, S-115 and S-108 |
 
 ## Combined runs
 

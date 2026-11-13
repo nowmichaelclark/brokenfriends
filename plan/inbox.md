@@ -9,3 +9,7 @@ sorts them.
 - Ground detail smaller than 1 m (cracks, small steps) needs a detail texture or a displacement shader. The heightmap cannot show it.
 - Dry lake beds are large flat areas. Idea: cracked-mud texture, salt crust, old boats.
 - A Windows run of `cargo test` and one checksum compare with Linux will confirm "same seed, same world" on both laptops.
+- A catapult that throws the bear to another zone (R14).
+- The zone edge as a mix of smoke, goo and lava, in sectors that a seed selects (R14).
+- A "strangeness" value for each zone (`vision.md`).
+- Our own erosion simulation for avalanches, sand and runtime erosion (`decisions.md`, proposed).

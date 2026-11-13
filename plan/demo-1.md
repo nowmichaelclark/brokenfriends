@@ -49,15 +49,32 @@ is done when Mikey plays for ten minutes and wants to continue.
   Coyote time lets the bear jump a short time after it leaves an edge.
   A jump buffer keeps a jump press that comes a short time before
   landing.
-- **Climb:**
-  - Push toward a steep surface to hold on. Then move across it. At a
-    ledge, climb up onto the top.
-  - All slopes steeper than about 50° are rock and can be climbed
-    (assumed).
-  - Stamina limits the climb. When the stamina is gone, the bear slides
-    down (assumed).
-  - Falls do not hurt the bear, because a teddy bear is soft
-    (assumed).
+- **Climb** (R11, like Breath of the Wild):
+  - The bear starts to climb automatically when it pushes into a
+    surface that is too steep to walk.
+  - The bear moves across the surface in all directions.
+  - Jump makes the bear jump off the surface.
+  - The climb stops automatically when the surface is flat enough.
+    At a ledge, the bear climbs up onto the top.
+  - Climbing uses stamina. When the stamina is gone, the bear lets go.
+  - Each surface has a grip value. On a slippery surface, the bear
+    slides down slowly while it climbs. On a very slippery surface,
+    the bear slides off completely. Fast slides keep their momentum
+    and can make the bear tumble.
+- **Coming apart** (R12): there is no fall damage. A hard fall or
+  tumble can make the bear lose a limb. Lost limbs do not mean death.
+  A bear without legs crawls. Demo 1 can do this in a simple way; the
+  full version can come later.
+- **Gamepad first** (R13): all actions work on the gamepad. The dev
+  tools (fly camera, overlay, new zone) are in a dev menu.
+
+**The zone edge** (R14)
+- A wall of thick, dark smoke encircles the zone. Its shape comes from
+  the seed and changes with time: it moves in and out, and it is
+  sometimes high and thick, sometimes low and thin.
+- The bear can go into the smoke a short distance. If it stays too
+  long or goes too far, it dies.
+- Goo and lava come later (assumed).
 
 **Ground scatter**
 - Rocks, pebbles and dead shrubs, made procedurally in Rust and drawn
@@ -82,7 +99,8 @@ is done when Mikey plays for ten minutes and wants to continue.
 
 ## Done when
 
-- [ ] Mikey can walk, jump and climb across the full zone. The bear
+- [ ] Mikey can walk, jump and climb across the full zone with a
+      gamepad. The bear
       does not get stuck or fall through the ground.
 - [ ] Through the haze, the mountains look like mountains: ridges,
       gullies and silhouettes.
@@ -96,9 +114,7 @@ is done when Mikey plays for ten minutes and wants to continue.
 
 ## Questions for Mikey
 
-1. Is "scorched highlands" the correct first biome? The second choice
-   is mesa/badlands, with terraced cliffs.
-2. Climbing: do you want stamina? Can the bear climb all steep
-   surfaces, or only rock?
-3. Do you want a jog or a sprint, or only walking?
-4. Do you want fall damage? (Assumed: no.)
+1. Do you want the PS1-like look for demo 1? (See `decisions.md`,
+   "Proposed".)
+2. What happens when the bear dies in the smoke? For example, the
+   bear starts again at the start point of the same zone.

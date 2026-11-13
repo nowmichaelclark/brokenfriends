@@ -19,6 +19,10 @@ version" are still valid.
 | R8 | The first goal is a playable demo, as soon as possible. The player explores one biome. The bear walks, jumps and climbs. | Mikey, 2026-11-13 |
 | R9 | The game is open source (MIT licence) and free. It has no ads and no microtransactions (from the 2D version: 0018, 0023). | Mikey, 2026-10 |
 | R10 | Mikey plays builds that GitHub makes. He does not build on his laptop (it has little disk space). He tells Claude what he feels and sees. Claude sessions change the tuning values. | Mikey, 2026-11-14 |
+| R11 | Climbing feels like Breath of the Wild and Tears of the Kingdom. The bear starts to climb automatically when it pushes into a steep surface. Jump makes the bear jump off. The climb stops automatically on a surface that is flat enough. Climbing uses stamina. The bear can try to climb slippery surfaces, but it can slide off. On a very slippery surface, it slides off completely. The slide can keep its momentum and make the bear tumble down. Some ragdoll physics is good, but the game must run on very low-end computers. | Mikey, 2026-11-14 |
+| R12 | There is no fall damage as such. Instead, the bear can come apart as a real teddy bear would, for example lose limbs. Lost limbs do not mean death. A bear without legs can still crawl and climb. | Mikey, 2026-11-14 |
+| R13 | Gamepad first. Mikey wants to sit and use only a gamepad. Button combos or a dev menu are OK. | Mikey, 2026-11-14 |
+| R14 | The outer edge of a zone is a danger zone. The player can go into it a short distance. If the player stays too long or goes too far, the bear can die. Ideas: a thick cloud of dark or strangely coloured smoke that moves into and out of the world in procedural shapes; goo that traps the bear; lava that burns it; or a mix. It must be different from the circle of Fortnite. Later, a catapult can send the player to another zone. | Mikey, 2026-11-14 |
 
 ## Proposed, Mikey must decide
 
@@ -28,3 +32,12 @@ version" are still valid.
 - **Demo zone:** 2 × 2 km. The biome is scorched highlands.
 - **Camera:** third person.
 - **Art:** no imported art in demo 1. Code makes all art.
+- **Look:** a PS1-like look (low resolution, low-poly shapes,
+  pixelated textures, dithering). The saved GPU time pays for weather,
+  sand, avalanches and other simulations. Mikey is "almost thinking"
+  this; he has not decided.
+- **Erosion filter:** keep the MPL-2.0 port for now. Write our own
+  erosion simulation later, for the dynamic world (avalanches, sand,
+  runtime erosion). That is a different tool from the filter.
+- **Zone edge for demo 1:** the smoke edge only. Goo and lava come
+  later.

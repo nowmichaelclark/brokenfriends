@@ -1,0 +1,6 @@
+# The pinned Rust version. CI and the game build use the same version,
+# so that a new clippy release does not break CI without a code change.
+# To change it, change it here and in the two workflows.
+[toolchain]
+channel = "1.97.0"
+components = ["rustfmt", "clippy"]

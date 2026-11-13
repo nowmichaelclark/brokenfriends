@@ -40,8 +40,14 @@ what it assumes.
   to go back. Hold the right mouse button to look. Move with W, A, S,
   D, Q and E. Hold Shift to go faster. The bear does not move while
   this camera is active.
-- **`main.tscn`** is the start scene: terrain, sun, sky, bear, cameras
-  and overlay.
+- **`BfAtmosphere`** makes the air. In code, it makes the sky, the
+  sun, the smog and the colour grading. Depth fog and low height fog
+  use one yellow-brown colour. The sky has a big pale sun disc. About
+  300 dust particles move past the camera. A screen shader gives a
+  small heat shimmer near the horizon. The node reads its values
+  twice each second, so a change in the Remote Inspector shows soon.
+- **`main.tscn`** is the start scene: atmosphere, terrain, bear,
+  cameras and overlay.
 
 ## Play the latest build (Mikey)
 
@@ -206,5 +212,14 @@ Mikey does not build on his laptop (decision R10).
 - **Same world on all computers.** The generator uses its own `sin`,
   `cos` and `exp` (`detmath.rs`), not the functions of the operating
   system. A test on Windows did not run yet [unverified].
-- **Light.** The sun and the sky in `main.tscn` are placeholders.
-  S-105 makes the real light and smog.
+- **Smog.** The first values (fog density 0.006, low smog under 90 m,
+  saturation 0.8) are guesses. Nobody saw them in the Mobile
+  renderer yet [unverified]. Mikey tells Claude what he sees.
+- **One smog colour.** Godot 4 has one fog colour. The low smog has
+  the same colour as the far smog and is only thicker.
+- **Heat shimmer.** The shimmer is on. It copies the screen each
+  frame, so it can cost time on integrated graphics. To test, turn off
+  `heat_shimmer_enabled` on the `Atmosphere` node and compare the fps.
+- **Frame cost.** The atmosphere has no measured cost. The parts that
+  can cost time are the shimmer, the dust (300 particles, small) and
+  the shadows (2 cascades, 100 m).

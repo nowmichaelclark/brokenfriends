@@ -41,9 +41,9 @@ rust/                 one Cargo workspace with one target/ folder
 ```
 
 `bf-worldgen` does not use Godot. To test the generation without
-Godot, run `cargo run -p bf-worldgen --example preview -- --seed 7`.
-In about 1 second, it writes a heightmap image and a shaded-relief
-image.
+Godot, run `cargo run --release -p bf-worldgen --example preview --
+--seed 7` in `rust/`. In about 5 seconds, it writes a heightmap image,
+a shaded-relief image and two views into `rust/preview/`.
 
 ## Fast changes in Rust
 
@@ -152,9 +152,9 @@ Cloud containers usually have no GPU, and some have no Vulkan.
 |---|---|
 | Godot bindings | `godot` (pin the version; the 2D build used 0.5.5) |
 | Noise | our own gradient noise in `bf-worldgen` (`noise.rs`). It has derivatives and gives the same bits on all computers. |
-| Erosion look | a port of the erosion filter by Rune Skovbo Johansen (CPU code in `bevy_erosion_filter`) |
+| Erosion look | our port of the erosion filter by Rune Skovbo Johansen (`erosion_filter.rs`, MPL-2.0, from the CPU code in `bevy_erosion_filter`) |
 | Threads | `rayon` |
-| Maths | `glam` |
+| Maths | `glam` (not used yet). `detmath.rs` has `sin`, `cos` and `exp` that give the same bits on all computers. |
 | Cave meshes (later) | `fast-surface-nets` |
 | Preview images | `image` (dev dependency only) |
 

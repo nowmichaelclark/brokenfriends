@@ -1,6 +1,6 @@
 # State
 
-Updated: 2026-11-13 (S-101 done: the skeleton builds and shows a noise terrain)
+Updated: 2026-11-13 (S-104 done: the scorched-highlands generator)
 
 Write this file again each time. Do not add to the end. Keep it under
 90 lines.
@@ -8,8 +8,9 @@ Write this file again each time. Do not add to the end. Keep it under
 ## Phase
 
 **Demo 1** (`demo-1.md`). In this demo, the player walks, jumps and
-climbs through one biome under smog. The skeleton is built: Rust makes
-a noise heightmap, and Terrain3D shows it (see `game/README.md`).
+climbs through one biome under smog. The skeleton is built. Rust makes
+a zone of scorched highlands, and Terrain3D shows it (see
+`game/README.md`). The bear is not built yet.
 
 ## Agenda
 
@@ -17,20 +18,20 @@ To start a session, Mikey opens the place in the "Where" column. He
 selects the model and effort, then types "Run S-NNN". At the end of a
 session, the session deletes its row. It changes the rows that it
 unblocks to **ready**. It adds follow-up rows at the bottom.
-Next number: S-112.
+Next number: S-113.
 
 | # | Session | Where | Model, effort | Status |
 |---|---|---|---|---|
 | S-102 | **Build: the teddy bear.** Make a Rust `CharacterBody3D`, 0.40 m tall, from simple shapes. Add walking and jumping (with coyote time and a jump buffer). Add a third-person camera that does not go into the terrain. Make all tuning values `#[export]`. Test on the terrain from S-101. | Claude Code | Sonnet 5.5, high | **ready** |
-| S-104 | **Build: the scorched-highlands generator** in `bf-worldgen`. Use ridged noise, domain warp, the erosion filter, dry riverbeds and a seed. A preview tool writes PNG images. A dev key makes a new zone in the game. **Done when:** three seeds all look like real mountain ranges in the preview. | Claude Code | Opus 5.5, high | **ready** (can run at the same time as S-102) |
 | S-103 | **Play:** Mikey walks and jumps. He changes the tuning values in the Inspector. He writes the problems in `play-notes.md`. | Mikey's laptop | Mikey (optional: Sonnet 5.5, low, for help with the notes) | waiting on S-102 |
-| S-105 | **Build: smog and heat.** Add distance fog and height fog, the sun, the sky, dust particles, heat shimmer and colour grading. Set the render scale to 0.75. Use only features of the Mobile renderer. | Claude Code | Sonnet 5.5, medium | waiting on S-104 |
+| S-105 | **Build: smog and heat.** Add distance fog and height fog, the sun, the sky, dust particles, heat shimmer and colour grading. Set the render scale to 0.75. Use only features of the Mobile renderer. | Claude Code | Sonnet 5.5, medium | **ready** |
 | S-106 | **Play: the speed test.** Run the game at 1080p on both laptops. Walk across the zone with F3 on. Write the fps and draw calls in `play-notes.md`. | Mikey's laptops | Mikey | waiting on S-105 |
 | S-107 | **Build: climbing.** Find the wall, hold on to it, move along the surface, use stamina, and climb up onto ledges. Use the notes from S-103. | Claude Code | Opus 5.5, high | waiting on S-103 and S-105 |
 | S-108 | **Build: ground scatter.** Make rocks, pebbles and dead shrubs in Rust. Draw them with MultiMesh and visibility ranges. Stay inside the numbers from S-106. | Claude Code | Sonnet 5.5, medium | waiting on S-106 |
 | S-109 | **Brain** with Mikey: play the full demo, decide what to fix, and plan demo 2 (caves). | Project chat | Opus 5.5, medium | waiting on S-107 and S-108 |
-| S-110 | **Combined run with Fable:** S-104, then S-102, in one session (S-101 is done). See "Combined runs" below. | Claude Code | Fable 5.2, medium | **ready** (in work) |
+| S-110 | **Combined run with Fable:** S-102 (S-101 and S-104 are done). See "Combined runs" below. | Claude Code | Fable 5.2, medium | **ready** (in work) |
 | S-111 | **Play: the first start.** Do the steps in `game/README.md` on the laptop. Change a number in a `.rs` file while `bacon` runs, and make sure that the editor loads the new library. Write the two rebuild times in the table in `game/README.md`. Write the problems in `play-notes.md`. | Mikey's laptop | Mikey | **ready** |
+| S-112 | **Play: look at the mountains.** Fly through three zones (F4) with the fly camera. Change the generator values on the `Terrain` node. Write in `play-notes.md`: the values that you like, and if the zone is too steep. Answer the licence question in `game/README.md` ("Assumed"). | Mikey's laptop | Mikey | **ready** (after S-111) |
 
 ## Combined runs
 

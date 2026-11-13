@@ -89,6 +89,9 @@ impl BfDebugOverlay {
             let tree = self.base().get_tree();
             if let Some(mut terrain) = tree.get_first_node_in_group(TERRAIN_GROUP) {
                 seed = terrain.call("current_seed", &[]).to_string();
+                if terrain.call("is_generating", &[]).booleanize() {
+                    seed.push_str(" (a new zone is in work)");
+                }
             }
         }
 
@@ -97,7 +100,7 @@ impl BfDebugOverlay {
              draw calls {draw_calls:.0}   primitives {primitives:.0}\n\
              video memory {video_mb:.0} MB\n\
              seed {seed}\n\
-             F3: hide"
+             F3: hide   F4: new zone"
         )
     }
 }

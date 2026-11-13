@@ -1,5 +1,6 @@
 //! A free camera for debug work.
 
+use crate::terrain::TERRAIN_GROUP;
 use godot::classes::input::MouseMode;
 use godot::classes::{Camera3D, ICamera3D, Input, InputEvent, InputEventMouseMotion};
 use godot::global::{Key, MouseButton};
@@ -26,6 +27,11 @@ pub struct BfFlyCamera {
     #[init(val = 0.15)]
     mouse_sensitivity: f32,
 
+    /// The least height above the ground after a new zone shows, in metres.
+    #[export]
+    #[init(val = 30.0)]
+    start_height_m: f32,
+
     yaw: f32,
     pitch: f32,
     base: Base<Camera3D>,
@@ -37,6 +43,14 @@ impl ICamera3D for BfFlyCamera {
         let rotation = self.base().get_rotation();
         self.pitch = rotation.x;
         self.yaw = rotation.y;
+
+        // When a new zone shows, go above the ground.
+        let tree = self.base().get_tree();
+        if let Some(terrain) = tree.get_first_node_in_group(TERRAIN_GROUP) {
+            let on_zone = self.base().callable("on_zone_changed");
+            let mut terrain = terrain;
+            terrain.connect("zone_changed", &on_zone);
+        }
     }
 
     fn process(&mut self, delta: f64) {
@@ -87,5 +101,27 @@ impl ICamera3D for BfFlyCamera {
         self.pitch = (self.pitch - relative.y * k).clamp(-1.55, 1.55);
         let rotation = Vector3::new(self.pitch, self.yaw, 0.0);
         self.base_mut().set_rotation(rotation);
+    }
+}
+
+#[godot_api]
+impl BfFlyCamera {
+    /// Moves the camera up if the new ground is above it.
+    #[func]
+    fn on_zone_changed(&mut self) {
+        let tree = self.base().get_tree();
+        let Some(mut terrain) = tree.get_first_node_in_group(TERRAIN_GROUP) else {
+            return;
+        };
+        let mut position = self.base().get_global_position();
+        let ground = terrain.call(
+            "height_at",
+            &[position.x.to_variant(), position.z.to_variant()],
+        );
+        let least = ground.try_to::<f32>().unwrap_or(0.0) + self.start_height_m;
+        if position.y < least {
+            position.y = least;
+            self.base_mut().set_global_position(position);
+        }
     }
 }

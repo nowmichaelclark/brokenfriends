@@ -1,5 +1,7 @@
 # Rust
 rust/target/
+rust/preview/
+preview/
 
 # Godot
 game/.godot/

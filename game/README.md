@@ -12,10 +12,20 @@ what it assumes.
     ground heights.
   - `bf-game` is the GDExtension. A GDExtension is a library that
     Godot loads. `bf.gdextension` tells Godot where the library is.
-- **`BfTerrain`** makes a zone of 2048 × 2048 m from a seed (test
-  hills from noise). It gives the heights to the Terrain3D addon as a
-  32-bit float image. Terrain3D draws the ground and makes the
-  collision.
+- **The scorched-highlands generator** (`bf-worldgen`, `highlands.rs`)
+  makes a zone in these steps:
+  1. Domain warp bends the positions, so the ranges are not straight.
+  2. Ridged noise makes the mountain ranges and the valley floors.
+  3. The erosion filter cuts gullies into the slopes.
+  4. Fine noise makes the ground a little rough.
+  5. The drainage step finds where rain goes. Deep closed basins get a
+     flat dry lake bed. Paths that collect much rain become dry
+     riverbeds. A river stops at the shore of a dry lake.
+- **`BfTerrain`** makes a zone of 2048 × 2048 m from a seed on a worker
+  thread. It gives the heights and the ground colours to the Terrain3D
+  addon. Terrain3D draws the ground and makes the collision. Push F4
+  to make a new zone with the next seed. The node sends the signal
+  `zone_changed` when the zone is on the screen.
 - **`BfDebugOverlay`** shows fps, frame time, draw calls, primitives,
   video memory and the seed. Push F3 to show or hide it.
 - **`BfFlyCamera`** is a debug camera. Hold the right mouse button to
@@ -23,8 +33,31 @@ what it assumes.
 - **`main.tscn`** is the start scene: terrain, sun, sky, camera and
   overlay.
 
-The ground has no textures yet, thus Terrain3D draws a checker
-pattern.
+The ground colours are: pale ochre on flat ground, rust and ash bands
+on rock (steeper than about 35 to 50 degrees), and pale sand in
+riverbeds and lake beds. One plain texture and a colour map make them.
+
+## Preview images without Godot
+
+Run this in `rust/`:
+
+```
+cargo run --release -p bf-worldgen --example preview -- --seed 1 --seed 7 --seed 42
+```
+
+For each seed, the tool writes four PNG images into `rust/preview/`: a
+height image, a map with shadows, a view from the air, and a view from
+the eyes of the bear. It also prints the time, the height range and
+the parts of the zone that the bear can walk (less than 35 degrees) or
+must climb (more than 50 degrees). In the cloud container, one zone
+takes 2.3 s (release) or 2.8 s (dev build in the game).
+
+## Change the generator
+
+Select the `Terrain` node. The Inspector shows the generator values
+(relief, ridge wavelength, erosion strength and more). Change a value,
+then push F4 in the game, or call `regenerate()`. More values are in
+`HighlandsParams` in `highlands.rs`. Those need a new compile.
 
 ## Build and run on Fedora
 
@@ -89,9 +122,26 @@ These numbers are not valid for Mikey's laptop.
   files out of the repo. The cost: one more step after a clone.
 - **The addon folder is `addons/terrain_3d/`.** Terrain3D needs this
   name.
-- **Vertex spacing is 1 m.** The zone has 2048 × 2048 heights.
+- **Vertex spacing is 1 m.** The zone has 2048 × 2048 heights. Shapes
+  smaller than 2 m do not show.
 - **Physics engine: Jolt.** It is the default for new 3D projects in
   Godot 4.7 [unverified].
 - **The window starts maximized** at a base size of 1920 × 1080.
-- **Debug keys are fixed in code** (F3, fly camera keys). They are not
-  in the Input Map.
+- **Debug keys are fixed in code** (F3, F4, fly camera keys). They are
+  not in the Input Map.
+- **One file has the MPL-2.0 licence.** `erosion_filter.rs` is a port
+  of the erosion filter by Rune Skovbo Johansen, as `plan/tech.md`
+  says. His code has the MPL-2.0 licence, thus the port keeps it. All
+  other files stay MIT. See `THIRD-PARTY-NOTICES.md`.
+- **Dry lakes.** A closed basin deeper than 6 m keeps its shape. The
+  lowest 20% of its depth is a flat dry lake bed.
+- **Steep zones.** With peaks 300 to 600 m high in a zone of 2 km,
+  the bear can walk on about 20 to 35% of the ground and must climb
+  on about 35 to 50%. Lower `relief_m` or `valley_at` for more flat
+  ground.
+- **The zone border is open.** The terrain stops at the border.
+- **Same world on all computers.** The generator uses its own `sin`,
+  `cos` and `exp` (`detmath.rs`), not the functions of the operating
+  system. A test on Windows did not run yet [unverified].
+- **Light.** The sun and the sky in `main.tscn` are placeholders.
+  S-105 makes the real light and smog.

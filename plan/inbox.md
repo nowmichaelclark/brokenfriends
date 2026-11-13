@@ -13,3 +13,4 @@ sorts them.
 - The zone edge as a mix of smoke, goo and lava, in sectors that a seed selects (R14).
 - A "strangeness" value for each zone (`vision.md`).
 - Our own erosion simulation for avalanches, sand and runtime erosion (`decisions.md`, proposed).
+- Look at TanTan's Rust projects (github.com/TanTanDev, Mikey's reference): `shrubbery` (deterministic procedural voxel trees with space colonization, MIT/Apache) for dead shrubs in S-108; `3d_celluar_automata` for cheap grid simulations (sand, goo, smoke edge).

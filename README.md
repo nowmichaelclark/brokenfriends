@@ -1,15 +1,17 @@
 # Broken Friends
 
-A 3D PC game: you're a teddy-bear-sized friend exploring a procedurally
-generated world gone hot, dusty and smog-choked. Built with Godot 4 and
-Rust. Open source, MIT, free.
+Broken Friends is a 3D game for PC. The player is a friend with the
+size of a teddy bear. The friend explores a procedurally generated
+world that is hot, dusty and full of smog. The game uses Godot 4 and
+Rust. It is open source (MIT licence) and free.
 
-**Status:** rebooted November 2026. Working toward demo 1: one biome to
-walk, jump and climb through (`plan/demo-1.md`).
+**Status:** the 3D version started in November 2026. The current goal
+is demo 1: one biome where the bear walks, jumps and climbs (see
+`plan/demo-1.md`).
 
-| Folder | What |
+| Folder | Contents |
 |---|---|
-| `plan/` | The plans. Start at `plan/STATE.md`. |
-| `rust/` | The game's code: world generation and gameplay (from S-101). |
+| `plan/` | The plans. Start with `plan/STATE.md`. |
+| `rust/` | The code of the game: world generation and gameplay (from S-101). |
 | `game/` | The Godot project (from S-101). |
-| `archive/2d/` | The original 2D creature-care game and its plans, kept for ideas. Also kept whole on the `2d-concept` branch. |
+| `archive/2d/` | The first 2D version of the game and its plans, kept for ideas. The `2d-concept` branch also keeps the full old state. |

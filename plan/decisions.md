@@ -1,30 +1,29 @@
 # Decisions
 
-Only Mikey decides. A line goes in "Decided" only once he has said so,
-with his name and the date. Old 2D decisions are in
-`../archive/2d/plan/decisions/`. Those marked "carried over" still
-hold.
+Only Mikey makes decisions. A line goes in "Decided" only after Mikey
+agrees. Each line has his name and the date. The old 2D decisions are
+in `../archive/2d/plan/decisions/`. The lines marked "from the 2D
+version" are still valid.
 
 ## Decided
 
 | # | Decision | Signed |
 |---|---|---|
-| R1 | Reboot: a 3D game for PC (maybe a mobile port later, not now), built from the ground up. The 2D version's ideas stay as inspiration. | Mikey, 2026-11-13 |
-| R2 | Godot + Rust, with as much as possible in Rust from the start, so nothing has to be ported later. | Mikey, 2026-11-13 |
-| R3 | The world is fully procedural and biome-first: the biome shapes the terrain. Terrain is smooth, with beautiful mountain shapes, and has gigantic caves deeper and bigger than Minecraft's. | Mikey, 2026-11-13 |
-| R4 | Option A: a heightmap surface with clipmap LOD, plus a separate Rust volumetric cave layer, in finite zones. | Mikey, 2026-11-13 |
-| R5 | 60 fps at 1080p on a laptop with integrated graphics. | Mikey, 2026-11-13 |
-| R6 | The player is teddy-bear sized and everything is to scale. Tall enterable buildings come later; the natural world comes first. | Mikey, 2026-11-13 |
-| R7 | The setting is post-apocalyptic and much hotter. Smog, pollution and dust have ruined the air, so the world has haze and smog, not plain fog. | Mikey, 2026-11-13 |
-| R8 | The first goal is a playable demo, soon: explore one biome by walking, jumping and climbing. | Mikey, 2026-11-13 |
-| R9 | Open source, MIT, free; no ads or microtransactions (carried over: 0018, 0023). | Mikey, 2026-10 |
+| R1 | Start again as a 3D game for PC. A mobile port can come later. Build it from zero. Keep the ideas of the 2D version for inspiration. | Mikey, 2026-11-13 |
+| R2 | Use Godot and Rust. Put as much as possible in Rust from the start, so that we do not have to move code later. | Mikey, 2026-11-13 |
+| R3 | The world is fully procedural. The biome comes first and gives the shape of the terrain. The terrain is smooth, with beautiful mountain shapes. Later, it has very large caves, deeper and larger than the caves of Minecraft. | Mikey, 2026-11-13 |
+| R4 | Use Option A: a heightmap surface with clipmap LOD (level of detail), and a separate volumetric cave layer in Rust, in finite zones. | Mikey, 2026-11-13 |
+| R5 | The game runs at 60 fps at 1080p on a laptop with integrated graphics. | Mikey, 2026-11-13 |
+| R6 | The player has the size of a teddy bear. All objects have their real size. Tall buildings that the player can go into come later. The natural world comes first. | Mikey, 2026-11-13 |
+| R7 | The setting is after an apocalypse. The world is much hotter. Smog, pollution and dust make the air bad. Thus, the world has haze and smog, not plain fog. | Mikey, 2026-11-13 |
+| R8 | The first goal is a playable demo, as soon as possible. The player explores one biome. The bear walks, jumps and climbs. | Mikey, 2026-11-13 |
+| R9 | The game is open source (MIT licence) and free. It has no ads and no microtransactions (from the 2D version: 0018, 0023). | Mikey, 2026-10 |
 
-## Proposed, waiting for Mikey
+## Proposed, Mikey must decide
 
-- **Renderer:** Mobile, with Compatibility as the fallback.
-- **Terrain renderer:** Terrain3D. The fallback is our own clipmap.
-- **Engine and crate versions:** Godot 4.7.1 and `godot` 0.5.x,
-  pinned.
+- **Renderer:** Mobile. Compatibility if Mobile fails.
+- **Terrain renderer:** Terrain3D. Our own clipmap if Terrain3D fails.
+- **Versions:** Godot 4.7.1 and `godot` 0.5.x, both pinned.
 - **Demo zone:** 2 × 2 km. The biome is scorched highlands.
 - **Camera:** third person.
-- **Art:** no imported art for demo 1; everything is made in code.
+- **Art:** no imported art in demo 1. Code makes all art.

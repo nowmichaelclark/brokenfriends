@@ -1,11 +1,13 @@
-# Brain session: think it through with Mikey
+# Brain session: think with Mikey
 
-A Project chat with Mikey, back and forth. Read `STATE.md`, the spec
-the row names, `decisions.md` and the latest `play-notes.md`.
+This is a Project chat with Mikey. Read `STATE.md`, the spec that the
+row names, `decisions.md` and the latest `play-notes.md`.
 
-- Offer two or three options with trade-offs; Mikey picks. Write a
-  decision into `decisions.md` only once he says so, signed with his
+- Give two or three options with their trade-offs. Mikey selects one.
+  Write a decision in `decisions.md` only after Mikey agrees. Add his
   name and the date.
-- End by rewriting `STATE.md`'s agenda: the next rows, each with
-  where it runs and the model and effort you'd recommend.
-- End your reply with **Weak spots**: at least three honest problems.
+- At the end, write the agenda in `STATE.md` again. Give the next rows.
+  For each row, give the place, the model and the effort that you
+  recommend.
+- At the end of your reply, write **Weak spots**: three or more honest
+  problems.

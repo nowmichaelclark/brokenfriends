@@ -1,56 +1,65 @@
 # How the game is built
 
-Status: draft, written 2026-11-13 from the world-generation research.
-Anything marked **proposed** still needs Mikey's yes (`decisions.md`).
+Status: draft, 2026-11-13. This doc comes from the research on world
+generation. Items marked **proposed** need a "yes" from Mikey (see
+`decisions.md`).
 
-## The shape of it (Option A, Mikey's choice)
+## The structure (Option A, chosen by Mikey)
 
-- **Surface:** a heightmap, made in Rust and drawn with a clipmap.
-  The detail is highest near the camera and coarser further out.
-  This is the cheapest smooth terrain there is, and it's where the
-  mountains come from.
-- **Caves (after demo 1):** a separate smooth-voxel layer. Rust builds
-  a cave graph, turns it into a signed distance field (SDF), meshes it
-  near the player (Surface Nets) and hands the meshes to Godot. Cave
-  mouths are holes cut in the surface.
-- **Zones, not an endless world:** each zone is a finite map, about
-  2–8 km across and centred on the origin. A zone is a pure function
-  of (world seed, zone id). Erosion runs over the whole zone at once,
-  so chunks never have seams.
-- **Biome first:** the biome picks the height function, not the other
-  way round. Demo 1 has one biome, so blending between biomes comes
-  later.
+- **Surface.** Rust makes a heightmap. A heightmap is a grid of
+  ground heights. A clipmap draws it. A clipmap is a set of rings
+  around the camera. The rings near the camera have the most detail.
+  This is the least expensive smooth terrain, and it makes the
+  mountains.
+- **Caves (after demo 1).** Caves are a separate layer of smooth
+  voxels. Rust makes a graph of caves and changes it into a signed
+  distance field (SDF). An SDF gives the distance to the nearest
+  surface at each point. Rust makes meshes from the SDF near the
+  player (with Surface Nets) and gives them to Godot. Each cave mouth
+  is a hole in the surface.
+- **Zones.** The world is not endless. It is a set of finite zones.
+  Each zone is 2–8 km across, with its centre at the origin. The world
+  seed and the zone number fully set the contents of a zone. Erosion
+  runs on the full zone at one time, so the chunks have no seams.
+- **Biome first.** The biome selects the height function. The height
+  does not select the biome. Demo 1 has one biome, so blending between
+  biomes comes later.
 
-## Layout
+## Folders
 
 ```
 game/                 Godot 4.7.1 project (Mobile renderer)
   addons/terrain3d/   Terrain3D (proposed), pinned version
   bf.gdextension      loads the Rust library, reloadable = true
-rust/                 one Cargo workspace, one target/ folder
-  worldgen/           bf-worldgen: pure Rust, no Godot. Noise, biome
+rust/                 one Cargo workspace with one target/ folder
+  worldgen/           bf-worldgen: Rust only, no Godot. Noise, biome
                       height functions, erosion. Unit tests and a
-                      preview tool that writes PNGs.
-  game/               bf-game: the GDExtension (cdylib). Player,
+                      preview tool that writes PNG images.
+  game/               bf-game: the GDExtension (a cdylib). Player,
                       camera, terrain bridge, scatter, debug overlay.
 ```
 
-`bf-worldgen` never depends on Godot. You can test and tune
-generation with `cargo run -p bf-worldgen --example preview -- --seed 7`,
-which writes a heightmap and a shaded-relief PNG in about a second,
-without opening Godot at all.
+`bf-worldgen` does not use Godot. To test the generation without
+Godot, run `cargo run -p bf-worldgen --example preview -- --seed 7`.
+In about 1 second, it writes a heightmap image and a shaded-relief
+image.
 
-## Fast iteration with Rust (Mikey asked for Rust first)
+## Fast changes in Rust
 
-**The loop.** Run `bacon` (or `cargo watch -x build`) in a terminal.
-Save a `.rs` file and it builds. Click back into the Godot editor and
-the extension reloads (`reloadable = true`, Godot 4.2+). Press F5 and
-the game runs with the new code.
+Mikey wants the game logic in Rust from the start. These items keep
+the changes fast.
 
-**Most tweaks need no compile at all.** Every tuning number (walk
-speed, jump height, climb stamina, fog density, noise octaves) is an
-`#[export]` field. You change it in the Inspector, or while the game
-runs, through the Remote scene tree.
+**The loop:**
+1. In a terminal, run `bacon` (or `cargo watch -x build`).
+2. Save a `.rs` file. The build starts automatically.
+3. Click the Godot editor. The editor loads the new library
+   (`reloadable = true`, Godot 4.2 and later).
+4. Push F5. The game starts with the new code.
+
+**Most changes need no compile.** Each tuning value is an `#[export]`
+field. Examples: walk speed, jump height, climb stamina, fog density,
+noise octaves. Change the value in the Inspector. While the game runs,
+use the Remote scene tree.
 
 **Build settings** (in `rust/Cargo.toml`):
 
@@ -72,77 +81,83 @@ strip = true
 ```
 
 **Notes:**
-- Splitting the crates means a gameplay change rebuilds only
+- There are two crates. Thus, a change to the gameplay compiles only
   `bf-game`, not the generator.
-- On x86-64 Linux, Rust uses the fast `lld` linker by default
-  (since 1.90). `mold` is optional, so measure first.
-- The first build compiles all of `godot` and takes a few minutes.
-  After that, small changes should rebuild in seconds
-  [unverified: S-101 measures it on Mikey's laptop].
-- Hot reload has limits. Changing a class's fields or base class can
-  still need an editor restart (Project → Reload Current Project).
+- On x86-64 Linux, Rust uses the fast `lld` linker by default (since
+  version 1.90). The `mold` linker is optional. Measure before you
+  change the linker.
+- The first build compiles all of `godot` and takes some minutes.
+  Small changes after that will probably take a few seconds
+  [unverified: S-101 measures this on Mikey's laptop].
+- Hot reload has limits. If you change the fields or the base class of
+  a class, restart the editor (Project → Reload Current Project).
 
-## Talking to Terrain3D from Rust
+## Calls from Rust to Terrain3D
 
-godot-rust has typed bindings only for Godot's own classes. Terrain3D
-is another extension, so Rust calls it by method name (`Object::call`).
+godot-rust has typed bindings for Godot's own classes only. Terrain3D
+is a different extension. Thus, Rust calls Terrain3D methods by name
+(`Object::call`).
 
-The plan is for Rust to build the height map as a Godot `Image`
-(32-bit float) and hand it to Terrain3D's import function
-[unverified: exact method names and region size, S-101 checks them
-against the pinned version].
+The plan: Rust makes the heightmap as a Godot `Image` with 32-bit
+float values. Then Rust gives the image to the import function of
+Terrain3D [unverified: S-101 checks the method names and the region
+size in the pinned version].
 
-If this turns out painful, the fallback is our own clipmap: a few
-ring meshes plus a height-texture shader, all owned by Rust. That's
-more work, but it removes the C++ dependency.
+If this is too difficult, use the fallback: our own clipmap. It is a
+few ring meshes and a shader that reads a height texture. Rust owns
+all of it. This is more work, but it removes the C++ dependency.
 
-## Speed rules
+## Rules for speed
 
-- **Renderer:** Mobile (proposed). It's lighter than Forward+ on
-  integrated graphics. Compatibility is the fallback for broken Intel
-  Vulkan drivers. No SDFGI, volumetric fog or SSR, since Mobile
-  doesn't have them anyway.
-- **3D render scale 0.75** with FSR 1. The UI stays sharp at full
-  resolution.
-- **Budget per frame:** 16.6 ms in total. Terrain should take at most
-  4 ms, scatter at most 4 ms, and everything else at most 5 ms.
-- **Draw calls:** a few hundred at most. Use MultiMesh for every
-  repeated rock and shrub, and visibility ranges to cut props by
-  distance.
-- **Shadows:** one sun, 2 cascades, about 100 m shadow distance, soft
-  shadows off.
-- **Threads:** generation and meshing run on Rust worker threads
+- **Renderer.** Use Mobile (proposed). On integrated graphics, it is
+  lighter than Forward+. If the Intel Vulkan driver fails, use
+  Compatibility. Do not use SDFGI, volumetric fog or SSR. Mobile does
+  not have them.
+- **Render scale.** Set the 3D render scale to 0.75 with FSR 1. The UI
+  stays sharp at full resolution.
+- **Time for each frame.** The limit is 16.6 ms in total. Terrain gets
+  4 ms at most. Scatter gets 4 ms at most. All other work gets 5 ms at
+  most.
+- **Draw calls.** Use a few hundred at most. A draw call is one
+  request to the GPU to draw an object. Draw each repeated rock and
+  shrub with MultiMesh (one draw call for many copies). Use visibility
+  ranges to remove far props.
+- **Shadows.** Use one sun with 2 cascades. Set the shadow distance to
+  about 100 m. Turn off soft shadows.
+- **Threads.** Run generation and meshing on Rust worker threads
   (`rayon`). The main thread only receives finished data.
-- **The haze is the draw distance.** The smog hides everything beyond
-  a few hundred metres, so the look and the speed budget are the same
-  decision.
-- **Debug overlay (F3):** FPS, frame ms, draw calls, primitives and
-  video memory, from Godot's `Performance` singleton.
+- **The haze is the draw distance.** The smog hides all objects more
+  than a few hundred metres away. Thus, the look and the speed limit
+  are the same decision.
+- **Debug overlay (F3).** It shows fps, frame time in ms, draw calls,
+  primitives and video memory. The data comes from the `Performance`
+  singleton of Godot.
 
-## Testing in Claude Code
+## Tests in Claude Code
 
-Cloud containers usually have no GPU and may have no Vulkan. Headless
-runs (`--headless`) check that things load. For screenshots, use
-`xvfb-run` with `--rendering-method gl_compatibility`. It looks
-different from Mobile, so say so in the summary. Speed is measured
-only on Mikey's laptops.
+Cloud containers usually have no GPU, and some have no Vulkan.
+- To check that the game loads, use `--headless`.
+- To make screenshots, use `xvfb-run` with
+  `--rendering-method gl_compatibility`. This renderer looks different
+  from Mobile. Write that in the summary.
+- Measure speed only on Mikey's laptops.
 
 ## Crates
 
 | Need | Crate |
 |---|---|
-| Godot bindings | `godot` (pin it; the 2D build used 0.5.5) |
+| Godot bindings | `godot` (pin the version; the 2D build used 0.5.5) |
 | Noise | `fastnoise-lite` or `noise` |
-| Erosion look | port of Rune Skovbo Johansen's erosion filter (CPU code in `bevy_erosion_filter`) |
+| Erosion look | a port of the erosion filter by Rune Skovbo Johansen (CPU code in `bevy_erosion_filter`) |
 | Threads | `rayon` |
 | Maths | `glam` |
-| Cave meshing (later) | `fast-surface-nets` |
-| Preview PNGs | `image` (dev-dependency only) |
+| Cave meshes (later) | `fast-surface-nets` |
+| Preview images | `image` (dev dependency only) |
 
-## Further reading
+## More to read
 
 - Erosion filter: https://blog.runevision.com/2026/03/fast-and-gorgeous-erosion-filter.html
 - Terrain3D: https://github.com/TokisanGames/Terrain3D
-- godot-rust book: https://godot-rust.github.io/book/
+- The godot-rust book: https://godot-rust.github.io/book/
 - Sebastian Lague, hydraulic erosion: https://www.youtube.com/watch?v=eaXk97ujbPQ
-- Veloren's world generation (Rust, GPL; read it, don't copy it): https://blog.jsbarretto.com/post/veloren
+- World generation in Veloren (Rust, GPL licence; read it, do not copy it): https://blog.jsbarretto.com/post/veloren

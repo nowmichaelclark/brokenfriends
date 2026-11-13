@@ -1,94 +1,104 @@
 # Demo 1: the scorched highlands
 
 Status: draft, 2026-11-13. Mikey chose the goal and the movement. The
-biome and the details marked **assumed** are proposals for him to
-confirm or change.
+biome and the items marked **assumed** are proposals. Mikey can accept
+or change them.
 
 ## The goal
 
-You're a teddy bear walking, jumping and climbing through one
-procedurally generated biome under a smog-choked sky. The demo is done
-when Mikey plays for ten minutes and wants to keep exploring.
+The player is a teddy bear. The bear walks, jumps and climbs through
+one procedurally generated biome, under a sky full of smog. The demo
+is done when Mikey plays for ten minutes and wants to continue.
 
-## What's in
+## What the demo has
 
-**The zone.**
-- 2 × 2 km, one seed. To a 40 cm bear that feels like 8–10 km.
-- There's a dev key that regenerates the zone with a new seed.
+**The zone**
+- The zone is 2 × 2 km, made from one seed. For a 40 cm bear, this
+  feels like 8–10 km.
+- A dev key makes the zone again with a new seed.
 
-**The biome: scorched highlands** (assumed).
-- Ridged mountain ranges, 300–600 m from valley floor to peak.
-- Eroded gullies, scree slopes and dry riverbeds.
-- Bleached, cracked ground.
-- Ochre, rust and ash colours.
-- No water.
+**The biome: scorched highlands** (assumed)
+- There are ridged mountain ranges. Each peak is 300–600 m above the
+  valley floor.
+- Erosion makes gullies, scree slopes and dry riverbeds.
+- The ground is pale and cracked.
+- The colours are ochre, rust and ash.
+- There is no water.
 
-**The air.** It's hot, polluted and dusty.
-- **Fog:** distance fog plus a low height fog, tinted yellow-brown
-  rather than grey.
-- **Sun:** a pale disc you can almost look at.
-- **Distance:** mountains a few hundred metres off fade to flat
-  silhouettes.
-- **Particles:** dust and ash drift past the camera.
-- **Heat:** a faint heat shimmer near the ground (assumed, cut it if
-  it costs too much).
-- **Colour grading:** a washed-out look.
+**The air** (hot, polluted and dusty)
+- **Fog:** distance fog and a low height fog. The colour is
+  yellow-brown, not grey.
+- **Sun:** a pale disc. The player can almost look at it.
+- **Distance:** mountains that are a few hundred metres away become
+  flat silhouettes.
+- **Particles:** dust and ash move past the camera.
+- **Heat:** a small heat shimmer near the ground (assumed). If it
+  costs too much frame time, remove it.
+- **Colour grading:** the colours look faded.
 
-**The teddy.**
-- A placeholder bear built from simple shapes in code: body, head,
-  ears and limbs.
-- Third-person camera (assumed) that orbits with the mouse or right
-  stick and doesn't clip into terrain.
+**The teddy bear**
+- The bear is a placeholder, made from simple shapes in code: body,
+  head, ears and limbs.
+- The camera is third-person (assumed). The mouse or the right stick
+  turns the camera around the bear. The camera does not go into the
+  terrain.
 
-**Movement.**
-- **Walk.** Holding a key to jog is assumed.
-- **Jump**, with coyote time and a jump buffer so it feels forgiving.
+**Movement**
+- **Walk.** Hold a key to jog (assumed).
+- **Jump.** Coyote time and a jump buffer make jumps easy to time.
+  Coyote time lets the bear jump a short time after it leaves an edge.
+  A jump buffer keeps a jump press that comes a short time before
+  landing.
 - **Climb:**
-  - Press toward a steep surface to grab it, then move across it.
-    Mantle over ledges.
-  - Assumed: any slope steeper than about 50° is climbable rock.
-  - Assumed: stamina limits climbing, then you slide off.
-  - Assumed: falls don't hurt, because a teddy is soft.
+  - Push toward a steep surface to hold on. Then move across it. At a
+    ledge, climb up onto the top.
+  - All slopes steeper than about 50° are rock and can be climbed
+    (assumed).
+  - Stamina limits the climb. When the stamina is gone, the bear slides
+    down (assumed).
+  - Falls do not hurt the bear, because a teddy bear is soft
+    (assumed).
 
-**Ground scatter.**
+**Ground scatter**
 - Rocks, pebbles and dead shrubs, made procedurally in Rust and drawn
   with MultiMesh.
 
-**Debug.**
-- An F3 overlay shows FPS, frame ms and draw calls, with the seed
-  shown.
+**Debug**
+- The F3 overlay shows fps, frame time and draw calls. It also shows
+  the seed.
 
-## What's out (later demos)
+## What the demo does not have (later demos)
 
-- Caves (demo 2).
-- Other biomes and blending between them.
-- More than one zone.
-- Water.
-- Friends and care.
-- Buildings.
-- Saving.
-- Music and sound (Driftloom comes later).
-- Menus.
-- Any imported art (assumed: everything is made in code, as in the 2D
-  build).
+- Caves (demo 2)
+- Other biomes, and blending between biomes
+- More than one zone
+- Water
+- Friends and care
+- Buildings
+- Saving
+- Music and sound (Driftloom comes later)
+- Menus
+- Imported art (assumed: code makes all art, as in the 2D build)
 
 ## Done when
 
-- [ ] Mikey can walk, jump and climb across the whole zone without
-      getting stuck or falling through.
-- [ ] Mountains read as mountains through the haze: ridges, gullies,
-      silhouettes.
-- [ ] 60 fps at 1080p (render scale 0.75) on Mikey's laptop with
-      integrated graphics, or a list of what's in the way.
-- [ ] A new seed makes a different but just as good zone in under
-      10 seconds.
-- [ ] Mikey's ten-minute play, written up in `plan/play-notes.md`.
+- [ ] Mikey can walk, jump and climb across the full zone. The bear
+      does not get stuck or fall through the ground.
+- [ ] Through the haze, the mountains look like mountains: ridges,
+      gullies and silhouettes.
+- [ ] The game runs at 60 fps at 1080p (render scale 0.75) on Mikey's
+      laptop with integrated graphics. If not, there is a list of the
+      causes.
+- [ ] A new seed makes a different zone of the same quality in less
+      than 10 seconds.
+- [ ] Mikey plays for ten minutes and writes his notes in
+      `plan/play-notes.md`.
 
 ## Questions for Mikey
 
-1. Is scorched highlands the right first biome? The runner-up is
-   mesa/badlands with terraced cliffs.
-2. Climbing: should it use stamina, and can everything steep be
-   climbed or only rock?
-3. Should there be a jog or sprint, or walking only?
-4. Should there be fall damage? (Assumed none.)
+1. Is "scorched highlands" the correct first biome? The second choice
+   is mesa/badlands, with terraced cliffs.
+2. Climbing: do you want stamina? Can the bear climb all steep
+   surfaces, or only rock?
+3. Do you want a jog or a sprint, or only walking?
+4. Do you want fall damage? (Assumed: no.)

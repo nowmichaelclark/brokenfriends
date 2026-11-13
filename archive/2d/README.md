@@ -1,15 +1,22 @@
 # Archive: the 2D version (October 2026)
 
-The first Broken Friends: a 2D, mobile-first creature-care game about
-stuffed friends you feed, soak, rip and sew back together. It has the
-plans (`plan/`), the planning kit, the Godot 4.7.1 sketch (`game/`),
-the Driftloom extension (`rust/`) and the old GitHub workflows
-(`github/`, renamed so they no longer run).
+This folder has the first version of Broken Friends. It was a 2D game
+for phones. In it, the player cares for stuffed friends: the player
+feeds them, makes them wet, tears them and sews them again.
 
-The game was rebooted as 3D in November 2026. Nothing here is built
-on. It's here for ideas. The exact last state is the git branch
-`2d-concept`. Check out that branch to run the old game; paths inside
-this folder assume it sits at the repo root.
+The folder contains:
+- `plan/`: the plans and the planning kit
+- `game/`: the Godot 4.7.1 sketch of the game
+- `rust/`: the Driftloom extension
+- `github/`: the old GitHub workflows. The folder has a new name, so
+  the workflows do not run.
 
-The web build last deployed to GitHub Pages stays up until something
+In November 2026, the game started again as a 3D game. The new game
+does not use this code. Use these files for ideas only.
+
+The `2d-concept` branch keeps the exact last state. To run the old
+game, check out that branch. The paths in this folder are correct only
+at the repo root, as on that branch.
+
+The last web build on GitHub Pages stays online until a new build
 replaces it.

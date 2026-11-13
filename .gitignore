@@ -3,7 +3,7 @@ rust/target/
 
 # Godot
 game/.godot/
-game/addons/*/bin/
+game/addons/terrain_3d/
 *.import.tmp
 export_presets.cfg.bak
 

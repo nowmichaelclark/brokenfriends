@@ -12,6 +12,7 @@ is demo 1: one biome where the bear walks, jumps and climbs (see
 | Folder | Contents |
 |---|---|
 | `plan/` | The plans. Start with `plan/STATE.md`. |
-| `rust/` | The code of the game: world generation and gameplay (from S-101). |
-| `game/` | The Godot project (from S-101). |
+| `rust/` | The code of the game: world generation and gameplay. |
+| `game/` | The Godot project. Read `game/README.md` to build and run it. |
+| `tools/` | Scripts that install the pinned Terrain3D addon. |
 | `archive/2d/` | The first 2D version of the game and its plans, kept for ideas. The `2d-concept` branch also keeps the full old state. |

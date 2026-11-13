@@ -1,6 +1,6 @@
 # State
 
-Updated: 2026-11-13 (the 3D version starts: PC, Godot and Rust)
+Updated: 2026-11-13 (S-101 done: the skeleton builds and shows a noise terrain)
 
 Write this file again each time. Do not add to the end. Keep it under
 90 lines.
@@ -8,7 +8,8 @@ Write this file again each time. Do not add to the end. Keep it under
 ## Phase
 
 **Demo 1** (`demo-1.md`). In this demo, the player walks, jumps and
-climbs through one biome under smog. Nothing is built yet.
+climbs through one biome under smog. The skeleton is built: Rust makes
+a noise heightmap, and Terrain3D shows it (see `game/README.md`).
 
 ## Agenda
 
@@ -16,20 +17,20 @@ To start a session, Mikey opens the place in the "Where" column. He
 selects the model and effort, then types "Run S-NNN". At the end of a
 session, the session deletes its row. It changes the rows that it
 unblocks to **ready**. It adds follow-up rows at the bottom.
-Next number: S-111.
+Next number: S-112.
 
 | # | Session | Where | Model, effort | Status |
 |---|---|---|---|---|
-| S-101 | **Build: skeleton.** Make the Cargo workspace (`bf-worldgen` and `bf-game`) with the dev profiles in `tech.md`. Make a `.gdextension` file with `reloadable = true`. Make a Godot 4.7.1 project that uses the Mobile renderer. Install a pinned version of Terrain3D. Test: Rust makes a noise height map, and Terrain3D shows it. Add the F3 overlay, a `bacon` config and CI (`fmt`, `clippy`, `test`). Write `game/README.md`: how to build and run on Fedora and on Windows. **Done when:** the noise terrain shows, a Rust change reloads in the editor, and the rebuild time on Mikey's laptop is written down. | Claude Code | Opus 5.5, high | **ready** |
-| S-102 | **Build: the teddy bear.** Make a Rust `CharacterBody3D`, 0.40 m tall, from simple shapes. Add walking and jumping (with coyote time and a jump buffer). Add a third-person camera that does not go into the terrain. Make all tuning values `#[export]`. Test on the terrain from S-101. | Claude Code | Sonnet 5.5, high | waiting on S-101 |
-| S-104 | **Build: the scorched-highlands generator** in `bf-worldgen`. Use ridged noise, domain warp, the erosion filter, dry riverbeds and a seed. A preview tool writes PNG images. A dev key makes a new zone in the game. **Done when:** three seeds all look like real mountain ranges in the preview. | Claude Code | Opus 5.5, high | waiting on S-101 (can run at the same time as S-102) |
+| S-102 | **Build: the teddy bear.** Make a Rust `CharacterBody3D`, 0.40 m tall, from simple shapes. Add walking and jumping (with coyote time and a jump buffer). Add a third-person camera that does not go into the terrain. Make all tuning values `#[export]`. Test on the terrain from S-101. | Claude Code | Sonnet 5.5, high | **ready** |
+| S-104 | **Build: the scorched-highlands generator** in `bf-worldgen`. Use ridged noise, domain warp, the erosion filter, dry riverbeds and a seed. A preview tool writes PNG images. A dev key makes a new zone in the game. **Done when:** three seeds all look like real mountain ranges in the preview. | Claude Code | Opus 5.5, high | **ready** (can run at the same time as S-102) |
 | S-103 | **Play:** Mikey walks and jumps. He changes the tuning values in the Inspector. He writes the problems in `play-notes.md`. | Mikey's laptop | Mikey (optional: Sonnet 5.5, low, for help with the notes) | waiting on S-102 |
 | S-105 | **Build: smog and heat.** Add distance fog and height fog, the sun, the sky, dust particles, heat shimmer and colour grading. Set the render scale to 0.75. Use only features of the Mobile renderer. | Claude Code | Sonnet 5.5, medium | waiting on S-104 |
 | S-106 | **Play: the speed test.** Run the game at 1080p on both laptops. Walk across the zone with F3 on. Write the fps and draw calls in `play-notes.md`. | Mikey's laptops | Mikey | waiting on S-105 |
 | S-107 | **Build: climbing.** Find the wall, hold on to it, move along the surface, use stamina, and climb up onto ledges. Use the notes from S-103. | Claude Code | Opus 5.5, high | waiting on S-103 and S-105 |
 | S-108 | **Build: ground scatter.** Make rocks, pebbles and dead shrubs in Rust. Draw them with MultiMesh and visibility ranges. Stay inside the numbers from S-106. | Claude Code | Sonnet 5.5, medium | waiting on S-106 |
 | S-109 | **Brain** with Mikey: play the full demo, decide what to fix, and plan demo 2 (caves). | Project chat | Opus 5.5, medium | waiting on S-107 and S-108 |
-| S-110 | **Combined run with Fable:** S-101, then S-104, then S-102, in one session. See "Combined runs" below. | Claude Code | Fable 5.2, medium | **ready** (use this row or S-101, not both) |
+| S-110 | **Combined run with Fable:** S-104, then S-102, in one session (S-101 is done). See "Combined runs" below. | Claude Code | Fable 5.2, medium | **ready** (in work) |
+| S-111 | **Play: the first start.** Do the steps in `game/README.md` on the laptop. Change a number in a `.rs` file while `bacon` runs, and make sure that the editor loads the new library. Write the two rebuild times in the table in `game/README.md`. Write the problems in `play-notes.md`. | Mikey's laptop | Mikey | **ready** |
 
 ## Combined runs
 
@@ -51,6 +52,10 @@ strong model is available for a short time.
 S-110 does S-104 before S-102 for this reason: S-104 is the most
 difficult row and gets the most from Fable. If the Fable time ends,
 Sonnet can do S-102 easily.
+
+S-101 could not test two items in the cloud container: the reload of
+the library in the editor, and the rebuild time on Mikey's laptop.
+S-111 tests them.
 
 ## How we chose the models
 

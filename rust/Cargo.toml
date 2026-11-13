@@ -1,0 +1,32 @@
+[workspace]
+resolver = "2"
+members = ["worldgen", "game"]
+
+[workspace.package]
+edition = "2021"
+license = "MIT"
+rust-version = "1.94"
+
+[workspace.dependencies]
+# The version is pinned. Change it only together with the Godot version.
+godot = { version = "=0.5.5", features = ["api-4-7"] }
+rayon = "1.10"
+image = { version = "0.25", default-features = false, features = ["png"] }
+
+[workspace.lints.clippy]
+all = "warn"
+
+[profile.dev]
+opt-level = 1
+debug = "line-tables-only" # faster links, still readable panics
+
+[profile.dev.package."*"]
+opt-level = 3 # godot, rayon etc.: optimized once, then cached
+
+[profile.dev.package.bf-worldgen]
+opt-level = 3 # generation must be fast in dev builds also
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true

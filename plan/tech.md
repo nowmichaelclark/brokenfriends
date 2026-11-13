@@ -29,7 +29,8 @@ generation. Items marked **proposed** need a "yes" from Mikey (see
 
 ```
 game/                 Godot 4.7.1 project (Mobile renderer)
-  addons/terrain3d/   Terrain3D (proposed), pinned version
+  addons/terrain_3d/  Terrain3D v1.1.0 (proposed). Not in git:
+                      tools/install-terrain3d.sh downloads it.
   bf.gdextension      loads the Rust library, reloadable = true
 rust/                 one Cargo workspace with one target/ folder
   worldgen/           bf-worldgen: Rust only, no Godot. Noise, biome
@@ -98,10 +99,13 @@ godot-rust has typed bindings for Godot's own classes only. Terrain3D
 is a different extension. Thus, Rust calls Terrain3D methods by name
 (`Object::call`).
 
-The plan: Rust makes the heightmap as a Godot `Image` with 32-bit
-float values. Then Rust gives the image to the import function of
-Terrain3D [unverified: S-101 checks the method names and the region
-size in the pinned version].
+Rust makes the heightmap as a Godot `Image` with 32-bit float values
+(`FORMAT_RF`). Then Rust calls `Terrain3D.data.import_images([height,
+null, null], corner, 0.0, 1.0)`. The corner is the world position of
+the first sample. S-101 tested this with Terrain3D v1.1.0. A region is
+one square tile of Terrain3D data. A zone of 2048 samples uses 2 × 2
+regions of size 1024. All of these calls are in
+`rust/game/src/terrain.rs`.
 
 If this is too difficult, use the fallback: our own clipmap. It is a
 few ring meshes and a shader that reads a height texture. Rust owns
@@ -147,7 +151,7 @@ Cloud containers usually have no GPU, and some have no Vulkan.
 | Need | Crate |
 |---|---|
 | Godot bindings | `godot` (pin the version; the 2D build used 0.5.5) |
-| Noise | `fastnoise-lite` or `noise` |
+| Noise | our own gradient noise in `bf-worldgen` (`noise.rs`). It has derivatives and gives the same bits on all computers. |
 | Erosion look | a port of the erosion filter by Rune Skovbo Johansen (CPU code in `bevy_erosion_filter`) |
 | Threads | `rayon` |
 | Maths | `glam` |

@@ -1,0 +1,16 @@
+[package]
+name = "bf-worldgen"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "World generation for Broken Friends. Rust only, no Godot."
+
+[dependencies]
+rayon.workspace = true
+
+[dev-dependencies]
+image.workspace = true
+
+[lints]
+workspace = true

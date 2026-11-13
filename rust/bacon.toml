@@ -1,0 +1,21 @@
+# Run `bacon` in `rust/`. It builds the library again after each save.
+# The Godot editor then loads the new library (see game/README.md).
+default_job = "build"
+
+[jobs.build]
+command = ["cargo", "build", "-p", "bf-game", "--color", "always"]
+need_stdout = false
+watch = ["worldgen/src", "game/src"]
+
+[jobs.test]
+command = ["cargo", "test", "--workspace", "--color", "always"]
+need_stdout = true
+
+[jobs.clippy]
+command = ["cargo", "clippy", "--workspace", "--all-targets", "--color", "always", "--", "-D", "warnings"]
+need_stdout = false
+
+[keybindings]
+b = "job:build"
+t = "job:test"
+c = "job:clippy"

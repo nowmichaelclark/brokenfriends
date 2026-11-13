@@ -113,10 +113,11 @@ is done when Mikey plays for ten minutes and wants to continue.
 - [ ] Mikey plays for ten minutes and writes his notes in
       `plan/play-notes.md`.
 
-## The look (R15)
+## The detail budget (R15)
 
-The game renders at full 1080p, with a PS1-like look: low-poly meshes,
-small textures with nearest-pixel filtering, and simple lighting.
+The game renders at full 1080p. It does not need to look better than a
+PS1 game upscaled to 1080p, but it does not copy the PS1 look. The
+visual style of demo 1 is simple and is not final.
 
 ## Questions for Mikey
 

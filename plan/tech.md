@@ -140,11 +140,15 @@ all of it. This is more work, but it removes the C++ dependency.
   lighter than Forward+. If the Intel Vulkan driver fails, use
   Compatibility. Do not use SDFGI, volumetric fog or SSR. Mobile does
   not have them.
-- **The look (R15).** Render at full 1080p. Do not use a low internal
-  resolution. Keep the PS1-like look in the content: low-poly meshes,
-  small textures with nearest-pixel filtering, simple flat or vertex
-  lighting. The saved GPU time pays for simulations. A 3D render scale
-  below 1.0 is only a last fallback, if the speed test fails.
+- **The detail budget (R15).** Render at full 1080p. Do not use a low
+  internal resolution. The game does not need to look better than a
+  PS1 game upscaled to 1080p. Thus, use low-poly meshes, small
+  textures and simple lighting where that saves time. This is a
+  budget, not a style. Do not add PS1 effects (vertex snapping,
+  affine warping, dithering) unless Mikey asks for them.
+- **Performance aim (R15).** If a computer runs a well-made PS1 PC
+  port or decomp (for example Silent Hill) at 60 fps and 1080p, it
+  must also run Broken Friends.
 - **Time for each frame.** The limit is 16.6 ms in total. Terrain gets
   4 ms at most. Scatter gets 4 ms at most. All other work gets 5 ms at
   most.

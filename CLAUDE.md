@@ -32,8 +32,9 @@ only. Do not use their code or their rules.
   0.40 m tall. All other objects have their real-world size.
 - **Speed target.** The game must run at 60 frames per second (fps)
   at 1080p on a laptop with integrated graphics. Use the Mobile
-  renderer. The game renders at full 1080p, with a PS1-like look
-  (R15): few polygons and small textures. Only Mikey's laptops give
+  renderer at full 1080p. The detail budget is about that of a PS1
+  game upscaled to 1080p (R15). This is a budget, not a visual style:
+  do not copy the PS1 look. Only Mikey's laptops give
   valid speed results. Results from a cloud container are not valid.
 - **Seeds.** The same seed must always make the same world. Do not use
   a random source without a seed in generation.

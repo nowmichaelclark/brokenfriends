@@ -12,19 +12,26 @@ only the code that you will change.
 
 1. Write the "done when" of your row again in your own words. If the
    row has no "done when," add one to the row first.
-2. Build in small steps. After each step, compile and run the game
+2. Look for references before you code. Read the files in
+   `plan/research/` that are about your topic. Then use a subagent to
+   find 2 or 3 open-source repos or articles that solve the same
+   problem. Tell it to send back a short summary: the method, the
+   cost, and the licence. Write the useful points in
+   `plan/research/<topic>.md`. Do not copy code with a licence that
+   does not fit MIT.
+3. Build in small steps. After each step, compile and run the game
    headless. If the change is visible, make a screenshot (see
    `tech.md`, "Tests in Claude Code").
-3. Make each new tuning value an `#[export]` field. Give it a good
+4. Make each new tuning value an `#[export]` field. Give it a good
    default value and a one-line doc comment. It then shows in the
    Inspector.
-4. Put pure logic (generation, maths, state machines) in
+5. Put pure logic (generation, maths, state machines) in
    `bf-worldgen` or in plain Rust modules with unit tests. Keep the
    code that talks to Godot thin.
-5. If the plans do not answer a design question, build the simplest
+6. If the plans do not answer a design question, build the simplest
    version. Add it to "Assumed" in `game/README.md`. Ask Mikey in your
    summary.
-6. If a change can cost frame time, write it down. Also write how to
+7. If a change can cost frame time, write it down. Also write how to
    measure it on Mikey's laptop.
 
 ## Done when

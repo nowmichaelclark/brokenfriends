@@ -24,9 +24,10 @@ only. Do not use their code or their rules.
   movement, the camera, world generation, scatter and debug tools.
   Scenes (`.tscn`) and shaders (`.gdshader`) are permitted. Use
   GDScript only for a short test, and delete it in the same session.
-- **Tuning values.** Make each tuning value an `#[export]` field.
-  Mikey can then change it in the Inspector without a new compile.
-  He can also change it while the game runs.
+- **Tuning values.** Make each tuning value an `#[export]` field with
+  a good default. Mikey does not tune values himself (decision R10).
+  He plays the build from GitHub and describes what he feels. Claude
+  sessions then change the defaults.
 - **Scale.** 1 Godot unit is 1 metre. Y is up. The teddy bear is
   0.40 m tall. All other objects have their real-world size.
 - **Speed target.** The game must run at 60 frames per second (fps)
@@ -89,7 +90,10 @@ this style.
    `git push origin HEAD:main`. If a different session changed the
    same rows, keep the rows of both sessions. Then give your new rows
    new numbers.
-6. At the end of your summary, write **Weak spots**: three or more
+6. If the push changes `rust/`, `game/` or `tools/`, GitHub builds the
+   game (`.github/workflows/game-build.yml`). If you can, check that
+   this build passes. If it fails, fix it before you stop.
+7. At the end of your summary, write **Weak spots**: three or more
    honest problems that you see.
 
 If a session does more than one agenda row, do all of these steps at

@@ -43,6 +43,27 @@ what it assumes.
 - **`main.tscn`** is the start scene: terrain, sun, sky, bear, cameras
   and overlay.
 
+## Play the latest build (Mikey)
+
+GitHub builds the game after each push to `main`. You do not need
+Rust or the Godot editor.
+
+1. Open https://github.com/nowmichaelclark/brokenfriends/releases/tag/game-latest
+2. Download `broken-friends-linux.zip` (about 30 MB). On Windows,
+   download `broken-friends-windows.zip`.
+3. Unzip it. On Fedora:
+   `unzip -o ~/Downloads/broken-friends-linux.zip -d ~/Games`
+4. Start the game. On Fedora:
+   `~/Games/broken-friends-linux/BrokenFriends.x86_64`. On Windows,
+   double-click `BrokenFriends.exe`.
+
+`BUILD.txt` in the folder gives the commit of the build. To get a
+newer build, do the steps again. Step 3 replaces the old files.
+
+If the game does not start, run it from a terminal and send the text
+that it prints to Claude. On Windows, run
+`BrokenFriends.console.exe` to see the text.
+
 ## Controls
 
 | Action | Keyboard and mouse | Gamepad |
@@ -86,7 +107,7 @@ Select the `Terrain` node. The Inspector shows the generator values
 then push F4 in the game, or call `regenerate()`. More values are in
 `HighlandsParams` in `highlands.rs`. Those need a new compile.
 
-## Build and run on Fedora
+## Build and run on Fedora (for development)
 
 1. Install Rust: `curl https://sh.rustup.rs -sSf | sh`. The workspace
    needs Rust 1.94 or later.
@@ -101,7 +122,7 @@ then push F4 in the game, or call `regenerate()`. More values are in
    the addon files.
 6. Push F5 to start the game.
 
-## Build and run on Windows
+## Build and run on Windows (for development)
 
 1. Install Rust from rustup.rs. Use the default MSVC toolchain. The
    installer also offers the Visual Studio Build Tools. Install them.
@@ -126,11 +147,7 @@ editor.
 
 **Rebuild times.** In the cloud container (4 cores), the first build
 takes 1 min 42 s. A build after a change in `bf-game` takes about 2 s.
-These numbers are not valid for Mikey's laptop.
-
-| Computer | First build | Build after a small change |
-|---|---|---|
-| Mikey's laptop | (Mikey: write the time here) | (Mikey: write the time here) |
+Mikey does not build on his laptop (decision R10).
 
 ## Tests
 
@@ -141,6 +158,17 @@ These numbers are not valid for Mikey's laptop.
   `godot --headless --path game --import` one time before this.
 - CI (`.github/workflows/ci.yml`) runs `fmt`, `clippy` and `test` on
   each push. CI does not start Godot.
+- The game build (`.github/workflows/game-build.yml`) builds the Rust
+  library for Linux and Windows. Then Godot exports the game with
+  `export_presets.cfg`. A smoke test starts the Linux build headless
+  and checks that it makes a zone. The zips go on the `game-latest`
+  release.
+- To export by hand: build with `cargo build --release`, copy
+  `libbf_game.so` from `rust/target/release/` to `rust/target/debug/`,
+  run `godot --headless --path game --import`, then
+  `godot --headless --path game --export-release "Linux" ../build/linux/BrokenFriends.x86_64`.
+  The import run can crash when it quits; the import is still
+  complete.
 
 ## Assumed (Mikey can change these)
 

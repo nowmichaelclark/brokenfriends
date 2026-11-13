@@ -18,6 +18,7 @@ version" are still valid.
 | R7 | The setting is after an apocalypse. The world is much hotter. Smog, pollution and dust make the air bad. Thus, the world has haze and smog, not plain fog. | Mikey, 2026-11-13 |
 | R8 | The first goal is a playable demo, as soon as possible. The player explores one biome. The bear walks, jumps and climbs. | Mikey, 2026-11-13 |
 | R9 | The game is open source (MIT licence) and free. It has no ads and no microtransactions (from the 2D version: 0018, 0023). | Mikey, 2026-10 |
+| R10 | Mikey plays builds that GitHub makes. He does not build on his laptop (it has little disk space). He tells Claude what he feels and sees. Claude sessions change the tuning values. | Mikey, 2026-11-14 |
 
 ## Proposed, Mikey must decide
 

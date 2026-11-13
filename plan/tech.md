@@ -137,6 +137,24 @@ all of it. This is more work, but it removes the C++ dependency.
   primitives and video memory. The data comes from the `Performance`
   singleton of Godot.
 
+## Builds on GitHub
+
+Mikey plays builds that GitHub makes (decision R10). The workflow
+`.github/workflows/game-build.yml` does these steps after each push to
+`main`:
+
+1. Build the Rust library in release mode on Linux and on Windows.
+2. Install the pinned Terrain3D addon.
+3. Export the game for Linux and Windows with Godot 4.7.1 and
+   `game/export_presets.cfg`.
+4. Start the Linux build headless. Make sure that it makes a zone.
+5. Put the two zips on the `game-latest` release.
+
+The editor loads the library from the debug path. Thus, the workflow
+copies the release library to `rust/target/debug/` before the import.
+If the editor cannot load the library, the export loses the Rust
+classes.
+
 ## Tests in Claude Code
 
 Cloud containers usually have no GPU, and some have no Vulkan.

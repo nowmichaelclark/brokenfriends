@@ -1,6 +1,6 @@
 # State
 
-Updated: 2026-11-13 (S-101, S-104 and S-102 done in the combined run S-110)
+Updated: 2026-11-14 (GitHub builds the game; Mikey plays, Claude tunes)
 
 Write this file again each time. Do not add to the end. Keep it under
 90 lines.
@@ -19,18 +19,17 @@ To start a session, Mikey opens the place in the "Where" column. He
 selects the model and effort, then types "Run S-NNN". At the end of a
 session, the session deletes its row. It changes the rows that it
 unblocks to **ready**. It adds follow-up rows at the bottom.
-Next number: S-113.
+Next number: S-114.
 
 | # | Session | Where | Model, effort | Status |
 |---|---|---|---|---|
-| S-103 | **Play:** Mikey walks and jumps. He changes the tuning values in the Inspector. He writes the problems in `play-notes.md`. | Mikey's laptop | Mikey (optional: Sonnet 5.5, low, for help with the notes) | **ready** (after S-111) |
+| S-111 | **Play: the first start.** Download the Linux zip from the `game-latest` release and run it (see `game/README.md`, "Play the latest build"). Walk and jump. Use the fly camera (F2) to look at three zones (F4). Write what feels wrong and what looks wrong, in your own words. Answer the questions in `demo-1.md` and in `game/README.md` ("Assumed"). | Mikey's laptop | Mikey | **ready** |
+| S-113 | **Build: tune from the play notes.** Mikey pastes his notes from S-111 at the start. Change the default values (movement, camera, generator) to match the notes. Fix small problems. Write the notes in `play-notes.md`. | Claude Code | Sonnet 5.5, medium | waiting on S-111 |
 | S-105 | **Build: smog and heat.** Add distance fog and height fog, the sun, the sky, dust particles, heat shimmer and colour grading. Set the render scale to 0.75. Use only features of the Mobile renderer. | Claude Code | Sonnet 5.5, medium | **ready** |
-| S-106 | **Play: the speed test.** Run the game at 1080p on both laptops. Walk across the zone with F3 on. Write the fps and draw calls in `play-notes.md`. | Mikey's laptops | Mikey | waiting on S-105 |
-| S-107 | **Build: climbing.** Find the wall, hold on to it, move along the surface, use stamina, and climb up onto ledges. Use the notes from S-103. | Claude Code | Opus 5.5, high | waiting on S-103 and S-105 |
+| S-106 | **Play: the speed test.** Download the newest zip. Run the game at 1080p on both laptops. Walk across the zone with F3 on. Tell Claude the fps and the draw calls at some places. | Mikey's laptops | Mikey | waiting on S-105 |
+| S-107 | **Build: climbing.** Find the wall, hold on to it, move along the surface, use stamina, and climb up onto ledges. Use the notes from S-111. | Claude Code | Opus 5.5, high | waiting on S-113 and S-105 |
 | S-108 | **Build: ground scatter.** Make rocks, pebbles and dead shrubs in Rust. Draw them with MultiMesh and visibility ranges. Stay inside the numbers from S-106. | Claude Code | Sonnet 5.5, medium | waiting on S-106 |
 | S-109 | **Brain** with Mikey: play the full demo, decide what to fix, and plan demo 2 (caves). | Project chat | Opus 5.5, medium | waiting on S-107 and S-108 |
-| S-111 | **Play: the first start.** Do the steps in `game/README.md` on the laptop. Change a number in a `.rs` file while `bacon` runs, and make sure that the editor loads the new library. Write the two rebuild times in the table in `game/README.md`. Write the problems in `play-notes.md`. | Mikey's laptop | Mikey | **ready** |
-| S-112 | **Play: look at the mountains.** Fly through three zones (F4) with the fly camera. Change the generator values on the `Terrain` node. Write in `play-notes.md`: the values that you like, and if the zone is too steep. Answer the licence question in `game/README.md` ("Assumed"). | Mikey's laptop | Mikey | **ready** (after S-111) |
 
 ## Combined runs
 
@@ -47,9 +46,16 @@ strong model is available for a short time. S-110 was the first one.
    stop.
 5. At the end, delete the row of the combined run.
 
-The cloud container cannot test three items: the reload of the
-library in the editor, the rebuild time, and the look with the Mobile
-renderer. S-111 and S-112 test them on Mikey's laptop.
+The cloud container cannot test the look with the Mobile renderer or
+the speed. Mikey's play rows test them with the build from GitHub.
+
+## How Mikey plays (decision R10)
+
+After each push to `main` that changes `rust/`, `game/` or `tools/`,
+GitHub builds the game for Linux and Windows. The zips go on the
+`game-latest` release. Mikey downloads a zip and plays. He does not
+install Rust or the Godot editor. He tells Claude what he feels and
+sees, and Claude sessions change the values.
 
 ## How we chose the models
 

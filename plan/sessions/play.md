@@ -1,16 +1,17 @@
-# Play session: Mikey plays and writes notes
+# Play session: Mikey plays and gives notes
 
-Mikey runs the latest build on his own laptop. No model is necessary.
-If he wants help to write clear notes, he can use Sonnet at low
-effort.
+Mikey plays the latest build from GitHub on his own laptop. No model
+is necessary.
 
-1. Pull `main`. Build the game (see `game/README.md`). Play the part
-   that the row names.
-2. If the row is about speed, keep F3 on. At some places, write down
+1. Download and start the newest build (see `game/README.md`, "Play
+   the latest build"). Make sure that `BUILD.txt` shows the newest
+   commit.
+2. Play the part that the row names.
+3. If the row is about speed, keep F3 on. At some places, write down
    the fps, the frame time and the draw calls. Also write which laptop
    you used.
-3. In `plan/play-notes.md`, add a section with the date. Write what
-   felt good and what felt wrong. If you changed values in the
-   Inspector, write the new values.
-4. Update `STATE.md`. Delete the row. Change the rows that it unblocks
-   to **ready**.
+4. Write what felt good and what felt wrong, in your own words. You do
+   not need numbers. Claude changes the values from your words.
+5. Give the notes to the next Build session: paste them at the start.
+   That session writes them in `plan/play-notes.md` and updates
+   `STATE.md`.

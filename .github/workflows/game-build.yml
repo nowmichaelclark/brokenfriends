@@ -1,0 +1,146 @@
+# Builds the game for Linux and Windows after each push to main, and
+# puts the two zip files on the "game-latest" release:
+# https://github.com/nowmichaelclark/brokenfriends/releases/tag/game-latest
+#
+# Mikey downloads a zip, unzips it and runs the game. He does not need
+# Rust or the Godot editor. See game/README.md, "Play the latest build".
+name: Game build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "rust/**"
+      - "game/**"
+      - "tools/**"
+      - ".github/workflows/game-build.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: game-build
+  cancel-in-progress: true
+
+env:
+  GODOT_VERSION: "4.7.1"
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # The Rust library (bf_game) for each platform, release build.
+  library:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            file: libbf_game.so
+          - os: windows-latest
+            file: bf_game.dll
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+          key: release
+      - name: Build the library
+        working-directory: rust
+        run: cargo build --release -p bf-game
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lib-${{ matrix.os }}
+          path: rust/target/release/${{ matrix.file }}
+          if-no-files-found: error
+
+  # Godot exports the game with the two libraries and Terrain3D.
+  export:
+    needs: library
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Godot and its export templates
+        id: godot-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/godot
+            ~/.local/share/godot/export_templates
+          key: godot-${{ env.GODOT_VERSION }}-desktop
+
+      - name: Download Godot and the Linux and Windows templates
+        if: steps.godot-cache.outputs.cache-hit != 'true'
+        run: |
+          base=https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable
+          mkdir -p ~/godot
+          curl -sSL -o godot.zip "$base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip -q godot.zip -d ~/godot
+          mv ~/godot/Godot_v${GODOT_VERSION}-stable_linux.x86_64 ~/godot/godot
+          curl -sSL -o templates.tpz "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          dest=~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+          mkdir -p "$dest"
+          unzip -q -j templates.tpz \
+            'templates/version.txt' \
+            'templates/linux_release.x86_64' \
+            'templates/windows_release_x86_64.exe' \
+            'templates/windows_release_x86_64_console.exe' \
+            -d "$dest"
+          rm templates.tpz godot.zip
+
+      - name: Install Terrain3D (pinned)
+        run: tools/install-terrain3d.sh
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: lib-*
+          path: rust/target/release
+          merge-multiple: true
+
+      - name: Export for Linux and Windows
+        run: |
+          ls -la rust/target/release
+          # The editor loads the debug library path. Give it the release
+          # library, so the import and the export know the Rust classes.
+          mkdir -p rust/target/debug build/linux build/windows
+          cp rust/target/release/libbf_game.so rust/target/debug/
+          # The import run completes, but Godot 4.7.1 can crash when it
+          # quits after the import. Thus its exit code is not checked.
+          ~/godot/godot --headless --path game --import || true
+          ~/godot/godot --headless --path game --export-release "Linux" ../build/linux/BrokenFriends.x86_64
+          ~/godot/godot --headless --path game --export-release "Windows" ../build/windows/BrokenFriends.exe
+          ls -la build/linux build/windows
+          test -f build/linux/libbf_game.so
+          test -f build/windows/bf_game.dll
+
+      - name: Smoke test (the Linux build makes a zone)
+        run: |
+          # stdbuf: the log must reach the file before timeout stops the game.
+          timeout 90 stdbuf -oL -eL build/linux/BrokenFriends.x86_64 --headless > smoke.log 2>&1 || true
+          cat smoke.log
+          grep -q "BfTerrain: seed" smoke.log || { echo "The exported game did not make a zone." >&2; exit 1; }
+          if grep -E "^(ERROR|SCRIPT ERROR)" smoke.log; then
+            echo "The exported game printed errors." >&2
+            exit 1
+          fi
+
+      - name: Make the zip files
+        run: |
+          sha=$(git rev-parse --short HEAD)
+          echo "$sha" > build/linux/BUILD.txt
+          echo "$sha" > build/windows/BUILD.txt
+          (cd build && mv linux broken-friends-linux && zip -qr ../broken-friends-linux.zip broken-friends-linux)
+          (cd build && mv windows broken-friends-windows && zip -qr ../broken-friends-windows.zip broken-friends-windows)
+          ls -la *.zip
+
+      - name: Put the zips on the game-latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sha=$(git rev-parse --short HEAD)
+          notes="The latest build of Broken Friends, from commit ${sha} on main. Download the zip for your system, unzip it, and run BrokenFriends.x86_64 (Linux) or BrokenFriends.exe (Windows)."
+          if ! gh release view game-latest >/dev/null 2>&1; then
+            gh release create game-latest --prerelease --title "Broken Friends (latest build)" --notes "$notes"
+          fi
+          gh release upload game-latest broken-friends-linux.zip broken-friends-windows.zip --clobber
+          gh release edit game-latest --notes "$notes"

@@ -1,18 +1,15 @@
-# Planning kit
-packs/
-__pycache__/
-*.pyc
+# Rust
+rust/target/
 
-# Godot (for game/, later)
-.godot/
+# Godot
+game/.godot/
+game/addons/*/bin/
 *.import.tmp
 export_presets.cfg.bak
 
-.DS_Store
-
-# Builds
+# Builds and scratch
 build/
-
-# Driftloom extension builds
-game/addons/driftloom/bin/
-rust/*/target/
+screenshots/
+__pycache__/
+*.pyc
+.DS_Store

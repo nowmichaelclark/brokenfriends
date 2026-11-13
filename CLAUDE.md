@@ -1,43 +1,56 @@
 # For Claude Code sessions
 
-This repo is **Broken Friends**. Plans live in `plan/`; the Godot
-project lives in `game/`.
+This repo is **Broken Friends**, rebooted in November 2026 as a 3D PC
+game: a teddy-bear-sized friend exploring a procedurally generated,
+hot, smog-choked world. Built with Godot 4 and Rust, from scratch.
 
-## Planning sessions
+The old 2D game and its plans are in `archive/2d/` (also tagged
+`2d-concept`). Read them for ideas only. Don't build on their code or
+follow their rules.
 
-Read `plan/START-HERE.md`, `plan/kit/RULES.md` and `plan/STATE.md`
-before anything else. "Run S-NNN" means the agenda row in `STATE.md`;
-its type names the brief in `plan/kit/sessions/` (Build sessions:
-`build.md`). Paths inside the plan docs are
-relative to `plan/`.
+## Start of every session
 
-Differences from chat sessions:
+1. Read `plan/STATE.md`. "Run S-NNN" means that agenda row.
+2. Read the brief the row's type names (`plan/sessions/<type>.md`).
+3. Read `plan/tech.md` (how the game is built) and the spec the row
+   names (for now `plan/demo-1.md`).
+4. Never edit `plan/MIKEY.md`. It is Mikey's.
 
-- Edit files directly instead of returning `=== FILE ===` blocks.
-- Run `python3 plan/kit/tools/check.py` before you finish, and fix what
-  it reports in the files you touched.
-- Commit once per session: `<Session type>: <what changed>` (`check.py`
-  counts these to pace Cleanup sessions). Finish on `main`, not a
-  session branch: `git pull --rebase origin main`, then
-  `git push origin HEAD:main`. Other sessions may be running in tandem;
-  on a clash, keep both sides' agenda rows and renumber your new S-, V-
-  or Q- numbers past theirs.
-- Agents for some session types live in `.claude/agents/`.
+## The rules that matter most
 
-## Game code
+- **Rust first.** Game logic lives in Rust (`rust/`). This covers
+  movement, camera, world generation, scatter and debug tools.
+  Scenes (`.tscn`) and shaders (`.gdshader`) are fine. GDScript is
+  only for a throwaway experiment, deleted in the same session.
+- **Tuning numbers are `#[export]` fields**, so Mikey can change them
+  in the Inspector (even while the game runs) without recompiling.
+- **Scale.** 1 Godot unit = 1 metre, Y up. The teddy is 0.40 m tall.
+  Everything else is real-world size around it.
+- **Speed target.** 60 fps at 1080p on a laptop with integrated
+  graphics, using the Mobile renderer and a 0.75 3D render scale. Only
+  Mikey's laptops count as proof. A cloud container's numbers don't.
+- **Seeded and deterministic.** The same seed always makes the same
+  world. Never use an unseeded random source in generation.
+- **Propose, don't decide.** If the plans don't settle a design
+  question, build the simplest version, list it under "Assumed" in
+  `game/README.md`, and ask Mikey. Decisions are Mikey's, in
+  `plan/decisions.md`.
+- **One job per session.** Do your agenda row. Put ideas for later in
+  `plan/inbox.md`, one line each.
+- **Tag guesses.** If a claim about an engine, crate or performance
+  hasn't been checked, mark it `[unverified]`.
 
-Building started early, alongside planning (decision 0019). Read
-`game/README.md` first: it has the layout, the rules the code follows,
-and what this build assumes that Mikey hasn't confirmed yet.
+## Finishing a session
 
-- Godot 4.7.1, typed GDScript, Compatibility renderer, portrait.
-- Keep data (`game/data/`) separate from drawing; announce changes on
-  the `Events` bus.
-- No image or sound files: draw and synthesize in code.
-- A design question the plans haven't settled: build the simplest
-  version, list it under "Assumed in this build" in `game/README.md`,
-  and ask Mikey. Don't record it as a decision.
-- Before pushing game changes, run the playthrough test
-  (`game/README.md`, "Testing") and make sure it ends with `FLOW OK`.
-- Pushing to `main` rebuilds the web version on GitHub Pages
-  (`.github/workflows/web.yml`).
+- Run `cargo fmt`, `cargo clippy` and `cargo test` in `rust/`, and fix
+  what they report. Then open the game headless:
+  `godot --headless --path game --quit-after 300`.
+- Update `plan/STATE.md`. Delete your row, flip the rows it unblocks to
+  **ready**, and add follow-ups (with the model and effort you'd
+  recommend) at the bottom.
+- Commit once: `<Session type>: <what changed>`. Finish on `main`:
+  `git pull --rebase origin main`, then `git push origin HEAD:main`.
+  If another session clashed with yours, keep both sides' rows and
+  renumber yours.
+- End your summary with **Weak spots**: at least three honest
+  problems you see.

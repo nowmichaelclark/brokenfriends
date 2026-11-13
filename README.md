@@ -1,15 +1,15 @@
 # Broken Friends
 
-A 2D, mobile-first creature-care game about stuffed, stitched creatures
-you feed, soak, rip and sew back together, play with, and
-send out on delivery runs. Also playable in a browser; maybe native on
-Windows, Linux and Mac later.
+A 3D PC game: you're a teddy-bear-sized friend exploring a procedurally
+generated world gone hot, dusty and smog-choked. Built with Godot 4 and
+Rust. Open source, MIT, free.
 
-**Status:** planning, with the first five minutes playable.
-Play it in a phone browser: https://nowmichaelclark.github.io/brokenfriends/
-(see `game/README.md` for the laptop and Android).
+**Status:** rebooted November 2026. Working toward demo 1: one biome to
+walk, jump and climb through (`plan/demo-1.md`).
 
 | Folder | What |
 |---|---|
-| `plan/` | The plans, and the kit for making them. Start at `plan/README.md`. |
-| `game/` | The Godot 4.7.1 project. Start at `game/README.md`. |
+| `plan/` | The plans. Start at `plan/STATE.md`. |
+| `rust/` | The game's code: world generation and gameplay (from S-101). |
+| `game/` | The Godot project (from S-101). |
+| `archive/2d/` | The original 2D creature-care game and its plans, kept for ideas. Also tagged `2d-concept`. |

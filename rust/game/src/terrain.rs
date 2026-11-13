@@ -11,6 +11,7 @@ use godot::classes::{ClassDb, Image, ImageTexture, InputEvent, InputEventKey, No
 use godot::global::Key;
 use godot::prelude::*;
 use std::sync::mpsc::{channel, Receiver, TryRecvError};
+use std::thread::JoinHandle;
 use std::time::Instant;
 
 /// The group that holds the `BfTerrain` node. Other nodes find it there.
@@ -135,6 +136,11 @@ pub struct BfTerrain {
     /// The worker thread sends the new zone here.
     pending: Option<Receiver<Generated>>,
 
+    /// The worker thread. The node waits for it when the node leaves the
+    /// tree. If Godot unloads the library while the thread still runs,
+    /// the game crashes on exit.
+    worker: Option<JoinHandle<()>>,
+
     base: Base<Node3D>,
 }
 
@@ -152,6 +158,7 @@ impl INode3D for BfTerrain {
         match receiver.try_recv() {
             Ok(generated) => {
                 self.pending = None;
+                self.join_worker();
                 self.show(generated);
             }
             Err(TryRecvError::Empty) => {}
@@ -160,6 +167,12 @@ impl INode3D for BfTerrain {
                 godot_error!("BfTerrain: the generation thread stopped with an error.");
             }
         }
+    }
+
+    fn exit_tree(&mut self) {
+        // Quit during generation: wait until the thread stops.
+        self.pending = None;
+        self.join_worker();
     }
 
     fn input(&mut self, event: Gd<InputEvent>) {
@@ -190,7 +203,8 @@ impl BfTerrain {
         let spacing = self.vertex_spacing.max(0.25);
         let params = self.params();
         let (sender, receiver) = channel();
-        std::thread::spawn(move || {
+        self.join_worker();
+        let worker = std::thread::spawn(move || {
             let start = Instant::now();
             let zone = generate(seed, size, spacing, &params);
             let colours = zone.ground_colours();
@@ -203,6 +217,16 @@ impl BfTerrain {
             });
         });
         self.pending = Some(receiver);
+        self.worker = Some(worker);
+    }
+
+    /// Waits for the worker thread, if there is one.
+    fn join_worker(&mut self) {
+        if let Some(worker) = self.worker.take() {
+            if worker.join().is_err() {
+                godot_error!("BfTerrain: the generation thread panicked.");
+            }
+        }
     }
 
     /// Makes a new zone with the next seed (dev key: F4).

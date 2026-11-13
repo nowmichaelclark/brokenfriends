@@ -50,40 +50,35 @@ We do not use a downloaded model, for these reasons:
 
 ## Procedural animation (R18)
 
-The bear has no hand-made animations. The game makes each pose from
-the body, the limbs that the bear still has, and the surface under
-it. This is the method of *Overgrowth* (David Rosen, GDC 2014, "An
-Indie Approach to Procedural Animation") and *Rain World*:
+The method comes from the research in `research/bear-animation.md`.
+In short:
 
-- **A few key poses,** made in code: stand, walk step, climb reach,
-  crawl. The game blends between them.
-- **Springs:** the body and the limbs follow their targets with
-  springs, so the movement is soft and floppy, like a plush toy.
-- **IK from ray casts:** each foot and each paw casts a ray to the
-  ground or the wall. IK (inverse kinematics) bends the limb so that
-  the paw touches the hit point. On rough rock, each paw finds its own
-  place.
-- **The gait comes from the limbs:**
-  - two legs: walk
-  - one leg: hop, slower, and the bear leans to one side
-  - no legs: pull the body with the arms (crawl)
-  - no arms and no legs: roll and wriggle
-- **Climbing comes from the limbs:** each arm and leg adds grip and
-  reach. With one arm, the bear climbs only less steep slopes and uses
-  more stamina. With no arms, it cannot climb walls.
-- **The surface changes the movement:** on sand, the steps are short
-  and the feet sink a little. On a slippery slope, the paws slip, and
-  the body leans into the wall.
+- **No skeleton and no animation clips.** Rust poses each part mesh
+  directly.
+- **Overgrowth layers** (David Rosen, GDC 2014): a few key poses in
+  code, a stride wheel driven by distance, a tilt from acceleration, a
+  bounce, and spring blending. The movement code stays in control.
+- **Springs everywhere:** the body, the head, the ears, the hump and
+  the limbs follow their targets through springs, so the bear is soft
+  and floppy.
+- **Aim IK:** a classic jointed teddy has no elbows or knees. Each limb
+  turns at its disc joint toward a target, with a small stretch.
+- **Feet and paws find the surface** with short rays. Planted feet
+  stay fixed, slip on low grip and sink in sand. Climbing hands choose
+  the best hold from a fan of rays, so no climbing points are
+  necessary.
+- **The gait comes from the limbs,** from a table: walk, hop, arm-crawl,
+  one-arm drag, or wriggle. The same table gives the climb limits.
+- **Verlet points** (Rain World) for a half-torn limb on a thread and
+  for the tumble.
 
-*Shadow of the Colossus* is a good feel reference: the hero holds on,
-swings and struggles in a way that reacts to the surface. Its exact
-methods are not published in detail [unverified]. Thus, we use the
-Overgrowth and Rain World methods, which are published.
+*Shadow of the Colossus* is a feel reference only. Its climbing
+methods are not published.
 
 ## Order of work
 
-1. S-119: the bear model in code, with separate parts, fur and the
-   wet value.
-2. S-120: procedural animation: key poses, springs, IK on the ground
-   and the wall, and the gait from the limbs.
-3. S-114: tumbling, tearing and lost limbs (uses 1 and 2).
+1. S-119 (done): the bear model in code, with separate parts, fur and
+   the wet value.
+2. S-120: animation part 1, the body and the walk.
+3. S-122: animation part 2, climbing hands and limb sets.
+4. S-114: tumbling, tearing and lost limbs.

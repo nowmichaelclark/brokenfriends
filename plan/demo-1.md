@@ -32,8 +32,7 @@ is done when Mikey plays for ten minutes and wants to continue.
 - **Distance:** mountains that are a few hundred metres away become
   flat silhouettes.
 - **Particles:** dust and ash move past the camera.
-- **Heat:** a small heat shimmer near the ground (assumed). If it
-  costs too much frame time, remove it.
+- **Heat:** no heat shimmer. Mikey removed it (R19).
 - **Colour grading:** the colours look faded.
 
 **The teddy bear**

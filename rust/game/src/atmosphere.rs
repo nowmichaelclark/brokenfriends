@@ -1,8 +1,9 @@
-//! The smog, the sun, the sky, the dust and the heat shimmer (R7, R15).
+//! The smog, the sun, the sky and the dust (R7, R15). There is no heat
+//! shimmer: Mikey removed it (R19).
 //!
 //! `BfAtmosphere` makes all of these parts in code. The Mobile renderer
 //! has no volumetric fog, so the parts are cheap: depth fog, height
-//! fog, a procedural sky, one particle system and one screen shader.
+//! fog, a procedural sky and one particle system.
 
 use crate::bear::BEAR_GROUP;
 use godot::builtin::{Aabb, Color, Vector2, Vector3};
@@ -10,33 +11,11 @@ use godot::classes::environment::{BgMode, FogMode, ToneMapper};
 use godot::classes::gpu_particles_3d::DrawOrder;
 use godot::classes::particle_process_material::EmissionShape;
 use godot::classes::{
-    CanvasLayer, ColorRect, DirectionalLight3D, Environment, GpuParticles3D, INode3D, Material,
-    Node3D, ParticleProcessMaterial, ProceduralSkyMaterial, QuadMesh, Shader, ShaderMaterial, Sky,
+    DirectionalLight3D, Environment, GpuParticles3D, INode3D, Material, Node3D,
+    ParticleProcessMaterial, ProceduralSkyMaterial, QuadMesh, Shader, ShaderMaterial, Sky,
     WorldEnvironment,
 };
 use godot::prelude::*;
-
-/// The screen shader for the heat shimmer. It bends the picture a
-/// little near the horizon. The bend moves with the time.
-const SHIMMER_SHADER: &str = "
-shader_type canvas_item;
-uniform sampler2D screen_tex : hint_screen_texture, filter_linear, repeat_disable;
-uniform float strength = 0.0015;
-uniform float band_top = 0.45;
-uniform float band_bottom = 0.75;
-uniform float speed = 1.6;
-uniform float frequency = 38.0;
-void fragment() {
-    // The bend is strongest at the horizon band and fades above and below.
-    float up = smoothstep(band_top - 0.15, band_top, UV.y);
-    float down = 1.0 - smoothstep(band_bottom, band_bottom + 0.25, UV.y);
-    float w = up * down;
-    float t = TIME * speed;
-    float dx = sin(UV.y * frequency + t) + 0.5 * sin(UV.y * frequency * 2.3 - t * 1.3);
-    vec2 uv = SCREEN_UV + vec2(dx * strength * w, 0.0);
-    COLOR = vec4(textureLod(screen_tex, uv, 0.0).rgb, 1.0);
-}
-";
 
 /// The shader for one dust particle: a soft, round, faint dot.
 const DUST_SHADER: &str = "
@@ -51,7 +30,7 @@ void fragment() {
 }
 ";
 
-/// Makes the air of the zone: fog, sun, sky, dust and heat shimmer. The
+/// Makes the air of the zone: fog, sun, sky and dust. The
 /// node makes its parts when the game starts. It reads its values again
 /// twice each second, so a change in the Remote Inspector shows soon.
 #[derive(GodotClass)]
@@ -179,27 +158,12 @@ pub struct BfAtmosphere {
     #[init(val = 1.2)]
     dust_wind_speed: f32,
 
-    /// If this is on, a screen shader bends the picture near the
-    /// horizon. It is a cost: it copies the screen. If the game is too
-    /// slow, turn it off first.
-    #[export]
-    #[init(val = true)]
-    heat_shimmer_enabled: bool,
-
-    /// How far the shimmer moves the picture, as a part of the screen
-    /// width. 0.0015 is about 3 pixels at 1080p.
-    #[export]
-    #[init(val = 0.0015)]
-    heat_shimmer_strength: f32,
-
     environment: Option<Gd<Environment>>,
     sky_material: Option<Gd<ProceduralSkyMaterial>>,
     sun: Option<Gd<DirectionalLight3D>>,
     dust: Option<Gd<GpuParticles3D>>,
     dust_process: Option<Gd<ParticleProcessMaterial>>,
     dust_mesh: Option<Gd<QuadMesh>>,
-    shimmer_layer: Option<Gd<CanvasLayer>>,
-    shimmer_material: Option<Gd<ShaderMaterial>>,
     time_to_refresh: f64,
     base: Base<Node3D>,
 }
@@ -210,7 +174,6 @@ impl INode3D for BfAtmosphere {
         self.make_environment();
         self.make_sun();
         self.make_dust();
-        self.make_shimmer();
         self.apply();
     }
 
@@ -232,7 +195,6 @@ impl BfAtmosphere {
         self.apply_environment();
         self.apply_sun();
         self.apply_dust();
-        self.apply_shimmer();
     }
 }
 
@@ -296,27 +258,6 @@ impl BfAtmosphere {
         self.dust = Some(particles);
         self.dust_process = Some(process);
         self.dust_mesh = Some(mesh);
-    }
-
-    fn make_shimmer(&mut self) {
-        let mut shader = Shader::new_gd();
-        shader.set_code(SHIMMER_SHADER);
-        let mut material = ShaderMaterial::new_gd();
-        material.set_shader(&shader);
-
-        let mut rect = ColorRect::new_alloc();
-        rect.set_anchors_preset(godot::classes::control::LayoutPreset::FULL_RECT);
-        rect.set_mouse_filter(godot::classes::control::MouseFilter::IGNORE);
-        rect.set_material(&material.clone().upcast::<Material>());
-
-        let mut layer = CanvasLayer::new_alloc();
-        // Under the debug overlay, which is on layer 100.
-        layer.set_layer(10);
-        layer.add_child(&rect);
-        self.base_mut().add_child(&layer);
-
-        self.shimmer_layer = Some(layer);
-        self.shimmer_material = Some(material);
     }
 
     fn apply_environment(&mut self) {
@@ -400,15 +341,6 @@ impl BfAtmosphere {
         );
         if let Some(mesh) = &mut self.dust_mesh {
             mesh.set_size(Vector2::new(self.dust_size, self.dust_size));
-        }
-    }
-
-    fn apply_shimmer(&mut self) {
-        if let Some(layer) = &mut self.shimmer_layer {
-            layer.set_visible(self.heat_shimmer_enabled);
-        }
-        if let Some(material) = &mut self.shimmer_material {
-            material.set_shader_parameter("strength", &self.heat_shimmer_strength.to_variant());
         }
     }
 

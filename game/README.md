@@ -90,8 +90,8 @@ what it assumes.
 - **`BfAtmosphere`** makes the air. In code, it makes the sky, the
   sun, the smog and the colour grading. Depth fog and low height fog
   use one yellow-brown colour. The sky has a big pale sun disc. About
-  300 dust particles move past the camera. A screen shader gives a
-  small heat shimmer near the horizon. The node reads its values
+  300 dust particles move past the camera. There is no heat shimmer
+  (R19). The node reads its values
   twice each second, so a change in the Remote Inspector shows soon.
 - **`main.tscn`** is the start scene: atmosphere, terrain, bear,
   cameras and overlay.
@@ -294,9 +294,6 @@ Mikey does not build on his laptop (decision R10).
   renderer yet [unverified]. Mikey tells Claude what he sees.
 - **One smog colour.** Godot 4 has one fog colour. The low smog has
   the same colour as the far smog and is only thicker.
-- **Heat shimmer.** The shimmer is on. It copies the screen each
-  frame, so it can cost time on integrated graphics. To test, turn off
-  `heat_shimmer_enabled` on the `Atmosphere` node and compare the fps.
 - **Frame cost.** The atmosphere has no measured cost. The parts that
-  can cost time are the shimmer, the dust (300 particles, small) and
+  can cost time are the dust (300 particles, small) and
   the shadows (2 cascades, 100 m).

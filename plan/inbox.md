@@ -20,3 +20,7 @@ sorts them.
 - Climbing: places to rest on long slopes (small ledges in the generator), or stamina food, because one stamina ring is too little for a 400 m slope.
 - Grip: a wet or oily ground type, and dust that falls where the bear slides.
 - The follow camera avoids the heightmap only. When rocks or caves exist, it must use a ray cast as the climb does.
+- Bear: other friends from the same code: a `Recipe` from a seed (head size, snout, arm and leg length, hump, colours).
+- Bear: a lower-detail mesh (bigger `mesh_cell_m`) when the camera is far, if the triangles cost time on the laptops.
+- Bear: water, mud or goo in the world that sets the wet value of the parts that touch it; wet parts dry slowly.
+- Bear: a visible seam on the ears, if Mikey wants one (now only the neck, shoulders and hips have rings).

@@ -1,5 +1,7 @@
 //! The teddy bear: the player.
 
+use crate::bear_model::BfBearModel;
+use crate::bear_shape::PartId;
 use crate::climb::{
     find_grab, slope_angle, stamina_drain, wall_axes, wall_input, Climb, ClimbParams, Hit, Step,
     Surface,
@@ -9,9 +11,8 @@ use crate::motion::{angle_difference, approach, jump_speed, JumpTimers};
 use crate::terrain::TERRAIN_GROUP;
 use glam::{Vec2, Vec3};
 use godot::classes::{
-    CapsuleMesh, CapsuleShape3D, CharacterBody3D, CollisionShape3D, ICharacterBody3D, Input, Mesh,
-    MeshInstance3D, PhysicsDirectSpaceState3D, PhysicsRayQueryParameters3D, SphereMesh,
-    StandardMaterial3D,
+    CapsuleShape3D, CharacterBody3D, CollisionShape3D, ICharacterBody3D, Input,
+    PhysicsDirectSpaceState3D, PhysicsRayQueryParameters3D,
 };
 use godot::global::{JoyAxis, JoyButton, Key};
 use godot::prelude::*;
@@ -87,6 +88,14 @@ impl Surface for RaySurface {
         terrain.call("grip_at", &at).try_to::<f32>().unwrap_or(1.0)
     }
 }
+
+/// The arms and the legs, in the order of `BfBear::limb_swing`.
+const LIMBS: [PartId; 4] = [
+    PartId::LeftArm,
+    PartId::RightArm,
+    PartId::LeftLeg,
+    PartId::RightLeg,
+];
 
 /// The group that holds the bear. Other nodes find it there.
 pub const BEAR_GROUP: &str = "bf_bear";
@@ -284,10 +293,11 @@ pub struct BfBear {
     yaw: f32,
     /// One ray query for all ray casts.
     ray_query: Option<Gd<PhysicsRayQueryParameters3D>>,
-    /// The parts of the body. They turn; the collision shape does not.
+    /// The visible bear. It turns; the collision shape does not.
     body: Option<Gd<Node3D>>,
-    /// The arms and the legs, each with its position at rest.
-    limbs: Vec<(Gd<MeshInstance3D>, Vector3)>,
+    model: Option<Gd<BfBearModel>>,
+    /// The swing of the arms and the legs around their joints, in radians.
+    limb_swing: [f32; 4],
     base: Base<CharacterBody3D>,
 }
 
@@ -654,17 +664,25 @@ impl BfBear {
         body.set_basis(basis);
         body.set_position(pivot - basis * pivot);
 
-        // On a wall, the arms go up. The arms and the legs move with
+        // On a wall, the arms reach up. The arms and the legs move with
         // the distance that the bear climbs.
-        for (i, (limb, rest)) in self.limbs.iter_mut().enumerate() {
-            let mut wanted = *rest;
+        let Some(model) = self.model.clone() else {
+            return;
+        };
+        let model = model.bind();
+        for (i, id) in LIMBS.into_iter().enumerate() {
+            let Some(mut limb) = model.part(id) else {
+                continue;
+            };
+            let mut wanted = 0.0;
             if let Some(travel) = travel {
                 let phase = travel * std::f32::consts::TAU / 0.24 + i as f32 * 2.2;
-                let raise = if i < 2 { 0.07 } else { 0.0 };
-                wanted += Vector3::new(0.0, raise + 0.03 * phase.sin(), 0.02);
+                // A negative turn around X moves a limb forward and up.
+                let reach = if i < 2 { -2.6 } else { -0.2 };
+                wanted = reach + 0.3 * phase.sin();
             }
-            let position = limb.get_position().lerp(wanted, k);
-            limb.set_position(position);
+            self.limb_swing[i] += (wanted - self.limb_swing[i]) * k;
+            limb.set_basis(Basis::from_axis_angle(Vector3::RIGHT, self.limb_swing[i]));
         }
     }
 
@@ -741,8 +759,8 @@ impl BfBear {
         }
     }
 
-    /// Makes the collision shape and the body from simple shapes. The
-    /// origin of the bear is between its feet.
+    /// Makes the collision shape and the visible bear. The origin of
+    /// the bear is between its feet.
     fn build_body(&mut self) {
         // The collision shape: a capsule, 0.40 m tall.
         let mut capsule = CapsuleShape3D::new_gd();
@@ -753,73 +771,11 @@ impl BfBear {
         shape.set_position(Vector3::new(0.0, HALF_HEIGHT, 0.0));
         self.base_mut().add_child(&shape);
 
-        let fur = material(Color::from_rgb(0.55, 0.36, 0.20));
-        let pale = material(Color::from_rgb(0.78, 0.63, 0.44));
-        let dark = material(Color::from_rgb(0.08, 0.06, 0.05));
-
-        let mut body = Node3D::new_alloc();
-        body.set_name("Body");
-        // The bear looks along +Z of the body node.
-        let parts: [(Gd<Mesh>, &Gd<StandardMaterial3D>, Vector3); 14] = [
-            (ball(0.105, 0.19), &fur, Vector3::new(0.0, 0.165, 0.0)), // torso
-            (ball(0.07, 0.10), &pale, Vector3::new(0.0, 0.16, 0.065)), // belly
-            (ball(0.085, 0.15), &fur, Vector3::new(0.0, 0.315, 0.0)), // head
-            (ball(0.04, 0.06), &pale, Vector3::new(0.0, 0.295, 0.075)), // muzzle
-            (ball(0.014, 0.022), &dark, Vector3::new(0.0, 0.305, 0.105)), // nose
-            (
-                ball(0.011, 0.022),
-                &dark,
-                Vector3::new(-0.035, 0.335, 0.072),
-            ), // left eye
-            (ball(0.011, 0.022), &dark, Vector3::new(0.035, 0.335, 0.072)), // right eye
-            (ball(0.032, 0.05), &fur, Vector3::new(-0.065, 0.385, 0.0)), // left ear
-            (ball(0.032, 0.05), &fur, Vector3::new(0.065, 0.385, 0.0)), // right ear
-            (limb(0.035, 0.15), &fur, Vector3::new(-0.115, 0.19, 0.01)), // left arm
-            (limb(0.035, 0.15), &fur, Vector3::new(0.115, 0.19, 0.01)), // right arm
-            (limb(0.042, 0.13), &fur, Vector3::new(-0.05, 0.065, 0.0)), // left leg
-            (limb(0.042, 0.13), &fur, Vector3::new(0.05, 0.065, 0.0)), // right leg
-            (ball(0.03, 0.05), &fur, Vector3::new(0.0, 0.11, -0.10)), // tail
-        ];
-        for (i, (mesh, material, position)) in parts.into_iter().enumerate() {
-            let mut part = MeshInstance3D::new_alloc();
-            part.set_mesh(&mesh);
-            part.set_material_override(material);
-            part.set_position(position);
-            body.add_child(&part);
-            // Parts 9 to 12 are the arms and the legs.
-            if (9..=12).contains(&i) {
-                self.limbs.push((part, position));
-            }
-        }
-        self.base_mut().add_child(&body);
-        self.body = Some(body);
+        // The model makes its parts when it enters the tree.
+        let mut model = BfBearModel::new_alloc();
+        model.set_name("Model");
+        self.base_mut().add_child(&model);
+        self.body = Some(model.clone().upcast());
+        self.model = Some(model);
     }
-}
-
-fn material(colour: Color) -> Gd<StandardMaterial3D> {
-    let mut m = StandardMaterial3D::new_gd();
-    m.set_albedo(colour);
-    m.set_roughness(1.0);
-    m.set_specular_mode(godot::classes::base_material_3d::SpecularMode::DISABLED);
-    m
-}
-
-/// A ball or an egg shape with a radius and a full height.
-fn ball(radius: f32, height: f32) -> Gd<Mesh> {
-    let mut m = SphereMesh::new_gd();
-    m.set_radius(radius);
-    m.set_height(height);
-    m.set_radial_segments(16);
-    m.set_rings(8);
-    m.upcast()
-}
-
-/// A capsule for an arm or a leg.
-fn limb(radius: f32, height: f32) -> Gd<Mesh> {
-    let mut m = CapsuleMesh::new_gd();
-    m.set_radius(radius);
-    m.set_height(height);
-    m.set_radial_segments(12);
-    m.set_rings(4);
-    m.upcast()
 }

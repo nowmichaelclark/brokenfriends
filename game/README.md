@@ -27,7 +27,7 @@ what it assumes.
   to make a new zone with the next seed. The node sends the signal
   `zone_changed` when the zone is on the screen.
 - **`BfBear`** is the teddy bear, a `CharacterBody3D`, 0.40 m tall.
-  Code makes its body from balls and capsules. It walks, jogs and
+  Its collision shape is a capsule. It walks, jogs and
   jumps. The jump has coyote time and a jump buffer. When a new zone
   shows, the bear goes to the flattest place near the centre. If the
   bear is below the ground, the code puts it back on the ground.
@@ -53,6 +53,30 @@ what it assumes.
   - **Cost.** A climb step uses 5 or 6 ray casts. A walk step uses 2
     ray casts at most, and only while the player pushes a direction.
     No physics body moves while the bear climbs.
+- **`BfBearModel`** is the visible bear (R17), a child of `BfBear`.
+  Rust makes it when the game starts. No model file is used.
+  - **Parts.** Each part is a union of SDF shapes (ellipsoids and
+    round cones). An SDF gives the distance to the nearest surface.
+    `fast-surface-nets` makes a mesh from it (`bear_shape.rs`).
+  - **Separate meshes.** The body, the head, two ears, two arms and
+    two legs are 8 meshes. The origin of each mesh is its joint (neck,
+    shoulder, hip, ear base), so a part turns around its joint.
+  - **Details.** The head has a long snout, button eyes, a stitched
+    nose and a mouth of thread. The paws and the soles have pale felt
+    pads. The body has a hump at the back. The arms reach past the
+    hips.
+  - **Seams.** The neck, the shoulders and the hips have a ring of
+    stitches. The ears have a seam position but no visible ring. S-114
+    uses the seams for tearing.
+  - **Fur.** One shader for all parts. Rust makes a small fur texture
+    (short fibres, tufts, worn places). The shader also has a soft
+    rim light and a little noise on the outline, so it looks fuzzy.
+  - **Wet.** Each part has a wet value from 0 to 1. Wet fur is darker,
+    flatter and a little shiny. Code sets it with
+    `set_part_wet("LeftArm", 1.0)`. Nothing in the game makes the bear
+    wet yet.
+  - **Cost.** About 10 000 triangles and 8 draw calls (plus the
+    shadow passes). The build takes about 9 ms at the start.
 - **`BfFollowCamera`** is the third-person camera. The mouse or the
   right stick turns it around the bear. It reads the heightmap and
   comes nearer when the ground is in the way.
@@ -224,8 +248,19 @@ Mikey does not build on his laptop (decision R10).
 - **Start point.** The flattest place within 200 m of the centre. This
   can be a hilltop.
 - **The bear has almost no animation.** The body turns to the move
-  direction. On a wall, the belly is on the wall, the arms go up, and
-  the arms and legs move a little with the climb distance.
+  direction. On a wall, the belly is on the wall, the arms turn up at
+  the shoulders, and the arms and legs swing a little with the climb
+  distance. The arms and legs do not move during a walk (S-120).
+- **The look of the bear** (R17). The fur is honey tan, the pads are
+  pale cream, and the thread is almost black. Mikey has not seen it
+  in the Mobile renderer yet [unverified]. The screenshots came from
+  the Compatibility renderer.
+- **Mesh detail.** The fur parts use mesh cells of 11 mm
+  (`mesh_cell_m` on `Model`). This gives about 10 000 triangles. This
+  is more than a PS1 character, but it is small for the GPU
+  [unverified on Mikey's laptop].
+- **The ears have no visible seam ring.** A ring around an ear base
+  looks wrong, so the ear seam has only a position.
 - **Climbing has no button.** The bear climbs when it pushes into a
   steep surface. To let go, jump. A "let go" button does not exist.
 - **Climb values.** The climb speed is 0.7 m/s. The stamina lasts

@@ -7,6 +7,8 @@ use godot::prelude::*;
 
 mod atmosphere;
 mod bear;
+mod bear_model;
+mod bear_shape;
 mod climb;
 mod fly_camera;
 mod follow_camera;

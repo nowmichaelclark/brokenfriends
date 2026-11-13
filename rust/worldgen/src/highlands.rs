@@ -129,6 +129,30 @@ pub struct Zone {
     pub lakebed: Vec<u8>,
 }
 
+/// The ground types at one place. Each value is a part from 0 to 1.
+/// The colours and the grip of the ground come from these values.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Ground {
+    /// 0 is soil, 1 is rock.
+    pub rock: f32,
+    /// The colour band of the rock: 0 is rust rock, 1 is ash rock.
+    pub ash: f32,
+    /// 1 on a dry lake bed.
+    pub lake: f32,
+    /// 1 on the sand of a dry riverbed.
+    pub sand: f32,
+}
+
+impl Ground {
+    /// Gives the grip of the ground from the grip of each ground type.
+    /// A grip of 1 holds fully. A grip of 0 does not hold.
+    pub fn grip(&self, rust_rock: f32, ash_rock: f32, soil: f32, sand: f32) -> f32 {
+        let rock = rust_rock + (ash_rock - rust_rock) * self.ash;
+        let ground = soil + (rock - soil) * self.rock;
+        ground + (sand - ground) * self.sand
+    }
+}
+
 /// Ridged noise: the absolute value of noise, turned over. The zero
 /// lines of the noise become sharp ridges. The result is from 0 to 1.
 fn ridged(x: f32, y: f32, seed: u32, octaves: u32, rounding: f32, valley_at: f32) -> f32 {
@@ -419,6 +443,38 @@ impl Zone {
         )
     }
 
+    /// Gives the ground types at a sample.
+    pub fn ground_at_sample(&self, x: usize, z: usize) -> Ground {
+        let size = self.heights.size;
+        let (x, z) = (x.min(size - 1), z.min(size - 1));
+        let half = size as f32 * 0.5;
+        let spacing = self.heights.spacing;
+        let (sx, sz) = self.slope(x, z);
+        let steep = (sx * sx + sz * sz).sqrt();
+        let h = self.heights.data[z * size + x];
+        let (wx, wz) = ((x as f32 - half) * spacing, (z as f32 - half) * spacing);
+
+        // Rock starts at a slope of about 35 degrees. At 50 degrees
+        // all the ground is rock.
+        let rock = smoothstep(0.70, 1.19, steep);
+        let seed = self.seed;
+        let wobble = gradient_noise(wx / 60.0, wz / 60.0, seed ^ 0x8888_8888).value;
+        let band = gradient_noise((h + wobble * 12.0) / 9.0, 0.5, seed ^ 0x9999_9999).value;
+        Ground {
+            rock,
+            ash: smoothstep(-0.25, 0.35, band),
+            lake: f32::from(self.lakebed[z * size + x]) / 255.0,
+            sand: f32::from(self.riverbed[z * size + x]) / 255.0,
+        }
+    }
+
+    /// Gives the ground types at a world position (the nearest sample).
+    pub fn ground_at(&self, wx: f32, wz: f32) -> Ground {
+        let half = self.heights.size as f32 * 0.5;
+        let index = |w: f32| (w / self.heights.spacing + half).round().max(0.0) as usize;
+        self.ground_at_sample(index(wx), index(wz))
+    }
+
     /// Gives the colour of the ground for each sample, as red, green and
     /// blue from 0 to 255. Flat ground is pale ochre. Steep rock is rust
     /// with bands of ash. Riverbeds and lake beds are pale.
@@ -445,26 +501,14 @@ impl Zone {
         let mut out = vec![[0u8; 3]; size * size];
         out.par_chunks_mut(size).enumerate().for_each(|(z, row)| {
             for (x, px) in row.iter_mut().enumerate() {
-                let (sx, sz) = self.slope(x, z);
-                let steep = (sx * sx + sz * sz).sqrt();
-                let h = self.heights.data[z * size + x];
+                let g = self.ground_at_sample(x, z);
                 let (wx, wz) = ((x as f32 - half) * spacing, (z as f32 - half) * spacing);
 
                 let patches = fbm(wx / 90.0, wz / 90.0, seed ^ 0x7777_7777, 3, 2.0, 0.5).value;
                 let mut c = mix(OCHRE, DUST, (patches * 0.9 + 0.5).clamp(0.0, 1.0));
-
-                // Rock starts at a slope of about 35 degrees. At 50 degrees
-                // all the ground is rock.
-                let rock = smoothstep(0.70, 1.19, steep);
-                let wobble = gradient_noise(wx / 60.0, wz / 60.0, seed ^ 0x8888_8888).value;
-                let band = gradient_noise((h + wobble * 12.0) / 9.0, 0.5, seed ^ 0x9999_9999).value;
-                let rock_colour = mix(RUST, ASH, smoothstep(-0.25, 0.35, band));
-                c = mix(c, rock_colour, rock);
-
-                let lake = f32::from(self.lakebed[z * size + x]) / 255.0;
-                c = mix(c, LAKE, lake * (1.0 - rock));
-                let river = f32::from(self.riverbed[z * size + x]) / 255.0;
-                c = mix(c, SAND, river);
+                c = mix(c, mix(RUST, ASH, g.ash), g.rock);
+                c = mix(c, LAKE, g.lake * (1.0 - g.rock));
+                c = mix(c, SAND, g.sand);
 
                 *px = [
                     (c[0] * 255.0).round() as u8,
@@ -490,6 +534,24 @@ mod tests {
         assert_eq!(a.heights.checksum(), b.heights.checksum());
         assert_eq!(a.riverbed, b.riverbed);
         assert_ne!(a.heights.checksum(), c.heights.checksum());
+    }
+
+    #[test]
+    fn grip_mixes_the_ground_types() {
+        let g = |rock, ash, sand| Ground {
+            rock,
+            ash,
+            lake: 0.0,
+            sand,
+        };
+        assert!((g(1.0, 0.0, 0.0).grip(1.0, 0.4, 0.8, 0.1) - 1.0).abs() < 1e-6);
+        assert!((g(1.0, 1.0, 0.0).grip(1.0, 0.4, 0.8, 0.1) - 0.4).abs() < 1e-6);
+        assert!((g(0.0, 1.0, 0.0).grip(1.0, 0.4, 0.8, 0.1) - 0.8).abs() < 1e-6);
+        assert!((g(1.0, 0.0, 1.0).grip(1.0, 0.4, 0.8, 0.1) - 0.1).abs() < 1e-6);
+        // The lookup at a world position reads the nearest sample.
+        let zone = generate(3, 64, 8.0, &HighlandsParams::default());
+        assert_eq!(zone.ground_at(-256.0, -256.0), zone.ground_at_sample(0, 0));
+        assert_eq!(zone.ground_at(9.0, 0.0), zone.ground_at_sample(33, 32));
     }
 
     #[test]

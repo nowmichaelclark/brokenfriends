@@ -1,23 +1,105 @@
 //! The teddy bear: the player.
 
+use crate::climb::{
+    find_grab, slope_angle, stamina_drain, wall_axes, wall_input, Climb, ClimbParams, Hit, Step,
+    Surface,
+};
 use crate::follow_camera::FOLLOW_CAMERA_GROUP;
 use crate::motion::{angle_difference, approach, jump_speed, JumpTimers};
 use crate::terrain::TERRAIN_GROUP;
+use glam::{Vec2, Vec3};
 use godot::classes::{
     CapsuleMesh, CapsuleShape3D, CharacterBody3D, CollisionShape3D, ICharacterBody3D, Input, Mesh,
-    MeshInstance3D, SphereMesh, StandardMaterial3D,
+    MeshInstance3D, PhysicsDirectSpaceState3D, PhysicsRayQueryParameters3D, SphereMesh,
+    StandardMaterial3D,
 };
 use godot::global::{JoyAxis, JoyButton, Key};
 use godot::prelude::*;
 
+/// The radius of the collision capsule in metres.
+const RADIUS: f32 = 0.11;
+/// The distance from the feet to the centre of the bear in metres.
+const HALF_HEIGHT: f32 = 0.20;
+/// The collider metadata that gives the grip of an object (0 to 1).
+/// Without it, the terrain gives the grip.
+pub const GRIP_META: &str = "bf_grip";
+
+/// What the bear does now.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+enum Mode {
+    /// The bear walks, jumps or falls. The physics engine moves it.
+    #[default]
+    Walk,
+    /// The bear is on a wall. Ray casts move it.
+    Climb(Climb),
+    /// The bear moves from a wall to a place to stand, in a short time.
+    Mantle {
+        from: Vector3,
+        to: Vector3,
+        time: f32,
+    },
+}
+
+fn to_glam(v: Vector3) -> Vec3 {
+    Vec3::new(v.x, v.y, v.z)
+}
+
+fn to_godot(v: Vec3) -> Vector3 {
+    Vector3::new(v.x, v.y, v.z)
+}
+
+/// The physics world as a climbing surface. Each `cast` is one ray cast.
+struct RaySurface {
+    space: Gd<PhysicsDirectSpaceState3D>,
+    query: Gd<PhysicsRayQueryParameters3D>,
+    terrain: Option<Gd<Node>>,
+}
+
+impl Surface for RaySurface {
+    fn cast(&mut self, from: Vec3, to: Vec3) -> Option<Hit> {
+        self.query.set_from(to_godot(from));
+        self.query.set_to(to_godot(to));
+        let result = self.space.intersect_ray(&self.query);
+        let point = result.get("position")?.try_to::<Vector3>().ok()?;
+        let normal = result.get("normal")?.try_to::<Vector3>().ok()?;
+        let id = result.get("collider_id")?.try_to::<i64>().unwrap_or(0);
+        Some(Hit {
+            point: to_glam(point),
+            normal: to_glam(normal).normalize_or(Vec3::Y),
+            id: id as u64,
+        })
+    }
+
+    fn grip(&mut self, hit: &Hit) -> f32 {
+        let collider = (hit.id != 0)
+            .then(|| Gd::<Object>::try_from_instance_id(InstanceId::from_i64(hit.id as i64)).ok())
+            .flatten();
+        if let Some(collider) = collider {
+            if collider.has_meta(GRIP_META) {
+                let grip = collider.get_meta(GRIP_META).try_to::<f32>();
+                return grip.unwrap_or(1.0).clamp(0.0, 1.0);
+            }
+        }
+        let Some(terrain) = &mut self.terrain else {
+            return 1.0;
+        };
+        let at = [hit.point.x.to_variant(), hit.point.z.to_variant()];
+        terrain.call("grip_at", &at).try_to::<f32>().unwrap_or(1.0)
+    }
+}
+
 /// The group that holds the bear. Other nodes find it there.
 pub const BEAR_GROUP: &str = "bf_bear";
 
-/// The teddy bear. It is 0.40 m tall. It walks, jogs and jumps.
+/// The teddy bear. It is 0.40 m tall. It walks, jogs, jumps and climbs.
 ///
 /// Keys: W, A, S, D or the arrow keys to move, Shift to jog, Space to
 /// jump. Gamepad: left stick to move, the bottom button to jump, the
 /// right shoulder button to jog.
+///
+/// The bear starts to climb when it pushes into a surface that is too
+/// steep to walk. On the wall, "into the wall" is up and "away from
+/// the wall" is down. Jump makes the bear jump off.
 #[derive(GodotClass)]
 #[class(base = CharacterBody3D, init)]
 pub struct BfBear {
@@ -91,10 +173,121 @@ pub struct BfBear {
     #[init(val = 0.2)]
     stick_dead_zone: f32,
 
+    /// The climb speed in metres per second.
+    #[export]
+    #[init(val = 0.7)]
+    climb_speed: f32,
+
+    /// The climb stops on a slope this much flatter than `max_slope_degrees`.
+    #[export]
+    #[init(val = 5.0)]
+    climb_stop_margin_degrees: f32,
+
+    /// The steepest surface that the bear can hold, in degrees (90 is a wall).
+    #[export]
+    #[init(val = 110.0)]
+    climb_max_degrees: f32,
+
+    /// How far the paws reach past the body to find a wall, in metres.
+    #[export]
+    #[init(val = 0.14)]
+    climb_reach: f32,
+
+    /// How long the bear on the ground must push into a wall to start a climb, in seconds.
+    #[export]
+    #[init(val = 0.15)]
+    grab_delay: f32,
+
+    /// A bear that moves faster than this speed cannot grab a wall, in m/s.
+    #[export]
+    #[init(val = 6.0)]
+    max_grab_speed: f32,
+
+    /// The height of the jump off a wall in metres.
+    #[export]
+    #[init(val = 0.3)]
+    climb_jump_height: f32,
+
+    /// The speed away from the wall when the bear jumps off, in m/s.
+    #[export]
+    #[init(val = 1.8)]
+    climb_jump_push: f32,
+
+    /// The time after a jump off or a slide off in which the bear cannot grab, in seconds.
+    #[export]
+    #[init(val = 0.4)]
+    regrab_time: f32,
+
+    /// How long the stamina lasts on a vertical wall, in seconds.
+    #[export]
+    #[init(val = 30.0)]
+    stamina_seconds: f32,
+
+    /// The part of the stamina use on the least steep climb (0 to 1).
+    #[export]
+    #[init(val = 0.3)]
+    gentle_drain_factor: f32,
+
+    /// The time on the ground that makes the stamina full again, in seconds.
+    #[export]
+    #[init(val = 3.0)]
+    stamina_recover_seconds: f32,
+
+    /// After the stamina is gone, the bear can climb again at this part of it (0 to 1).
+    #[export]
+    #[init(val = 0.3)]
+    regrab_stamina_part: f32,
+
+    /// With this grip or more, the bear does not slide on a wall (0 to 1).
+    #[export]
+    #[init(val = 0.7)]
+    firm_grip: f32,
+
+    /// With this grip or less, the bear slides off completely (0 to 1).
+    #[export]
+    #[init(val = 0.25)]
+    loose_grip: f32,
+
+    /// The fastest slow slide on a slippery wall, in m/s.
+    #[export]
+    #[init(val = 0.35)]
+    slow_slide_speed: f32,
+
+    /// If the bear slides faster than this speed, it lets go, in m/s.
+    #[export]
+    #[init(val = 1.5)]
+    let_go_slide_speed: f32,
+
+    /// The time to climb from a wall onto a ledge, in seconds.
+    #[export]
+    #[init(val = 0.2)]
+    mantle_time: f32,
+
+    /// How fast the body turns to the wall direction, in 1/s.
+    #[export]
+    #[init(val = 12.0)]
+    climb_turn_rate: f32,
+
     timers: JumpTimers,
     jump_was_down: bool,
+    mode: Mode,
+    /// The stamina, from 0 (empty) to 1 (full).
+    #[init(val = 1.0)]
+    stamina: f32,
+    /// The stamina was gone. The bear cannot climb until some comes back.
+    exhausted: bool,
+    /// The time that is left until the bear can grab a wall again.
+    regrab_left: f32,
+    /// How long the bear on the ground pushes into a wall.
+    push_time: f32,
+    /// The direction that the body looks at, as an angle around Y.
+    yaw: f32,
+    /// One ray query for all ray casts.
+    ray_query: Option<Gd<PhysicsRayQueryParameters3D>>,
     /// The parts of the body. They turn; the collision shape does not.
     body: Option<Gd<Node3D>>,
+    /// The arms and the legs, each with its position at rest.
+    limbs: Vec<(Gd<MeshInstance3D>, Vector3)>,
     base: Base<CharacterBody3D>,
 }
 
@@ -114,64 +307,17 @@ impl ICharacterBody3D for BfBear {
 
     fn physics_process(&mut self, delta: f64) {
         let delta = delta as f32;
-        let max_slope = self.max_slope_degrees.to_radians();
-        self.base_mut().set_floor_max_angle(max_slope);
-        let on_floor = self.base().is_on_floor();
         let (wish, jog, jump_down) = self.read_input();
-
-        let mut velocity = self.base().get_velocity();
-
-        // Speed on the ground plane.
-        let speed = if jog { self.jog_speed } else { self.walk_speed };
-        let target = (wish.x * speed, wish.y * speed);
-        let rate = if wish == Vector2::ZERO {
-            self.deceleration
-        } else {
-            self.acceleration
-        };
-        let control = if on_floor { 1.0 } else { self.air_control };
-        let (vx, vz) = approach((velocity.x, velocity.z), target, rate * control * delta);
-        velocity.x = vx;
-        velocity.z = vz;
-
-        // Gravity and the jump.
-        if on_floor {
-            velocity.y = velocity.y.max(0.0);
-        } else {
-            let factor = if velocity.y < 0.0 {
-                self.fall_gravity_factor
-            } else {
-                1.0
-            };
-            velocity.y =
-                (velocity.y - self.fall_acceleration * factor * delta).max(-self.max_fall_speed);
-        }
         let jump_pressed = jump_down && !self.jump_was_down;
         self.jump_was_down = jump_down;
-        if self.timers.update(
-            delta,
-            on_floor,
-            jump_pressed,
-            self.coyote_time,
-            self.jump_buffer_time,
-        ) {
-            velocity.y = jump_speed(self.jump_height, self.fall_acceleration);
-        }
+        self.regrab_left = (self.regrab_left - delta).max(0.0);
 
-        self.base_mut().set_velocity(velocity);
-        self.base_mut().move_and_slide();
-        self.stay_above_ground();
-
-        // Turn the body to the move direction.
-        if wish != Vector2::ZERO {
-            if let Some(body) = &mut self.body {
-                let wanted = wish.x.atan2(wish.y);
-                let mut rotation = body.get_rotation();
-                let step = self.turn_speed_degrees.to_radians() * delta;
-                rotation.y += angle_difference(rotation.y, wanted).clamp(-step, step);
-                body.set_rotation(rotation);
-            }
+        match self.mode {
+            Mode::Walk => self.walk(delta, wish, jog, jump_pressed),
+            Mode::Climb(climb) => self.climb(delta, climb, wish, jump_pressed),
+            Mode::Mantle { from, to, time } => self.mantle(delta, from, to, time),
         }
+        self.pose_body(delta);
     }
 }
 
@@ -207,10 +353,321 @@ impl BfBear {
         let position = Vector3::new(x, height(x, z) + 0.3, z);
         self.base_mut().set_global_position(position);
         self.base_mut().set_velocity(Vector3::ZERO);
+        self.mode = Mode::Walk;
+        self.stamina = 1.0;
+        self.exhausted = false;
+    }
+
+    /// Gives the stamina, from 0 (empty) to 1 (full).
+    #[func]
+    pub fn stamina_part(&self) -> f32 {
+        self.stamina
+    }
+
+    /// Tells if the stamina was gone and the bear cannot climb yet.
+    #[func]
+    pub fn is_exhausted(&self) -> bool {
+        self.exhausted
+    }
+
+    /// Tells if the bear is on a wall now.
+    #[func]
+    pub fn is_climbing(&self) -> bool {
+        matches!(self.mode, Mode::Climb(_))
+    }
+
+    /// Gives one line of text for the debug overlay.
+    #[func]
+    pub fn debug_text(&self) -> GString {
+        let stamina = self.stamina * 100.0;
+        let text = match self.mode {
+            Mode::Walk if self.exhausted => format!("walk (tired)   stamina {stamina:.0}%"),
+            Mode::Walk => format!("walk   stamina {stamina:.0}%"),
+            Mode::Mantle { .. } => format!("onto a ledge   stamina {stamina:.0}%"),
+            Mode::Climb(c) => format!(
+                "climb   slope {:.0} deg   grip {:.2}   slide {:.2} m/s   stamina {stamina:.0}%",
+                slope_angle(c.normal).to_degrees(),
+                c.grip,
+                c.slide_speed
+            ),
+        };
+        GString::from(&text)
     }
 }
 
 impl BfBear {
+    /// One step on the ground or in the air.
+    fn walk(&mut self, delta: f32, wish: Vector2, jog: bool, jump_pressed: bool) {
+        let max_slope = self.max_slope_degrees.to_radians();
+        self.base_mut().set_floor_max_angle(max_slope);
+        let on_floor = self.base().is_on_floor();
+
+        let mut velocity = self.base().get_velocity();
+
+        // Speed on the ground plane.
+        let speed = if jog { self.jog_speed } else { self.walk_speed };
+        let target = (wish.x * speed, wish.y * speed);
+        let rate = if wish == Vector2::ZERO {
+            self.deceleration
+        } else {
+            self.acceleration
+        };
+        let control = if on_floor { 1.0 } else { self.air_control };
+        // Just after the bear leaves a wall, it keeps its speed in the
+        // air if the player gives no direction.
+        let keeps_speed = !on_floor && wish == Vector2::ZERO && self.regrab_left > 0.0;
+        if !keeps_speed {
+            let (vx, vz) = approach((velocity.x, velocity.z), target, rate * control * delta);
+            velocity.x = vx;
+            velocity.z = vz;
+        }
+
+        // Gravity and the jump.
+        if on_floor {
+            velocity.y = velocity.y.max(0.0);
+        } else {
+            let factor = if velocity.y < 0.0 {
+                self.fall_gravity_factor
+            } else {
+                1.0
+            };
+            velocity.y =
+                (velocity.y - self.fall_acceleration * factor * delta).max(-self.max_fall_speed);
+        }
+        if self.timers.update(
+            delta,
+            on_floor,
+            jump_pressed,
+            self.coyote_time,
+            self.jump_buffer_time,
+        ) {
+            velocity.y = jump_speed(self.jump_height, self.fall_acceleration);
+        }
+
+        self.base_mut().set_velocity(velocity);
+        self.base_mut().move_and_slide();
+        self.stay_above_ground();
+
+        // Turn the body to the move direction.
+        if wish != Vector2::ZERO {
+            let wanted = wish.x.atan2(wish.y);
+            let step = self.turn_speed_degrees.to_radians() * delta;
+            self.yaw += angle_difference(self.yaw, wanted).clamp(-step, step);
+        }
+
+        // The stamina comes back on the ground.
+        if self.base().is_on_floor() {
+            let gain = delta / self.stamina_recover_seconds.max(0.01);
+            self.stamina = (self.stamina + gain).min(1.0);
+            if self.stamina >= self.regrab_stamina_part.clamp(0.0, 1.0) {
+                self.exhausted = false;
+            }
+        }
+        self.try_grab(delta, wish);
+    }
+
+    /// Starts a climb if the bear pushes into a surface that is too
+    /// steep to walk. This uses 2 ray casts at most.
+    fn try_grab(&mut self, delta: f32, wish: Vector2) {
+        let velocity = self.base().get_velocity();
+        let can_grab = wish != Vector2::ZERO
+            && !self.exhausted
+            && self.regrab_left <= 0.0
+            && velocity.length() <= self.max_grab_speed;
+        if !can_grab {
+            self.push_time = 0.0;
+            return;
+        }
+        let Some(mut surface) = self.surface() else {
+            return;
+        };
+        let p = self.climb_params();
+        let centre = to_glam(self.base().get_global_position()) + Vec3::Y * HALF_HEIGHT;
+        let push = Vec3::new(wish.x, 0.0, wish.y).normalize_or_zero();
+        let Some(hit) = find_grab(&mut surface, centre, push, &p) else {
+            self.push_time = 0.0;
+            return;
+        };
+        // In the air, the bear grabs at once.
+        self.push_time += delta;
+        if self.base().is_on_floor() && self.push_time < self.grab_delay {
+            return;
+        }
+        self.push_time = 0.0;
+        let climb = Climb::start(&mut surface, hit, to_glam(velocity), &p);
+        self.base_mut().set_velocity(Vector3::ZERO);
+        self.set_centre(climb.centre);
+        self.mode = Mode::Climb(climb);
+    }
+
+    /// One step on a wall.
+    fn climb(&mut self, delta: f32, mut climb: Climb, wish: Vector2, jump_pressed: bool) {
+        let p = self.climb_params();
+        let Some(mut surface) = self.surface() else {
+            self.let_go(Vector3::ZERO);
+            return;
+        };
+        if jump_pressed {
+            let up = jump_speed(self.climb_jump_height, self.fall_acceleration);
+            let velocity = climb.normal * self.climb_jump_push + Vec3::Y * up;
+            self.let_go(to_godot(velocity));
+            return;
+        }
+
+        let input = wall_input(Vec2::new(wish.x, wish.y), climb.normal);
+        let moving = input.length() > 0.05;
+        let sliding = climb.slide_speed > 0.01;
+        self.stamina -= stamina_drain(climb.angle, moving, sliding, &p) * delta;
+        if self.stamina <= 0.0 {
+            self.stamina = 0.0;
+            self.exhausted = true;
+            self.let_go(to_godot(climb.slide_velocity()));
+            return;
+        }
+
+        match climb.step(&mut surface, input, delta, &p) {
+            Step::Hold => {
+                self.set_centre(climb.centre);
+                self.mode = Mode::Climb(climb);
+            }
+            Step::Ground { feet } => {
+                // The upright bear looks at the wall that it came from.
+                self.yaw = (-climb.normal.x).atan2(-climb.normal.z);
+                self.mode = Mode::Mantle {
+                    from: self.base().get_global_position(),
+                    to: to_godot(feet) + Vector3::new(0.0, 0.02, 0.0),
+                    time: 0.0,
+                };
+            }
+            Step::LetGo { velocity } => self.let_go(to_godot(velocity)),
+        }
+    }
+
+    /// One step of the move from a wall to a place to stand.
+    fn mantle(&mut self, delta: f32, from: Vector3, to: Vector3, time: f32) {
+        let time = time + delta;
+        let t = (time / self.mantle_time.max(0.01)).min(1.0);
+        let ease = t * t * (3.0 - 2.0 * t);
+        // A small arc lifts the feet above the edge.
+        let lift = (t * std::f32::consts::PI).sin() * 0.04;
+        let position = from.lerp(to, ease) + Vector3::new(0.0, lift, 0.0);
+        self.base_mut().set_global_position(position);
+        self.base_mut().set_velocity(Vector3::ZERO);
+        if t >= 1.0 {
+            self.timers = JumpTimers::default();
+            self.mode = Mode::Walk;
+        } else {
+            self.mode = Mode::Mantle { from, to, time };
+        }
+    }
+
+    /// Stops the climb. The bear falls with this velocity.
+    fn let_go(&mut self, velocity: Vector3) {
+        if let Mode::Climb(climb) = self.mode {
+            self.yaw = (-climb.normal.x).atan2(-climb.normal.z);
+        }
+        self.mode = Mode::Walk;
+        self.timers = JumpTimers::default();
+        self.regrab_left = self.regrab_time;
+        self.push_time = 0.0;
+        self.base_mut().set_velocity(velocity);
+    }
+
+    /// Puts the centre of the bear at a position.
+    fn set_centre(&mut self, centre: Vec3) {
+        let feet = to_godot(centre) - Vector3::new(0.0, HALF_HEIGHT, 0.0);
+        self.base_mut().set_global_position(feet);
+    }
+
+    /// Gives the physics world as a climbing surface.
+    fn surface(&mut self) -> Option<RaySurface> {
+        let space = self.base().get_world_3d()?.get_direct_space_state()?;
+        if self.ray_query.is_none() {
+            let mut query = PhysicsRayQueryParameters3D::new_gd();
+            let mut exclude = Array::<Rid>::new();
+            exclude.push(self.base().get_rid());
+            query.set_exclude(&exclude);
+            // A ray that starts below the ground must not hit it.
+            query.set_hit_back_faces(false);
+            self.ray_query = Some(query);
+        }
+        Some(RaySurface {
+            space,
+            query: self.ray_query.clone()?,
+            terrain: self
+                .base()
+                .get_tree()
+                .get_first_node_in_group(TERRAIN_GROUP),
+        })
+    }
+
+    /// Gives the tuning values of the climb from the exported fields.
+    fn climb_params(&self) -> ClimbParams {
+        let start = self.max_slope_degrees;
+        ClimbParams {
+            start_angle: start.to_radians(),
+            stop_angle: (start - self.climb_stop_margin_degrees.max(0.0)).to_radians(),
+            max_angle: self.climb_max_degrees.max(start).to_radians(),
+            radius: RADIUS,
+            half_height: HALF_HEIGHT,
+            reach: self.climb_reach.max(0.02),
+            climb_speed: self.climb_speed,
+            gravity: self.fall_acceleration,
+            firm_grip: self.firm_grip,
+            loose_grip: self.loose_grip.min(self.firm_grip),
+            slow_slide_speed: self.slow_slide_speed,
+            let_go_slide_speed: self.let_go_slide_speed,
+            drain_per_second: 1.0 / self.stamina_seconds.max(0.1),
+            gentle_drain_factor: self.gentle_drain_factor.clamp(0.0, 1.0),
+            ..ClimbParams::default()
+        }
+    }
+
+    /// Turns the body. On the ground, the body stands and looks along
+    /// `yaw`. On a wall, the belly is on the wall and the head is up.
+    fn pose_body(&mut self, delta: f32) {
+        let Some(mut body) = self.body.clone() else {
+            return;
+        };
+        let (target, rate, travel) = match self.mode {
+            Mode::Climb(climb) => {
+                let (_, up) = wall_axes(climb.normal);
+                let (up, forward) = (to_godot(up), to_godot(-climb.normal));
+                let basis = Basis::from_cols(up.cross(forward), up, forward);
+                (
+                    basis.get_quaternion(),
+                    self.climb_turn_rate,
+                    Some(climb.travel),
+                )
+            }
+            _ => (
+                Quaternion::from_axis_angle(Vector3::UP, self.yaw),
+                self.climb_turn_rate * 2.5,
+                None,
+            ),
+        };
+        let now = body.get_basis().get_quaternion();
+        let k = 1.0 - (-rate.max(0.0) * delta).exp();
+        let basis = Basis::from_quaternion(now.slerp(target, k).normalized());
+        // The body turns around the centre of the bear, not around the feet.
+        let pivot = Vector3::new(0.0, HALF_HEIGHT, 0.0);
+        body.set_basis(basis);
+        body.set_position(pivot - basis * pivot);
+
+        // On a wall, the arms go up. The arms and the legs move with
+        // the distance that the bear climbs.
+        for (i, (limb, rest)) in self.limbs.iter_mut().enumerate() {
+            let mut wanted = *rest;
+            if let Some(travel) = travel {
+                let phase = travel * std::f32::consts::TAU / 0.24 + i as f32 * 2.2;
+                let raise = if i < 2 { 0.07 } else { 0.0 };
+                wanted += Vector3::new(0.0, raise + 0.03 * phase.sin(), 0.02);
+            }
+            let position = limb.get_position().lerp(wanted, k);
+            limb.set_position(position);
+        }
+    }
+
     /// Reads the keys and the gamepad. Gives the move direction on the
     /// ground (x, z) with a length of 1 at most, the jog state and the
     /// jump state.
@@ -289,11 +746,11 @@ impl BfBear {
     fn build_body(&mut self) {
         // The collision shape: a capsule, 0.40 m tall.
         let mut capsule = CapsuleShape3D::new_gd();
-        capsule.set_radius(0.11);
-        capsule.set_height(0.40);
+        capsule.set_radius(RADIUS);
+        capsule.set_height(HALF_HEIGHT * 2.0);
         let mut shape = CollisionShape3D::new_alloc();
         shape.set_shape(&capsule);
-        shape.set_position(Vector3::new(0.0, 0.20, 0.0));
+        shape.set_position(Vector3::new(0.0, HALF_HEIGHT, 0.0));
         self.base_mut().add_child(&shape);
 
         let fur = material(Color::from_rgb(0.55, 0.36, 0.20));
@@ -323,12 +780,16 @@ impl BfBear {
             (limb(0.042, 0.13), &fur, Vector3::new(0.05, 0.065, 0.0)), // right leg
             (ball(0.03, 0.05), &fur, Vector3::new(0.0, 0.11, -0.10)), // tail
         ];
-        for (mesh, material, position) in parts {
+        for (i, (mesh, material, position)) in parts.into_iter().enumerate() {
             let mut part = MeshInstance3D::new_alloc();
             part.set_mesh(&mesh);
             part.set_material_override(material);
             part.set_position(position);
             body.add_child(&part);
+            // Parts 9 to 12 are the arms and the legs.
+            if (9..=12).contains(&i) {
+                self.limbs.push((part, position));
+            }
         }
         self.base_mut().add_child(&body);
         self.body = Some(body);

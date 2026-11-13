@@ -106,6 +106,26 @@ pub struct BfTerrain {
     #[init(val = HighlandsParams::default().river_max_width_m)]
     river_max_width_m: f32,
 
+    /// The grip of rust-coloured rock for a bear that climbs (0 to 1).
+    #[export]
+    #[init(val = 1.0)]
+    grip_rust_rock: f32,
+
+    /// The grip of ash-coloured rock (0 to 1). It is slippery.
+    #[export]
+    #[init(val = 0.45)]
+    grip_ash_rock: f32,
+
+    /// The grip of steep soil (0 to 1).
+    #[export]
+    #[init(val = 0.8)]
+    grip_soil: f32,
+
+    /// The grip of the sand in a dry riverbed (0 to 1). It does not hold.
+    #[export]
+    #[init(val = 0.1)]
+    grip_sand: f32,
+
     /// The Terrain3D node. It is a child of this node.
     terrain: Option<Gd<Node3D>>,
 
@@ -213,6 +233,20 @@ impl BfTerrain {
         self.zone
             .as_ref()
             .map_or(0.0, |zone| zone.heights.sample_world(x, z))
+    }
+
+    /// Gives the grip of the ground at a world position, from 0 (does
+    /// not hold) to 1 (holds fully). The ground type sets the grip.
+    #[func]
+    pub fn grip_at(&self, x: f32, z: f32) -> f32 {
+        self.zone.as_ref().map_or(1.0, |zone| {
+            zone.ground_at(x, z).grip(
+                self.grip_rust_rock,
+                self.grip_ash_rock,
+                self.grip_soil,
+                self.grip_sand,
+            )
+        })
     }
 }
 

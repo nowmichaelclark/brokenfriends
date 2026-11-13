@@ -19,6 +19,7 @@ name = "bf-game"
 version = "0.1.0"
 dependencies = [
  "bf-worldgen",
+ "glam",
  "godot",
 ]
 

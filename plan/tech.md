@@ -202,7 +202,7 @@ Cloud containers usually have no GPU, and some have no Vulkan.
 | Noise | our own gradient noise in `bf-worldgen` (`noise.rs`). It has derivatives and gives the same bits on all computers. |
 | Erosion look | our port of the erosion filter by Rune Skovbo Johansen (`erosion_filter.rs`, MPL-2.0, from the CPU code in `bevy_erosion_filter`) |
 | Threads | `rayon` |
-| Maths | `glam` (not used yet). `detmath.rs` has `sin`, `cos` and `exp` that give the same bits on all computers. |
+| Maths | `glam` for the vectors of the climb maths (`climb.rs`). `detmath.rs` has `sin`, `cos` and `exp` that give the same bits on all computers. |
 | Cave meshes (later) | `fast-surface-nets` |
 | Preview images | `image` (dev dependency only) |
 

@@ -44,3 +44,6 @@ far = 3000.0
 current = true
 
 [node name="DebugOverlay" type="BfDebugOverlay" parent="."]
+
+[node name="StaminaRing" type="BfStaminaRing" parent="."]
+mouse_filter = 2

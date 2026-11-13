@@ -41,3 +41,19 @@ Climbing is a state of the Rust controller. It uses no physics bodies.
 | wynterCG/grip_up, https://github.com/wynterCG/grip_up | Godot 4.7 + Jolt. Physics climbing (not our method), but a good render-only IK rig. | Not confirmed. |
 | GDC 2017, "Breaking Conventions with BotW" | Design: walls are climbable; gliding gets you down. | Talk. |
 | Vidqvist, thesis on BotW, section 3.2.2 | Stamina drain depends on steepness; no drain when idle. | Thesis. |
+
+## What S-107 built and learned
+
+- The build follows the method above, in `rust/game/src/climb.rs`.
+  It has no IK and no shape casts. It uses ray casts only.
+- Terrain3D v1.1.0 makes collision near the camera. Physics ray casts
+  hit it, also in a headless run. The hit normal is the normal of one
+  triangle (1 m wide), thus it changes in steps.
+- Do not put the bear at "hit point + hit normal × distance" each
+  frame. If the smooth normal and the hit normal are different, a bear
+  that holds still moves along the wall. Keep the bear on the ray.
+- The walk code stops speed in the air when the player gives no
+  direction. After a jump off, the bear keeps its speed for 0.4 s.
+- One ray in the move direction finds the ground below the feet and
+  a second wall in an inner corner. If the ray to the wall misses, one
+  ray from behind the corner finds the top of a ledge.

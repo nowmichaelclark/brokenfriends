@@ -11,6 +11,7 @@ rust-version = "1.94"
 # The version is pinned. Change it only together with the Godot version.
 godot = { version = "=0.5.5", features = ["api-4-7"] }
 rayon = "1.10"
+glam = "0.32"
 image = { version = "0.25", default-features = false, features = ["png"] }
 
 [workspace.lints.clippy]

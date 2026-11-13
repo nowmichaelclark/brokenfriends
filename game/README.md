@@ -31,11 +31,34 @@ what it assumes.
   jumps. The jump has coyote time and a jump buffer. When a new zone
   shows, the bear goes to the flattest place near the centre. If the
   bear is below the ground, the code puts it back on the ground.
+- **Climbing** (`rust/game/src/climb.rs`, R11). The bear climbs each
+  surface that is too steep to walk (more than 50 degrees).
+  - **Start.** Push into the surface. On the ground, the climb starts
+    after 0.15 s. In the air, it starts at once.
+  - **Move.** "Into the wall" is up. "Away from the wall" is down.
+    Left and right move to the side.
+  - **Stop.** The climb stops on ground flatter than 45 degrees. At
+    the edge of a ledge, the bear moves onto the top in 0.2 s.
+  - **Jump off.** Jump pushes the bear away from the wall. For 0.4 s
+    after that, the bear cannot grab a wall.
+  - **Stamina.** A ring near the bear shows it (`BfStaminaRing`). The
+    stamina goes down only while the bear moves or slides. A steep
+    wall uses more. At zero, the bear lets go, and the ring is red
+    until 30% is back. The stamina comes back on the ground in 3 s.
+  - **Grip.** Each ground type has a grip from 0 to 1. Rust rock
+    holds fully (1.0). Ash rock is slippery (0.45): the bear slides
+    down slowly. Riverbed sand does not hold (0.1): the slide gets
+    faster, and the bear falls off with its speed. An object can set
+    its own grip with the metadata `bf_grip`.
+  - **Cost.** A climb step uses 5 or 6 ray casts. A walk step uses 2
+    ray casts at most, and only while the player pushes a direction.
+    No physics body moves while the bear climbs.
 - **`BfFollowCamera`** is the third-person camera. The mouse or the
   right stick turns it around the bear. It reads the heightmap and
   comes nearer when the ground is in the way.
 - **`BfDebugOverlay`** shows fps, frame time, draw calls, primitives,
-  video memory and the seed. Push F3 to show or hide it.
+  video memory, the seed and the state of the bear (walk or climb,
+  slope, grip, slide speed, stamina). Push F3 to show or hide it.
 - **`BfFlyCamera`** is a debug camera. Push F2 to use it, and F2 again
   to go back. Hold the right mouse button to look. Move with W, A, S,
   D, Q and E. Hold Shift to go faster. The bear does not move while
@@ -71,6 +94,9 @@ that it prints to Claude. On Windows, run
 | Move | W, A, S, D or the arrow keys | left stick |
 | Jog | hold Shift | hold the right shoulder button |
 | Jump | Space | bottom button (A) |
+| Climb | move into a steep surface | move into a steep surface |
+| Climb up, down, left, right | W, S, A, D | left stick |
+| Jump off a wall | Space | bottom button (A) |
 | Turn the camera | mouse | right stick |
 | Release the mouse | Esc (click the window to hold it again) | |
 | Fly camera | F2 | |
@@ -78,8 +104,9 @@ that it prints to Claude. On Windows, run
 | New zone | F4 | |
 
 All tuning values of the bear and the camera are in the Inspector
-(select `Bear` or `FollowCamera`). The movement maths is in
-`rust/game/src/motion.rs`, with unit tests.
+(select `Bear` or `FollowCamera`). The grip of each ground type is on
+`Terrain`. The movement maths is in `rust/game/src/motion.rs` and
+`rust/game/src/climb.rs`, with unit tests.
 
 The ground colours are: pale ochre on flat ground, rust and ash bands
 on rock (steeper than about 35 to 50 degrees), and pale sand in
@@ -190,8 +217,23 @@ Mikey does not build on his laptop (decision R10).
   the terrain only. It does not avoid other objects yet.
 - **Start point.** The flattest place within 200 m of the centre. This
   can be a hilltop.
-- **The bear has no animation.** The body turns to the move direction.
-  The arms and legs do not move.
+- **The bear has almost no animation.** The body turns to the move
+  direction. On a wall, the belly is on the wall, the arms go up, and
+  the arms and legs move a little with the climb distance.
+- **Climbing has no button.** The bear climbs when it pushes into a
+  steep surface. To let go, jump. A "let go" button does not exist.
+- **Climb values.** The climb speed is 0.7 m/s. The stamina lasts
+  30 s on a vertical wall and about 100 s on a slope of 50 degrees.
+  This is too little to climb a full mountain without a rest.
+- **Grip follows the colour.** Rust rock is firm, ash rock is
+  slippery, and riverbed sand does not hold. Thus, the player can see
+  the grip. Steep sand banks can stop the bear from leaving a
+  riverbed there.
+- **A fast bear cannot grab.** Above 6 m/s, the bear does not grab a
+  wall. A bear that slides off keeps its speed.
+- **A jump off only lets go.** A jump up the wall that uses stamina
+  (as in Breath of the Wild) does not exist yet.
+- **The camera does not change for the climb.**
 - **One file has the MPL-2.0 licence.** `erosion_filter.rs` is a port
   of the erosion filter by Rune Skovbo Johansen, as `plan/tech.md`
   says. His code has the MPL-2.0 licence, thus the port keeps it. All

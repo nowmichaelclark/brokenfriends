@@ -12,4 +12,4 @@ pub mod highlands;
 pub mod noise;
 
 pub use heightmap::HeightMap;
-pub use highlands::{HighlandsParams, Zone};
+pub use highlands::{Ground, HighlandsParams, Zone};

@@ -14,3 +14,9 @@ sorts them.
 - A "strangeness" value for each zone (`vision.md`).
 - Our own erosion simulation for avalanches, sand and runtime erosion (`decisions.md`, proposed).
 - Look at TanTan's Rust projects (github.com/TanTanDev, Mikey's reference): `shrubbery` (deterministic procedural voxel trees with space colonization, MIT/Apache) for dead shrubs in S-108; `3d_celluar_automata` for cheap grid simulations (sand, goo, smoke edge).
+- Climbing: a jump up the wall that uses stamina, as in Breath of the Wild (S-107 has only the jump off).
+- Climbing: a "let go" button, and hands and feet that touch the wall with IK (`research/climbing.md`).
+- Climbing: the follow camera can move back and look more from the side while the bear is on a wall.
+- Climbing: places to rest on long slopes (small ledges in the generator), or stamina food, because one stamina ring is too little for a 400 m slope.
+- Grip: a wet or oily ground type, and dust that falls where the bear slides.
+- The follow camera avoids the heightmap only. When rocks or caves exist, it must use a ray cast as the climb does.

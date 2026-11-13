@@ -6,10 +6,12 @@
 use godot::prelude::*;
 
 mod bear;
+mod climb;
 mod fly_camera;
 mod follow_camera;
 mod motion;
 mod overlay;
+mod stamina;
 mod terrain;
 
 struct BfExtension;

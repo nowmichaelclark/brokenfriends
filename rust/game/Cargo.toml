@@ -11,6 +11,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 bf-worldgen = { path = "../worldgen" }
+glam.workspace = true
 godot.workspace = true
 
 [lints]

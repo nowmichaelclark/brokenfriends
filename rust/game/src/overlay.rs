@@ -1,13 +1,14 @@
 //! The F3 debug overlay.
 
+use crate::bear::BEAR_GROUP;
 use crate::terrain::TERRAIN_GROUP;
 use godot::classes::performance::Monitor;
 use godot::classes::{CanvasLayer, ICanvasLayer, InputEvent, InputEventKey, Label, Performance};
 use godot::global::Key;
 use godot::prelude::*;
 
-/// Shows fps, frame time, draw calls, primitives, video memory and the
-/// seed. Push F3 to show or hide it.
+/// Shows fps, frame time, draw calls, primitives, video memory, the
+/// seed and the state of the bear. Push F3 to show or hide it.
 #[derive(GodotClass)]
 #[class(base = CanvasLayer, init)]
 pub struct BfDebugOverlay {
@@ -85,8 +86,12 @@ impl BfDebugOverlay {
         let video_mb = perf.get_monitor(Monitor::RENDER_VIDEO_MEM_USED) / (1024.0 * 1024.0);
 
         let mut seed = String::from("no terrain");
+        let mut bear = String::from("no bear");
         if self.base().is_inside_tree() {
             let tree = self.base().get_tree();
+            if let Some(mut node) = tree.get_first_node_in_group(BEAR_GROUP) {
+                bear = node.call("debug_text", &[]).to_string();
+            }
             if let Some(mut terrain) = tree.get_first_node_in_group(TERRAIN_GROUP) {
                 seed = terrain.call("current_seed", &[]).to_string();
                 if terrain.call("is_generating", &[]).booleanize() {
@@ -100,6 +105,7 @@ impl BfDebugOverlay {
              draw calls {draw_calls:.0}   primitives {primitives:.0}\n\
              video memory {video_mb:.0} MB\n\
              seed {seed}\n\
+             bear: {bear}\n\
              F2: fly camera   F3: hide   F4: new zone"
         )
     }

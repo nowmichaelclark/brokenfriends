@@ -28,3 +28,4 @@ sorts them.
 - Recorder: catch engine errors with `OS.add_logger` (Godot 4.5+) instead of reading the log file each second; it needs thread-safe code in godot-rust.
 - Recorder: a frame-time graph (PNG) in each zip, so a hitch pattern shows at a glance.
 - Recorder: a small "REC" dot on the screen, so Mikey knows that the recorder runs (only if he wants it).
+- Before a public release, make the playtest recorder opt-in for other players (a setting, off by default). It records hardware data and screenshots. For Mikey's builds it stays always on (R22).

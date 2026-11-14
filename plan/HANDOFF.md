@@ -75,8 +75,9 @@ problem is speed on Intel graphics: 12 fps on the Intel GPU of the
 playtest laptop (S-139).
 
 Recommended order:
-1. **S-138**, a combined run on Fable 5.2 (Mikey, 2026-11-14): S-136
-   (fix the freezes), then S-129 (limb-ripping obstacles).
+1. **S-139**, the speed on Intel graphics (12 fps on the Intel GPU of
+   the playtest laptop), and **S-140**, the desktop stalls of that
+   laptop. S-138 (S-136, then S-129) is done.
 2. **S-137**, Mikey's test on the Vivobook with integrated graphics.
 3. The tuning rows from the S-125 playtest, one at a time: S-132
    (obstacles: launch vents miss too often and tear both legs off;

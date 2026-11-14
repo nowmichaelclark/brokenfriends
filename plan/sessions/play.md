@@ -1,17 +1,23 @@
-# Play session: Mikey plays and gives notes
+# Play session: Mikey plays and sends the playtest
 
 Mikey plays the latest build from GitHub on his own laptop. No model
-is necessary.
+is necessary. The game records the technical data (R22,
+`diagnostics.md`), so Mikey does not need to write numbers.
 
 1. Download and start the newest build (see `game/README.md`, "Play
-   the latest build"). Make sure that `BUILD.txt` shows the newest
-   commit.
+   the latest build").
 2. Play the part that the row names.
-3. If the row is about speed, keep F3 on. At some places, write down
-   the fps, the frame time and the draw calls. Also write which laptop
-   you used.
-4. Write what felt good and what felt wrong, in your own words. You do
-   not need numbers. Claude changes the values from your words.
-5. Give the notes to the next Build session: paste them at the start.
-   That session writes them in `plan/play-notes.md` and updates
-   `STATE.md`.
+3. When something looks or feels wrong, tap the Back/Select button
+   (keyboard: F9). The game saves that moment as a mark.
+4. If the row names a test, open the dev menu (hold Back), go to
+   "Tests," and start it. Wait until it ends.
+5. Quit the game. Attach the newest zip from the `playtests/` folder
+   next to the game to the chat or to the next Build session.
+6. Optional: write notes about feel and taste, in your own words. You
+   can name marks, for example "at mark 3 the bear looked strange."
+
+The next Build session writes the notes in `plan/play-notes.md` and
+updates `STATE.md`.
+
+Until S-123 is on `main`, the recorder does not exist. Then, write
+notes in your own words only.

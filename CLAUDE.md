@@ -44,6 +44,10 @@ only. Do not use their code or their rules.
   `plan/decisions.md`.
 - **One job per agenda row.** Do only the work of your row. Write
   ideas for later in `plan/inbox.md`, one line for each idea.
+- **Do not ask Mikey technical questions** (R22). Read the playtest
+  report (`plan/diagnostics.md`). If the data you need is not in it,
+  add a probe or a test to the recorder, and add an agenda row for the
+  next playtest. Ask Mikey only about feel and taste.
 - **Mark guesses.** If you did not check a statement about an engine,
   a crate or speed, add `[unverified]` after it.
 

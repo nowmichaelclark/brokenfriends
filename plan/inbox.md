@@ -24,3 +24,4 @@ sorts them.
 - Bear: a lower-detail mesh (bigger `mesh_cell_m`) when the camera is far, if the triangles cost time on the laptops.
 - Bear: water, mud or goo in the world that sets the wet value of the parts that touch it; wet parts dry slowly.
 - Bear: a visible seam on the ears, if Mikey wants one (now only the neck, shoulders and hips have rings).
+- A general particle system that reacts to the world: wind, different materials (sand, ash, stuffing, smoke), not only the camera dust (Mikey, S-116).

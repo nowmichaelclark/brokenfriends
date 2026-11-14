@@ -28,6 +28,9 @@ version" are still valid.
 | R17 | The bear looks like an old, classic teddy bear (Mikey's reference photos: a jointed mohair bear with felt pads, a stitched nose and button eyes). It can tear, lose stuffing, and get wet fur. It feels soft, plush and a little furry, with simple shapes and parts that move easily. | Mikey, 2026-11-14 |
 | R18 | The bear's animation is procedural. The engine makes the movement from the surface (for example how the bear climbs onto a wall) and from the limbs that the bear still has: with one leg it hops, with one arm it climbs less well and only on less steep surfaces. Mikey asks Claude to choose the method. | Mikey, 2026-11-14 |
 | R19 | No heat shimmer. It did not look good, and the game is faster without it. | Mikey, 2026-11-14 |
+| R20 | A jump up the wall costs stamina. The jog costs stamina too. The amount of stamina stays as it is for now. | Mikey, 2026-11-14 |
+| R21 | There is a let-go button for climbing. | Mikey, 2026-11-14 |
+| R22 | Claude must not ask Mikey technical questions about play sessions. The game records everything Claude needs (a diagnostics system). If a new technical question comes up, Claude adds a test to the diagnostics instead of asking. Mikey gives notes about feel and taste only. | Mikey, 2026-11-14 |
 
 ## Proposed, Mikey must decide
 

@@ -20,9 +20,15 @@ near = 0.03
 far = 3000.0
 current = true
 
+[node name="ViewDistance" type="BfViewDistance" parent="."]
+
 [node name="DebugOverlay" type="BfDebugOverlay" parent="."]
 
 [node name="Recorder" type="BfRecorder" parent="."]
 
 [node name="StaminaRing" type="BfStaminaRing" parent="."]
 mouse_filter = 2
+
+[node name="TestRunner" type="BfTestRunner" parent="."]
+
+[node name="DevMenu" type="BfDevMenu" parent="."]

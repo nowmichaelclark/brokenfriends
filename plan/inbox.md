@@ -44,3 +44,7 @@ sorts them.
 - Smoke edge: the terrain stops at the border behind the wall. A bear that survives or flies over the wall can see the border. Idea: a ring of cliffs, or a slope into the smog.
 - Smoke edge: sectors of goo and lava instead of smoke, that the seed selects (R14). The `SmokeEdge` shape and `SmokeDose` rule can stay; only the look and the cause change.
 - Smoke edge: let the wall move faster in a storm (a time of day or a zone value), so the player must watch it.
+- Dev menu: let the left stick choose items too, for a pad that has no D-pad.
+- Dev menu: a "Climb test" with a fixed wall and a fixed input path, for the climb and the animation numbers.
+- Tests: a "stand still" test that measures the bear and the animation alone, to split the cost of the terrain from the cost of the bear.
+- Tests: a time limit for the test camera path on a slow computer (the cloud runs at 4 fps and a path takes 50 s of real time).

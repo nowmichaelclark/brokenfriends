@@ -8,6 +8,9 @@ use godot::classes::{CanvasLayer, ICanvasLayer, InputEvent, InputEventKey, Label
 use godot::global::Key;
 use godot::prelude::*;
 
+/// The group that holds the overlay. The dev menu finds it here.
+pub const OVERLAY_GROUP: &str = "bf_overlay";
+
 /// Shows fps, frame time, draw calls, primitives, video memory, the
 /// seed and the state of the bear. Push F3 to show or hide it.
 #[derive(GodotClass)]
@@ -36,6 +39,7 @@ pub struct BfDebugOverlay {
 #[godot_api]
 impl ICanvasLayer for BfDebugOverlay {
     fn ready(&mut self) {
+        self.base_mut().add_to_group(OVERLAY_GROUP);
         let mut label = Label::new_alloc();
         label.set_position(Vector2::new(12.0, 8.0));
         label.add_theme_font_size_override("font_size", self.font_size);
@@ -69,10 +73,25 @@ impl ICanvasLayer for BfDebugOverlay {
             return;
         };
         if key.is_pressed() && !key.is_echo() && key.get_keycode() == Key::F3 {
-            let visible = !self.base().is_visible();
-            self.base_mut().set_visible(visible);
-            self.time_to_update = 0.0;
+            self.toggle_shown();
         }
+    }
+}
+
+#[godot_api]
+impl BfDebugOverlay {
+    /// Shows or hides the overlay (F3, and the dev menu).
+    #[func]
+    pub fn toggle_shown(&mut self) {
+        let visible = !self.base().is_visible();
+        self.base_mut().set_visible(visible);
+        self.time_to_update = 0.0;
+    }
+
+    /// Tells if the overlay shows now.
+    #[func]
+    pub fn is_shown(&self) -> bool {
+        self.base().is_visible()
     }
 }
 
@@ -112,7 +131,7 @@ impl BfDebugOverlay {
              seed {seed}\n\
              bear: {bear}\n\
              smoke: {smoke}\n\
-             F2: fly camera   F3: hide   F4: new zone   F9: mark"
+             F2: fly camera   F3: hide   F4: new zone   F9: mark   F10: menu (pad: hold Back)"
         )
     }
 }

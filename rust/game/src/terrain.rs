@@ -4,6 +4,7 @@
 //! bindings for it. This module calls Terrain3D by name
 //! (`Object::call`, `Object::set`). All of these calls are in this file.
 
+use crate::view_distance::terrain_lods;
 use bf_worldgen::highlands::{generate, HighlandsParams};
 use bf_worldgen::Zone;
 use godot::classes::image::Format;
@@ -16,6 +17,9 @@ use std::time::Instant;
 
 /// The group that holds the `BfTerrain` node. Other nodes find it there.
 pub const TERRAIN_GROUP: &str = "bf_terrain";
+
+/// The most mesh rings (LODs) that Terrain3D makes. This is its default.
+const MAX_MESH_LODS: i32 = 7;
 
 /// Terrain3D can hold 32 x 32 regions.
 const REGION_MAP_SIZE: i32 = 32;
@@ -126,6 +130,11 @@ pub struct BfTerrain {
     #[export]
     #[init(val = 0.1)]
     grip_sand: f32,
+
+    /// How far Terrain3D draws, in metres (set by `BfViewDistance`).
+    /// Terrain3D draws rings of mesh around the camera. This value
+    /// sets the number of rings. Zero means the default of the addon.
+    draw_distance_m: f32,
 
     /// The Terrain3D node. It is a child of this node.
     terrain: Option<Gd<Node3D>>,
@@ -241,6 +250,44 @@ impl BfTerrain {
         if self.pending.is_none() {
             self.seed += 1;
             self.regenerate();
+        }
+    }
+
+    /// Makes the zone of this seed (the dev menu, S-113). Gives false if
+    /// a zone is in work now. Then the caller must try again.
+    #[func]
+    pub fn make_zone(&mut self, seed: i64) -> bool {
+        if self.pending.is_some() {
+            return false;
+        }
+        self.seed = seed.max(0);
+        self.regenerate();
+        true
+    }
+
+    /// Sets how far the terrain is drawn, in metres. The terrain makes
+    /// fewer rings of mesh when the distance is short. This saves
+    /// triangles. Give 0 for the default of the addon.
+    #[func]
+    pub fn set_draw_distance(&mut self, metres: f32) {
+        if (metres - self.draw_distance_m).abs() < 1.0 {
+            return;
+        }
+        self.draw_distance_m = metres.max(0.0);
+        if let Some(node) = self.terrain.clone() {
+            if node.is_instance_valid() {
+                self.apply_draw_distance(node);
+            }
+        }
+    }
+
+    /// Gives the number of mesh rings that Terrain3D draws now, or 0 if
+    /// the terrain is not ready.
+    #[func]
+    pub fn mesh_lods(&self) -> i32 {
+        match &self.terrain {
+            Some(node) if node.is_instance_valid() => node.get("mesh_lods").to::<i32>(),
+            _ => 0,
         }
     }
 
@@ -360,7 +407,21 @@ impl BfTerrain {
         }
         Self::add_ground_texture(&node);
         self.terrain = Some(node.clone());
+        self.apply_draw_distance(node.clone());
         Some(node)
+    }
+
+    /// Gives the draw distance to Terrain3D as a number of mesh rings.
+    fn apply_draw_distance(&self, mut node: Gd<Node3D>) {
+        if self.draw_distance_m <= 0.0 {
+            return;
+        }
+        let mesh_size = node.get("mesh_size").try_to::<i32>().unwrap_or(48);
+        let spacing = node.get("vertex_spacing").try_to::<f32>().unwrap_or(1.0);
+        let lods = terrain_lods(self.draw_distance_m, mesh_size, spacing, MAX_MESH_LODS);
+        if node.get("mesh_lods").try_to::<i32>().ok() != Some(lods) {
+            node.set("mesh_lods", &lods.to_variant());
+        }
     }
 
     /// Gives Terrain3D one plain ground texture. Without a texture,

@@ -1,17 +1,23 @@
 //! A free camera for debug work.
 
+use crate::dev_menu;
 use crate::terrain::TERRAIN_GROUP;
 use godot::classes::input::MouseMode;
 use godot::classes::{
     Camera3D, ICamera3D, Input, InputEvent, InputEventKey, InputEventMouseMotion,
 };
-use godot::global::{Key, MouseButton};
+use godot::global::{JoyAxis, JoyButton, Key, MouseButton};
 use godot::prelude::*;
+
+/// The group that holds the fly camera. The dev menu finds it here.
+pub const FLY_CAMERA_GROUP: &str = "bf_fly_camera";
 
 /// A camera that flies. Push F2 to change between this camera and the
 /// camera of the game. Hold the right mouse button to look around.
 /// Move with W, A, S, D. Go down with Q and up with E. Hold Shift to go
-/// faster.
+/// faster. On a gamepad, the dev menu changes the camera. The left stick
+/// moves, the right stick looks, the triggers go down and up, and the
+/// right shoulder button goes faster.
 #[derive(GodotClass)]
 #[class(base = Camera3D, init)]
 pub struct BfFlyCamera {
@@ -30,6 +36,11 @@ pub struct BfFlyCamera {
     #[init(val = 0.15)]
     mouse_sensitivity: f32,
 
+    /// The turn speed with the right stick, in degrees per second.
+    #[export]
+    #[init(val = 90.0)]
+    stick_speed_degrees: f32,
+
     /// The least height above the ground after a new zone shows, in metres.
     #[export]
     #[init(val = 30.0)]
@@ -43,6 +54,9 @@ pub struct BfFlyCamera {
 #[godot_api]
 impl ICamera3D for BfFlyCamera {
     fn ready(&mut self) {
+        self.base_mut().add_to_group(FLY_CAMERA_GROUP);
+        self.base_mut()
+            .add_to_group(crate::view_distance::VIEW_CAMERA_GROUP);
         let rotation = self.base().get_rotation();
         self.pitch = rotation.x;
         self.yaw = rotation.y;
@@ -57,10 +71,11 @@ impl ICamera3D for BfFlyCamera {
     }
 
     fn process(&mut self, delta: f64) {
-        if !self.base().is_current() {
+        if !self.base().is_current() || dev_menu::is_open() {
             return;
         }
         let input = Input::singleton();
+        self.look_with_stick(delta as f32);
         let looking = input.is_mouse_button_pressed(MouseButton::RIGHT);
         let mode = if looking {
             MouseMode::CAPTURED
@@ -76,20 +91,33 @@ impl ICamera3D for BfFlyCamera {
             let p = input.is_physical_key_pressed(positive) as i32;
             (p - n) as f32
         };
-        let local = Vector3::new(
-            axis(Key::A, Key::D),
-            axis(Key::Q, Key::E),
-            axis(Key::W, Key::S),
+        let pad = |a: JoyAxis| {
+            let v = input.get_joy_axis(0, a);
+            if v.abs() > 0.2 {
+                v
+            } else {
+                0.0
+            }
+        };
+        let mut local = Vector3::new(
+            axis(Key::A, Key::D) + pad(JoyAxis::LEFT_X),
+            axis(Key::Q, Key::E) + pad(JoyAxis::TRIGGER_RIGHT) - pad(JoyAxis::TRIGGER_LEFT),
+            axis(Key::W, Key::S) + pad(JoyAxis::LEFT_Y),
         );
+        if local.length() > 1.0 {
+            local = local.normalized();
+        }
         if local == Vector3::ZERO {
             return;
         }
         let mut speed = self.speed;
-        if input.is_physical_key_pressed(Key::SHIFT) {
+        if input.is_physical_key_pressed(Key::SHIFT)
+            || input.is_joy_button_pressed(0, JoyButton::RIGHT_SHOULDER)
+        {
             speed *= self.fast_factor;
         }
         let basis = self.base().get_global_transform().basis;
-        let step = basis * local.normalized() * speed * delta as f32;
+        let step = basis * local * speed * delta as f32;
         let position = self.base().get_global_position() + step;
         self.base_mut().set_global_position(position);
     }
@@ -101,7 +129,7 @@ impl ICamera3D for BfFlyCamera {
             }
             return;
         }
-        if !self.base().is_current() {
+        if !self.base().is_current() || dev_menu::is_open() {
             return;
         }
         let Ok(motion) = event.try_cast::<InputEventMouseMotion>() else {
@@ -119,8 +147,33 @@ impl ICamera3D for BfFlyCamera {
     }
 }
 
+impl BfFlyCamera {
+    /// Turns the camera with the right stick.
+    fn look_with_stick(&mut self, delta: f32) {
+        let input = Input::singleton();
+        let stick = Vector2::new(
+            input.get_joy_axis(0, JoyAxis::RIGHT_X),
+            input.get_joy_axis(0, JoyAxis::RIGHT_Y),
+        );
+        if stick.length() <= 0.2 {
+            return;
+        }
+        let k = self.stick_speed_degrees.to_radians() * delta;
+        self.yaw -= stick.x * k;
+        self.pitch = (self.pitch - stick.y * k).clamp(-1.55, 1.55);
+        let rotation = Vector3::new(self.pitch, self.yaw, 0.0);
+        self.base_mut().set_rotation(rotation);
+    }
+}
+
 #[godot_api]
 impl BfFlyCamera {
+    /// Tells if this camera is the active camera.
+    #[func]
+    pub fn is_active(&self) -> bool {
+        self.base().is_current()
+    }
+
     /// Changes between this camera and the camera of the game (F2).
     #[func]
     fn toggle(&mut self) {

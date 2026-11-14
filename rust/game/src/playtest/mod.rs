@@ -5,7 +5,9 @@
 //! data. This module has the data types, the statistics, the event
 //! detectors and the report. All of it has unit tests.
 
+pub mod bench;
 pub mod detect;
+pub mod menu;
 pub mod report;
 pub mod stats;
 

@@ -11,6 +11,7 @@ mod bear;
 mod bear_model;
 mod bear_shape;
 mod climb;
+mod dev_menu;
 mod fly_camera;
 mod follow_camera;
 mod limbs;
@@ -23,6 +24,8 @@ mod smoke_edge;
 mod spring;
 mod stamina;
 mod terrain;
+mod test_runner;
+mod view_distance;
 
 struct BfExtension;
 

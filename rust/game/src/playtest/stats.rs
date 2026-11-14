@@ -134,6 +134,19 @@ impl FrameHistogram {
         }
     }
 
+    /// Adds all frames of another histogram to this one.
+    pub fn merge(&mut self, other: &FrameHistogram) {
+        if self.dense.len() != BIN_COUNT {
+            self.densify();
+        }
+        for (slot, count) in self.dense.iter_mut().zip(other.counts()) {
+            *slot += count;
+        }
+        self.frames += other.frames;
+        self.total_ms += other.total_ms;
+        self.worst_ms = self.worst_ms.max(other.worst_ms);
+    }
+
     fn counts(&self) -> Vec<u64> {
         if self.dense.len() == BIN_COUNT {
             return self.dense.clone();

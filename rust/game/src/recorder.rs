@@ -18,7 +18,7 @@
 
 use crate::bear::BEAR_GROUP;
 use crate::playtest::detect::{Detectors, Found, FrameInput};
-use crate::playtest::report::{make_report, ReportInput};
+use crate::playtest::report::{append_tests, make_report, ReportInput};
 use crate::playtest::stats::{FrameHistogram, SecondStats};
 use crate::playtest::{
     files_to_delete, log_problems, parse_lines, scrub, session_name, BearSample, CameraSample,
@@ -191,6 +191,11 @@ pub struct BfRecorder {
     /// The last frame took a screenshot. A hitch in the next frame is ours.
     shot_frame: bool,
     marks: u32,
+    /// The name of the test that runs now (S-113), or empty. During a
+    /// test the recorder takes no screenshots, so they cannot disturb
+    /// the frame times, and its events count as "loading".
+    test_name: String,
+    tests_saved: u32,
     back_down_at: Option<f64>,
     loading_until: f64,
     has_zone: bool,
@@ -320,6 +325,40 @@ impl BfRecorder {
         }
         zip.map(|z| GString::from(&file_name(&z)))
             .unwrap_or_default()
+    }
+
+    /// Tells the recorder that a test starts (S-113). Give "" when the
+    /// test ends. While a test runs, the recorder takes no screenshots.
+    #[func]
+    pub fn set_test(&mut self, name: GString) {
+        self.test_name = name.to_string();
+        if self.test_name.is_empty() {
+            // The recorder screenshot of the time after the test is not due at once.
+            let t = self.now();
+            self.next_shot = self.next_shot.max(t + 2.0);
+        }
+    }
+
+    /// Saves the result of a test (S-113). The text goes into
+    /// `report.md`, and the data goes into `tests/`. Gives true if the
+    /// recorder saved it.
+    #[func]
+    pub fn add_test_result(&mut self, name: GString, markdown: GString, data: GString) -> bool {
+        if !self.active {
+            return false;
+        }
+        self.tests_saved += 1;
+        let n = self.tests_saved;
+        let dir = self.dir.join("tests");
+        let _ = fs::create_dir_all(&dir);
+        let stem = format!("{n:02}-{name}");
+        let ok = fs::write(dir.join(format!("{stem}.md")), markdown.to_string()).is_ok()
+            && fs::write(dir.join(format!("{stem}.json")), data.to_string()).is_ok();
+        let event = self.event_here("test", format!("test {name} saved as tests/{stem}"));
+        self.write_event(event);
+        let t = self.now();
+        self.show_note("Test result saved.", t);
+        ok
     }
 
     /// Gives the name of the session folder, or "" if the recorder is off.
@@ -453,7 +492,8 @@ impl BfRecorder {
             .terrain()
             .map(|mut t| t.call("is_generating", &[]).booleanize())
             .unwrap_or(false);
-        let loading = !self.has_zone || generating || t < self.loading_until;
+        let loading =
+            !self.has_zone || generating || t < self.loading_until || !self.test_name.is_empty();
         // On a wall, the heightmap is not exact enough for this test.
         let on_wall = bear
             .as_ref()
@@ -529,7 +569,7 @@ impl BfRecorder {
             self.save_histogram();
         }
         // One screenshot in a frame is enough.
-        if t >= self.next_shot && !self.shot_frame {
+        if t >= self.next_shot && !self.shot_frame && self.test_name.is_empty() {
             self.next_shot = t + self.screenshot_interval.max(1.0);
             let shot = self.screenshot("regular");
             if shot.is_some() {
@@ -1149,13 +1189,25 @@ fn pack_session(
     let samples: Vec<Sample> = parse_lines(&read("samples.jsonl"));
     let events: Vec<Event> = parse_lines(&read("events.jsonl"));
     let histogram: Option<FrameHistogram> = serde_json::from_str(&read("frametimes.json")).ok();
-    let report = make_report(&ReportInput {
+    let mut report = make_report(&ReportInput {
         session: &session,
         samples: &samples,
         events: &events,
         histogram: histogram.as_ref(),
         quit_normally: normal,
     });
+    // The results of the tests of the dev menu (S-113).
+    let mut tests = Vec::new();
+    if let Ok(entries) = fs::read_dir(dir.join("tests")) {
+        let mut paths: Vec<PathBuf> = entries
+            .flatten()
+            .map(|e| e.path())
+            .filter(|p| p.extension().is_some_and(|e| e == "md"))
+            .collect();
+        paths.sort();
+        tests.extend(paths.iter().filter_map(|p| fs::read_to_string(p).ok()));
+    }
+    append_tests(&mut report, &tests);
     fs::write(dir.join("report.md"), report).ok()?;
 
     let zip_path = root.join(format!("{}.zip", file_name(dir)));

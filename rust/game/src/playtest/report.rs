@@ -84,6 +84,21 @@ pub fn make_report(r: &ReportInput) -> String {
     out
 }
 
+/// Adds the results of the tests (S-113) to the end of the report.
+pub fn append_tests(report: &mut String, tests: &[String]) {
+    if tests.is_empty() {
+        return;
+    }
+    report.push_str("\n## Tests\n\n");
+    report.push_str(
+        "The dev menu ran these tests. The frame times are not part of the speed numbers above.\n\n",
+    );
+    for t in tests {
+        report.push_str(t.trim_end());
+        report.push_str("\n\n");
+    }
+}
+
 fn speed_section(out: &mut String, r: &ReportInput) {
     out.push_str("\n## Speed\n\n");
     let fallback;
@@ -361,6 +376,16 @@ mod tests {
         assert!(text.contains("mark 1 at 00:02.0"));
         assert!(text.contains("marks/mark-01.jsonl"));
         assert!(text.contains("Counts: hitch 13, zone 1, mark 1."));
+    }
+
+    #[test]
+    fn tests_are_added_at_the_end() {
+        let mut report = String::from("# Playtest report\n");
+        append_tests(&mut report, &[]);
+        assert_eq!(report, "# Playtest report\n");
+        append_tests(&mut report, &["### Test: A\n".into(), "### Test: B".into()]);
+        assert!(report.contains("## Tests"));
+        assert!(report.find("### Test: A").unwrap() < report.find("### Test: B").unwrap());
     }
 
     #[test]

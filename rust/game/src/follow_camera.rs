@@ -74,6 +74,8 @@ pub struct BfFollowCamera {
 impl ICamera3D for BfFollowCamera {
     fn ready(&mut self) {
         self.base_mut().add_to_group(FOLLOW_CAMERA_GROUP);
+        self.base_mut()
+            .add_to_group(crate::view_distance::VIEW_CAMERA_GROUP);
         // The camera sets its own position in the world.
         self.base_mut().set_as_top_level(true);
         self.current_distance = self.distance;
@@ -81,7 +83,7 @@ impl ICamera3D for BfFollowCamera {
     }
 
     fn input(&mut self, event: Gd<InputEvent>) {
-        if !self.base().is_current() {
+        if !self.base().is_current() || crate::dev_menu::is_open() {
             return;
         }
         let mut input = Input::singleton();
@@ -119,7 +121,7 @@ impl ICamera3D for BfFollowCamera {
             input.get_joy_axis(0, JoyAxis::RIGHT_X),
             input.get_joy_axis(0, JoyAxis::RIGHT_Y),
         );
-        if stick.length() > 0.2 && self.base().is_current() {
+        if stick.length() > 0.2 && self.base().is_current() && !crate::dev_menu::is_open() {
             let k = self.stick_speed_degrees.to_radians() * delta;
             self.turn(-stick.x * k, stick.y * k);
         }

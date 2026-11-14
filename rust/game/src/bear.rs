@@ -1128,8 +1128,8 @@ impl BfBear {
         let Ok(camera) = camera.try_cast::<godot::classes::Camera3D>() else {
             return Controls::default();
         };
-        // While a debug camera is active, the bear does not move.
-        if !camera.is_current() {
+        // While a debug camera or the dev menu is active, the bear does not move.
+        if !camera.is_current() || crate::dev_menu::is_open() {
             return Controls::default();
         }
 

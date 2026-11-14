@@ -189,6 +189,46 @@ what it assumes.
   - **Cost.** 3 draw calls. The cost is overdraw (transparent layers).
     Nobody measured it on the laptops [unverified]. `card_count` and
     `card_size_m` are the first values to cut.
+- **`BfDevMenu`** is the dev menu (R13, S-113). On the gamepad, hold
+  Back for 0.6 s. On the keyboard, push F10. The D-pad (or the arrow
+  keys) chooses and changes, A (Enter) does, B (Esc) goes back. While
+  the menu is open, the bear and the cameras ignore the input.
+  - **Main page:** fly camera on or off, overlay on or off, new zone,
+    seed (left and right change it, A makes that zone), view distance
+    (from the smog, 300, 800 or 3000 m), the "Limbs" page, "Save
+    playtest" and the "Tests" page.
+  - **Limbs page.** A takes a limb away or gives it back. These are
+    the keys 1 to 4 for the gamepad (`set_limb()` on the bear). "Give
+    back all limbs" is the key 0 (`restore_limbs()`).
+  - **Save playtest** calls `save_playtest()` on the `bf_recorder`
+    group. The recorder writes the report and the zip, and the
+    recording goes on.
+  - **A tap of Back is a mark.** A hold of 0.6 s is free for the menu.
+  - **The fly camera works on the gamepad.** The left stick moves, the
+    right stick looks, the triggers go down and up, and the right
+    shoulder button goes faster.
+- **`BfTestRunner`** runs the tests of the "Tests" page (S-113). Each
+  test flies a test camera along a fixed path: a closed polygon of 8
+  sides around the centre of the zone (radius 500 m, 60 m/s, 25 m above
+  the ground). The runner measures each frame and writes one row for
+  each part of the path (fps, 1% low, p95, worst frame, draw calls,
+  primitives, render time) into the `## Tests` section of `report.md`
+  and into `tests/*.json` in the zip.
+  - **Benchmark:** the path over seeds 1, 7 and 42.
+  - **Draw distance test:** the path over seed 7 at the view distances
+    300, 800 and 3000 m.
+  - **Stop.** B or Esc stops a test. The result so far is saved. After
+    a test, the camera, the seed and the view distance go back.
+  - **While a test runs,** the recorder takes no screenshots and marks
+    its hitches as "loading", so they do not disturb the numbers.
+  - **From the command line** (cloud, CI): `-- --bf-test=benchmark` or
+    `-- --bf-test=draw-distance` starts the test when the first zone
+    shows and quits the game at the end. Add `--bf-record` for a
+    recording without a window.
+- **`BfViewDistance`** gives the view distance to the cameras (far
+  plane) and to Terrain3D (the number of mesh rings). The dev menu and
+  the tests can force a distance. By default the distance is 3000 m
+  and does not follow the smog yet (S-118).
 - **`BfFollowCamera`** is the third-person camera. The mouse or the
   right stick turns it around the bear. It reads the heightmap and
   comes nearer when the ground is in the way.
@@ -289,9 +329,12 @@ makes the zip of the crashed session.
 | Let go of a wall | C | B |
 | Turn the camera | mouse | right stick |
 | Release the mouse | Esc (click the window to hold it again) | |
-| Fly camera | F2 | |
-| Debug overlay | F3 | |
-| New zone | F4 | |
+| Dev menu | F10 | hold Back/Select for 0.6 s |
+| Remove or give back a limb | 1 to 4, 0 | dev menu, Limbs page |
+| Fly camera | F2 | dev menu, then the sticks and triggers |
+| Debug overlay | F3 | dev menu |
+| New zone | F4 | dev menu |
+| Save playtest | | dev menu |
 | Playtest mark | F9 | tap Back/Select |
 | Remove or give back a limb (debug) | 1, 2, 3, 4 | (dev menu, S-113) |
 | Give back all limbs (debug) | 0 | (dev menu, S-113) |
@@ -507,8 +550,16 @@ Mikey does not build on his laptop (decision R10).
   On a slow computer, each frame is longer than 50 ms; the second
   rule stops an event in each frame. "Low fps" events show the slow
   parts.
-- **A tap of Back is shorter than 0.4 s.** A longer hold is free for
-  the dev menu (S-113).
+- **A tap of Back is shorter than 0.4 s.** A hold of 0.6 s opens the
+  dev menu (S-113). A hold between 0.4 s and 0.6 s does nothing.
+- **The menu does not stop the game.** The world goes on behind the
+  menu, but the bear and the cameras ignore the input. A tap of Back in
+  the menu also saves a mark.
+- **The test path** (S-113) is a polygon with 8 sides at 500 m from the
+  centre, flown at 60 m/s, 25 m above the highest ground in a few places
+  along the path. The look is 12 degrees below the horizon along the
+  path. Each run takes about 50 s plus the time to make the zone. The
+  draw distance test uses only seed 7, to keep it short.
 - **Hitches during a zone load do not count.** From the start until
   1.5 s after a new zone shows, hitches are "loading." The report
   counts them but does not list them as the worst hitches.

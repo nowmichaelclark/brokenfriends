@@ -1,6 +1,6 @@
 # State
 
-Updated: 2026-11-14 (S-125 playtest read; long freezes are the top problem; handoff to a new Brain session, see `HANDOFF.md`)
+Updated: 2026-11-14 (Brain: combined run S-138 does S-136, then S-129, on Fable 5.2)
 
 Write this file again each time. Do not add to the end (90 lines at most).
 
@@ -29,18 +29,19 @@ To start a session, Mikey opens the place in the "Where" column. He
 selects the model and effort, then types "Run S-NNN". At the end of a
 session, the session deletes its row. It changes the rows that it
 unblocks to **ready**. It adds follow-up rows at the bottom.
-Next number: S-138.
+Next number: S-139.
 
 | # | Session | Where | Model, effort | Status |
 |---|---|---|---|---|
+| S-138 | **Combined run: S-136, then S-129** ("Combined runs" below). Do S-136 fully first (freezes; play the game on this laptop to see the freeze). Then do S-129. If the usage runs low, finish the current row, push, and stop; the other row stays ready. | Claude Code on Mikey's laptop | Fable 5.2, medium | **ready** |
 | S-124 | **Build: playtest replay** (`diagnostics.md`, "Later: replay"). Record the input of each physics tick in the playtest. A headless command replays a playtest with its seed and compares the bear's path with the recorded positions. | Claude Code | Opus 5.5, high | **ready** |
 | S-108 | **Build: ground scatter.** Make rocks, pebbles and dead shrubs in Rust. Draw them with MultiMesh and visibility ranges. Stay inside the speed numbers from the S-125 playtest. Put each prop in the group `bf_view_ranged` (S-118): it gets the visibility range from the smog. For the shrubs, look at TanTan's `shrubbery` crate (space colonization, deterministic, MIT/Apache) [unverified: whether it works without Bevy]. | Claude Code | Sonnet 5.5, medium | **ready** |
 | S-126 | **Build: tune the walk animation from the playtest.** Read Mikey's notes and `anim_us` in `samples.jsonl` of the playtest. Change the defaults on `BfBearModel` (stride, bounce, waddle, springs) and keep `AnimParams::default()` in `anim.rs` the same. Fix what looks wrong at the marks. | Claude Code | Sonnet 5.5, medium | **ready** |
-| S-129 | **Build: limb-ripping obstacles** (`obstacles.md`). Thorn snags, rock teeth and falling rocks that pin a limb. They use the seam health and limb loss of S-114: `BfBear::damage_seam` and the events `seam:*` and `limb_lost:*`. | Claude Code | Opus 5.5, high | **ready** |
+| S-129 | **Build: limb-ripping obstacles** (`obstacles.md`). Thorn snags, rock teeth and falling rocks that pin a limb. They use the seam health and limb loss of S-114: `BfBear::damage_seam` and the events `seam:*` and `limb_lost:*`. | Claude Code | Opus 5.5, high | **ready**, in S-138 |
 | S-130 | **Build: tune the climbing hands and the gaits from the playtest** (R18). Read Mikey's notes and the `limb_off`, `gait` and `grab` events. Change the defaults of the holds (`hold_step_m`, `hand_reach`, `hang_*`) and of the gaits (hop, lie, crawl, the speed scales on `Bear`). Keep `AnimParams::default()` and `GaitTuning::default()` the same as the exported defaults. | Claude Code | Sonnet 5.5, medium | **ready** |
 | S-131 | **Build: tune the smoke edge from the playtest** (R14, `demo-1.md`). Read Mikey's notes, `smoke_m` and `smoke_s` in `samples.jsonl`, and the events `smoke_enter`, `smoke_leave` and `death:smoke:*` with their shots. Change the defaults on `BfSmokeEdge` (limits, wall speed, opacity, haze, card count). Check the frame time near the wall (overdraw) and cut cards if it is high. | Claude Code | Sonnet 5.5, medium | **ready** |
 | S-132 | **Build: tune the obstacles from the playtest.** Read Mikey's notes and "Obstacles" in `report.md` (hits, falls, escapes and launch results by type). Change the defaults on `Obstacles` and `Terrain`, and `SimParams::default()` with them. Include the stepping stones, updrafts and sinking sand of S-128. Check that the dust and steam show in the Mobile renderer (marks and `shots/`). | Claude Code | Sonnet 5.5, medium | **ready** |
-| S-136 | **Build: fix the long freezes** (S-125 notes in `play-notes.md`). Find the cause of the 5 s freezes in the first minute at the seed 1 start, and of the 950 ms freeze every few minutes (also in the benchmark). Check the "script time, process" number (15.6 ms on average, more than the median frame). Add recorder probes if the cause is not clear, so the next playtest shows it. Do this row first. | Claude Code | Opus 5.5, high | **ready** |
+| S-136 | **Build: fix the long freezes** (S-125 notes in `play-notes.md`). Find the cause of the 5 s freezes in the first minute at the seed 1 start, and of the 950 ms freeze every few minutes (also in the benchmark). Check the "script time, process" number (15.6 ms on average, more than the median frame). Add recorder probes if the cause is not clear, so the next playtest shows it. Do this row first. | Claude Code | Opus 5.5, high | **ready**, in S-138 |
 | S-137 | **Play: the integrated-graphics test.** On the Vivobook (Intel integrated graphics), download the newest zip, run the Benchmark, the Draw distance test and the Autoplay tour from the Tests page, then play for 10 minutes. Send the zip. | Mikey's Vivobook | Mikey | waiting on S-136 |
 | S-109 | **Brain** with Mikey: play the full demo, decide what to fix, and plan demo 2 (caves). | Project chat | Opus 5.5, medium | waiting on S-108 |
 | S-134 | **Build: fix what the first nightly autoplay finds** (`diagnostics.md`, "Autoplay"). Read `autoplay-nightly.md` on the `game-latest` release and the "Autoplay" notes of the game builds. Fix the bugs that it shows (falls through the ground, errors, many stuck or climb loop events at one place). If a task of the tour is often "missed" on a seed, make the bot better (`playtest/autoplay.rs`). Also look at the small put-back (0.26 m) on seed 7 at the stepping stones near (-256, 201): the collision and the heightmap do not agree there. | Claude Code | Sonnet 5.5, medium | waiting on the first nightly run (after the push of S-133) |

@@ -71,13 +71,14 @@ at the start of seed 1, and a freeze of about 950 ms every few
 minutes (`play-notes.md`, S-125). S-136 fixes them.
 
 Recommended order:
-1. **S-136**, fix the freezes (Opus 5.5, high).
+1. **S-138**, a combined run on Fable 5.2 (Mikey, 2026-11-14): S-136
+   (fix the freezes), then S-129 (limb-ripping obstacles).
 2. **S-137**, Mikey's test on the Vivobook with integrated graphics.
 3. The tuning rows from the S-125 playtest, one at a time: S-132
    (obstacles: launch vents miss too often and tear both legs off;
    rolling stones never hit), S-135 (tumble and seams: legs come off
    too easily), S-126, S-130, S-131 (Sonnet 5.5, medium).
-4. S-108 (ground scatter) and S-129 (limb-ripping obstacles).
+4. S-108 (ground scatter), and S-129 if S-138 did not reach it.
 5. S-109, a Brain session: play the full demo, decide what to fix,
    plan demo 2 (caves, `tech.md` and `research/caves-and-sdf.md`).
 

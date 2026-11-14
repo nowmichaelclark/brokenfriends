@@ -31,6 +31,9 @@ pub struct BearSample {
     pub stamina: f32,
     /// The arms and legs that the bear has.
     pub limbs: u32,
+    /// The time of one animation step of the bear, in microseconds.
+    #[serde(default)]
+    pub anim_us: f32,
 }
 
 /// The camera in one sample.

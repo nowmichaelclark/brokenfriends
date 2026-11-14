@@ -30,7 +30,8 @@ feel and taste. Those are the only questions for him.
   viewport render-time measurement, if available)
 - draw calls, primitives, objects, video memory, static memory
 - the bear: position, speed, state (walk, jog, jump, climb, slide,
-  tumble), slope, ground type, grip, stamina, limbs
+  tumble), slope, ground type, grip, stamina, limbs, and the time of
+  one animation step in microseconds (`anim_us`)
 - the camera: position and direction
 - the input: stick directions and buttons held
 

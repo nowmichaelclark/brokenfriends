@@ -88,6 +88,39 @@ what it assumes.
     wet yet.
   - **Cost.** About 10 000 triangles and 8 draw calls (plus the
     shadow passes). The build takes about 9 ms at the start.
+- **The animation** (R18, `rust/game/src/anim.rs`). The bear has no
+  skeleton and no animation clips. In each physics step, Rust gives
+  each part a new transform. The movement code stays in control; the
+  animation only follows it.
+  - **Stride wheel.** The distance that the bear moves turns a wheel.
+    The wheel tells each leg when to stand and when to swing. A fast
+    bear makes longer strides.
+  - **Planted feet.** A foot that stands stays at one place in the
+    world. One ray finds the ground for each step. A bear that stands
+    moves a foot back below its hip if the foot is too far away.
+  - **Aim IK.** A teddy bear has no knees or elbows. Each limb turns at
+    its joint toward its target and stretches a little. IK (inverse
+    kinematics) finds the turn of a limb from the place of its end.
+  - **Body.** It bounces with the steps and rolls toward the foot that
+    stands. It tilts with acceleration, leans with the speed and the
+    slope, and sways a little when the bear stands.
+  - **Ground.** On a slope, each foot is at the height of its ground,
+    and the body comes down. On sand, the feet sink 1.5 cm and the
+    steps are higher. On low grip (sand, ash rock), the planted feet
+    slide and the steps become shorter and faster.
+  - **Jump.** The body stretches at the start of a jump and squashes
+    on the landing. In the air, the arms go up and the legs hang. In a
+    long fall, the arms and the legs wave.
+  - **Springs.** A spring type (`spring.rs`, `SecondOrder`) makes the
+    soft parts. The paws, the head, the ears and the hump stay behind
+    when the bear accelerates, and then swing back. The hump is a part
+    of the body mesh; the fur shader moves it.
+  - **On a wall,** the pose is the same as before: the arms reach up,
+    and the limbs swing with the climb distance (S-122 changes this).
+  - **Cost.** One step takes about 7 microseconds in the cloud
+    container. It uses 2 ray casts at most while the bear moves, and
+    none while the bear stands. The playtest recorder writes the time
+    (`anim_us` in `samples.jsonl`).
 - **`BfFollowCamera`** is the third-person camera. The mouse or the
   right stick turns it around the bear. It reads the heightmap and
   comes nearer when the ground is in the way.
@@ -193,9 +226,11 @@ makes the zip of the crashed session.
 | Playtest mark | F9 | tap Back/Select |
 
 All tuning values of the bear and the camera are in the Inspector
-(select `Bear` or `FollowCamera`). The grip of each ground type is on
-`Terrain`. The movement maths is in `rust/game/src/motion.rs` and
-`rust/game/src/climb.rs`, with unit tests.
+(select `Bear` or `FollowCamera`). The values of the animation are on
+`Bear/Model`. The grip of each ground type is on `Terrain`. The
+movement maths is in `rust/game/src/motion.rs` and
+`rust/game/src/climb.rs`, with unit tests. The animation maths is in
+`anim.rs` and `spring.rs`, with unit tests.
 
 The ground colours are: pale ochre on flat ground, rust and ash bands
 on rock (steeper than about 35 to 50 degrees), and pale sand in
@@ -310,10 +345,28 @@ Mikey does not build on his laptop (decision R10).
   the terrain only. It does not avoid other objects yet.
 - **Start point.** The flattest place within 200 m of the centre. This
   can be a hilltop.
-- **The bear has almost no animation.** The body turns to the move
-  direction. On a wall, the belly is on the wall, the arms turn up at
-  the shoulders, and the arms and legs swing a little with the climb
-  distance. The arms and legs do not move during a walk (S-120).
+- **The walk is a small run** (S-120). The legs are 14 cm long, and
+  the bear walks at 1.4 m/s. Thus each foot is on the ground for only
+  about 30% of a stride, and the bear bounces from foot to foot. It
+  makes about 8 steps each second at the walk and about 10 at the jog.
+  A slow bear (stick pushed a little) makes a real walk. Mikey: is
+  this too busy, or is it right for a toy?
+- **The size of the movements** (S-120). The bounce, the waddle, the
+  arm swing, the squash and the wobble of the ears and the hump are
+  first guesses. Nobody saw them move in the Mobile renderer
+  [unverified]. Mikey tells Claude what feels wrong.
+- **The feet tilt with the legs.** A leg is one stuffed piece with no
+  ankle. A foot in front of the hip stands on its heel, and a foot
+  behind the hip stands on its toes.
+- **Sand does not slow the bear.** On sand, the feet sink and slip,
+  but the speed stays the same. A slower bear is a change to the
+  movement rules, so Mikey decides it.
+- **The animation runs in the physics step** (60 times each second),
+  as the movement does. A screen with more than 60 Hz shows no extra
+  steps.
+- **The wall pose did not change.** On a wall, the belly is on the
+  wall, the arms turn up at the shoulders, and the arms and legs swing
+  a little with the climb distance (S-122).
 - **The look of the bear** (R17). The fur is honey tan, the pads are
   pale cream, and the thread is almost black. Mikey has not seen it
   in the Mobile renderer yet [unverified]. The screenshots came from

@@ -5,6 +5,7 @@
 
 use godot::prelude::*;
 
+mod anim;
 mod atmosphere;
 mod bear;
 mod bear_model;
@@ -16,6 +17,7 @@ mod motion;
 mod overlay;
 mod playtest;
 mod recorder;
+mod spring;
 mod stamina;
 mod terrain;
 

@@ -79,6 +79,7 @@ methods are not published.
 
 1. S-119 (done): the bear model in code, with separate parts, fur and
    the wet value.
-2. S-120: animation part 1, the body and the walk.
+2. S-120 (done): animation part 1, the body and the walk
+   (`rust/game/src/anim.rs`, `spring.rs`).
 3. S-122: animation part 2, climbing hands and limb sets.
 4. S-114: tumbling, tearing and lost limbs.

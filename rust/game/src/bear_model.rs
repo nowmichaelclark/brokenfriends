@@ -1,6 +1,7 @@
-//! The visible teddy bear: meshes from `bear_shape`, the fur material
-//! and the wet value of each part.
+//! The visible teddy bear: meshes from `bear_shape`, the fur material,
+//! the wet value of each part, and the pose of the parts (`anim`).
 
+use crate::anim::{AnimInput, AnimParams, BearAnim, Ground, Pose, Rig, LIMBS};
 use crate::bear_shape::{self, PartId, Recipe, Seam};
 use godot::classes::image::Format;
 use godot::classes::mesh::{ArrayType, PrimitiveType};
@@ -29,6 +30,10 @@ uniform float worn = 0.35;
 uniform float rim = 0.2;
 uniform float fuzz = 0.0015;
 uniform float wet : hint_range(0.0, 1.0) = 0.0;
+// A soft place of the part (the hump) that the animation moves.
+uniform vec3 wobble_centre = vec3(0.0);
+uniform float wobble_radius = 0.0;
+uniform vec3 wobble_offset = vec3(0.0);
 
 varying vec3 obj_pos;
 varying vec3 obj_normal;
@@ -43,6 +48,10 @@ void vertex() {
     // A little noise on the fur makes the outline fuzzy. Wet fur is flat.
     float fur = COLOR.r * (1.0 - wet);
     VERTEX += NORMAL * fuzz * fur * hash(floor(VERTEX * 400.0));
+    if (wobble_radius > 0.0) {
+        float near = 1.0 - smoothstep(0.0, wobble_radius, distance(obj_pos, wobble_centre));
+        VERTEX += wobble_offset * near;
+    }
 }
 
 vec4 triplanar(vec3 p, vec3 w) {
@@ -144,7 +153,209 @@ pub struct BfBearModel {
     #[init(val = 0.011)]
     mesh_cell_m: f32,
 
+    /// Turns the animation on. Without it, the parts keep their last pose.
+    #[export]
+    #[init(val = true)]
+    animate: bool,
+
+    /// The length of one full stride (two steps) of a slow bear, in metres.
+    #[export]
+    #[init(val = 0.13)]
+    stride_base_m: f32,
+
+    /// The stride gets this much longer for each m/s of speed, in metres.
+    #[export]
+    #[init(val = 0.165)]
+    stride_per_speed: f32,
+
+    /// How far the body moves while one foot stands, in metres. Less is more of a run.
+    #[export]
+    #[init(val = 0.11)]
+    stance_length_m: f32,
+
+    /// The height of a step in metres.
+    #[export]
+    #[init(val = 0.03)]
+    step_height_m: f32,
+
+    /// The time of a step of a bear that stands, in seconds.
+    #[export]
+    #[init(val = 0.14)]
+    idle_step_time: f32,
+
+    /// A bear that stands moves a foot that is this far from its hip, in metres.
+    #[export]
+    #[init(val = 0.025)]
+    idle_step_distance_m: f32,
+
+    /// The distance from the middle of the sole to the toes, in metres.
+    #[export]
+    #[init(val = 0.035)]
+    foot_half_length_m: f32,
+
+    /// How far the body moves up and down with the steps, in metres.
+    #[export]
+    #[init(val = 0.008)]
+    bob_height_m: f32,
+
+    /// How far the body rolls toward the foot that stands, in degrees.
+    #[export]
+    #[init(val = 4.0)]
+    waddle_degrees: f32,
+
+    /// How far the hips turn with the legs, in degrees.
+    #[export]
+    #[init(val = 3.0)]
+    twist_degrees: f32,
+
+    /// The forward lean for each m/s of speed, in degrees.
+    #[export]
+    #[init(val = 2.0)]
+    speed_lean_degrees: f32,
+
+    /// The tilt for each m/s² of acceleration, in degrees.
+    #[export]
+    #[init(val = 0.35)]
+    accel_tilt_degrees: f32,
+
+    /// The forward lean of a bear that stands, in degrees.
+    #[export]
+    #[init(val = 1.7)]
+    idle_slump_degrees: f32,
+
+    /// How far a bear that stands sways, in degrees.
+    #[export]
+    #[init(val = 0.7)]
+    idle_sway_degrees: f32,
+
+    /// The part of the slope that the body leans with (0 to 1).
+    #[export]
+    #[init(val = 0.4)]
+    slope_lean: f32,
+
+    /// The frequency of the body tilt spring in Hz. Higher is stiffer.
+    #[export]
+    #[init(val = 2.2)]
+    tilt_frequency: f32,
+
+    /// The damping of the body tilt spring. Below 1, the body swings.
+    #[export]
+    #[init(val = 0.45)]
+    tilt_damping: f32,
+
+    /// How much the body squashes for each m/s of landing speed.
+    #[export]
+    #[init(val = 0.9)]
+    land_squash: f32,
+
+    /// How much the body stretches at the start of a jump.
+    #[export]
+    #[init(val = 1.5)]
+    jump_stretch: f32,
+
+    /// The frequency of the squash spring in Hz.
+    #[export]
+    #[init(val = 3.5)]
+    squash_frequency: f32,
+
+    /// The damping of the squash spring. Below 1, the body bounces.
+    #[export]
+    #[init(val = 0.35)]
+    squash_damping: f32,
+
+    /// How deep a foot sinks into loose sand, in metres.
+    #[export]
+    #[init(val = 0.015)]
+    sink_depth_m: f32,
+
+    /// The part of the body movement that a foot with no grip slides (0 to 1).
+    #[export]
+    #[init(val = 0.6)]
+    slip_amount: f32,
+
+    /// With this ground grip or more, a foot does not slip (0 to 1).
+    #[export]
+    #[init(val = 0.7)]
+    slip_firm_grip: f32,
+
+    /// How far the arms swing at the walk speed, in degrees.
+    #[export]
+    #[init(val = 26.0)]
+    arm_swing_degrees: f32,
+
+    /// The frequency of the paw springs in Hz. Lower is floppier.
+    #[export]
+    #[init(val = 3.5)]
+    arm_frequency: f32,
+
+    /// The damping of the paw springs.
+    #[export]
+    #[init(val = 0.5)]
+    arm_damping: f32,
+
+    /// How far a paw stays behind for each m/s² of acceleration, in metres.
+    #[export]
+    #[init(val = 0.0015)]
+    arm_inertia: f32,
+
+    /// The part of the body tilt that the head removes, to stay level (0 to 1).
+    #[export]
+    #[init(val = 0.6)]
+    head_level: f32,
+
+    /// How far the head turns into a turn, in radians for each rad/s.
+    #[export]
+    #[init(val = 0.04)]
+    head_turn: f32,
+
+    /// The frequency of the head spring in Hz.
+    #[export]
+    #[init(val = 3.0)]
+    head_frequency: f32,
+
+    /// The damping of the head spring.
+    #[export]
+    #[init(val = 0.5)]
+    head_damping: f32,
+
+    /// How far an ear bends for each m/s² of acceleration, in degrees.
+    #[export]
+    #[init(val = 0.7)]
+    ear_flop_degrees: f32,
+
+    /// The frequency of the ear springs in Hz.
+    #[export]
+    #[init(val = 5.5)]
+    ear_frequency: f32,
+
+    /// The damping of the ear springs. Lower is more wobble.
+    #[export]
+    #[init(val = 0.25)]
+    ear_damping: f32,
+
+    /// How far the hump moves for each m/s² of acceleration, in millimetres.
+    #[export]
+    #[init(val = 0.4)]
+    hump_wobble_mm: f32,
+
+    /// The frequency of the hump spring in Hz.
+    #[export]
+    #[init(val = 4.5)]
+    hump_frequency: f32,
+
+    /// The damping of the hump spring.
+    #[export]
+    #[init(val = 0.3)]
+    hump_damping: f32,
+
     parts: Vec<(PartId, Gd<MeshInstance3D>, Gd<ShaderMaterial>)>,
+    /// The fixed points that the animation needs.
+    rig: Option<Rig>,
+    anim: BearAnim,
+    /// The last hump offset that the body material got.
+    hump: Vector3,
+    /// The smoothed time of one animation step, in microseconds.
+    anim_us: f32,
     seams: Vec<(PartId, Option<Seam>)>,
     /// The wet value of each part, in the order of `PartId::ALL`.
     wet: Vec<f32>,
@@ -194,6 +405,12 @@ impl BfBearModel {
             .unwrap_or(0.0)
     }
 
+    /// Gives the time of one animation step, in microseconds (smoothed).
+    #[func]
+    pub fn anim_microseconds(&self) -> f32 {
+        self.anim_us
+    }
+
     /// Gives the number of triangles of all parts.
     #[func]
     pub fn triangle_count(&self) -> i64 {
@@ -214,6 +431,90 @@ impl BfBearModel {
     #[allow(dead_code)] // S-114 uses the seams for tearing.
     pub fn seam(&self, id: PartId) -> Option<Seam> {
         self.seams.iter().find(|(p, _)| *p == id).and_then(|s| s.1)
+    }
+
+    /// Poses the parts for one physics step. The bear calls this.
+    pub fn animate(&mut self, input: &AnimInput, ground: &mut dyn Ground) {
+        let Some(rig) = self.rig else {
+            return;
+        };
+        if !self.animate {
+            return;
+        }
+        let start = std::time::Instant::now();
+        let params = self.anim_params();
+        let pose = self.anim.update(&rig, &params, input, ground);
+        self.apply_pose(&pose);
+        let us = start.elapsed().as_secs_f32() * 1e6;
+        self.anim_us += (us - self.anim_us) * 0.05;
+    }
+
+    /// Gives the pose to the nodes of the parts.
+    fn apply_pose(&mut self, pose: &Pose) {
+        for (id, node, material) in &mut self.parts {
+            match *id {
+                PartId::Body => {
+                    node.set_transform(to_transform(&pose.body));
+                    let hump = to_vector(pose.hump);
+                    if hump.distance_to(self.hump) > 1e-5 {
+                        self.hump = hump;
+                        material.set_shader_parameter("wobble_offset", &hump.to_variant());
+                    }
+                }
+                PartId::Head => node.set_basis(to_basis(pose.head)),
+                PartId::LeftEar => node.set_basis(to_basis(pose.ears[0])),
+                PartId::RightEar => node.set_basis(to_basis(pose.ears[1])),
+                limb => {
+                    if let Some(i) = LIMBS.iter().position(|&l| l == limb) {
+                        node.set_transform(to_transform(&pose.limbs[i]));
+                    }
+                }
+            }
+        }
+    }
+
+    /// Gives the tuning values of the animation from the exported fields.
+    fn anim_params(&self) -> AnimParams {
+        AnimParams {
+            stride_base: self.stride_base_m.max(0.02),
+            stride_per_speed: self.stride_per_speed.max(0.0),
+            stance_length: self.stance_length_m.max(0.01),
+            step_height: self.step_height_m.max(0.0),
+            idle_step_time: self.idle_step_time.max(0.02),
+            idle_step_distance: self.idle_step_distance_m.max(0.005),
+            foot_half_length: self.foot_half_length_m.max(0.0),
+            bob_height: self.bob_height_m,
+            waddle: self.waddle_degrees.to_radians(),
+            twist: self.twist_degrees.to_radians(),
+            speed_lean: self.speed_lean_degrees.to_radians(),
+            accel_tilt: self.accel_tilt_degrees.to_radians(),
+            idle_slump: self.idle_slump_degrees.to_radians(),
+            idle_sway: self.idle_sway_degrees.to_radians(),
+            slope_lean: self.slope_lean.clamp(0.0, 1.0),
+            tilt_frequency: self.tilt_frequency,
+            tilt_damping: self.tilt_damping,
+            land_squash: self.land_squash.max(0.0),
+            jump_stretch: self.jump_stretch.max(0.0),
+            squash_frequency: self.squash_frequency,
+            squash_damping: self.squash_damping,
+            sink_depth: self.sink_depth_m.max(0.0),
+            slip_amount: self.slip_amount.clamp(0.0, 1.0),
+            firm_grip: self.slip_firm_grip.clamp(0.01, 1.0),
+            arm_swing: self.arm_swing_degrees.to_radians(),
+            arm_frequency: self.arm_frequency,
+            arm_damping: self.arm_damping,
+            arm_inertia: self.arm_inertia.max(0.0),
+            head_level: self.head_level.clamp(0.0, 1.0),
+            head_turn: self.head_turn,
+            head_frequency: self.head_frequency,
+            head_damping: self.head_damping,
+            ear_flop: self.ear_flop_degrees.to_radians(),
+            ear_frequency: self.ear_frequency,
+            ear_damping: self.ear_damping,
+            hump_wobble: self.hump_wobble_mm * 0.001,
+            hump_frequency: self.hump_frequency,
+            hump_damping: self.hump_damping,
+        }
     }
 
     fn build(&mut self) {
@@ -256,6 +557,15 @@ impl BfBearModel {
             self.parts.push((part.id, node, material));
             self.seams.push((part.id, part.seam));
         }
+        self.rig = Rig::from_points(parts.iter().map(|p| (p.id, p.joint, p.tip)));
+        if let (Some(rig), Some((_, _, body))) = (
+            self.rig,
+            self.parts.iter_mut().find(|p| p.0 == PartId::Body),
+        ) {
+            let centre = to_vector(rig.hump_centre);
+            body.set_shader_parameter("wobble_centre", &centre.to_variant());
+            body.set_shader_parameter("wobble_radius", &rig.hump_radius.to_variant());
+        }
         self.apply_look();
         godot_print!(
             "BfBearModel: {} parts, {} triangles, made in {:.1} ms",
@@ -288,6 +598,26 @@ impl BfBearModel {
             material.set_shader_parameter("wet", &wet.to_variant());
         }
     }
+}
+
+fn to_vector(v: glam::Vec3) -> Vector3 {
+    Vector3::new(v.x, v.y, v.z)
+}
+
+fn to_basis(q: glam::Quat) -> Basis {
+    Basis::from_quaternion(Quaternion::new(q.x, q.y, q.z, q.w))
+}
+
+fn to_transform(a: &glam::Affine3A) -> Transform3D {
+    let m = a.matrix3;
+    Transform3D::new(
+        Basis::from_cols(
+            to_vector(m.x_axis.into()),
+            to_vector(m.y_axis.into()),
+            to_vector(m.z_axis.into()),
+        ),
+        to_vector(a.translation.into()),
+    )
 }
 
 /// Makes the fur texture with mipmaps.

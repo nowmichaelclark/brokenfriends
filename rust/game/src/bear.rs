@@ -1,7 +1,7 @@
 //! The teddy bear: the player.
 
+use crate::anim::{AnimInput, AnimMode, Ground, LIMBS};
 use crate::bear_model::BfBearModel;
-use crate::bear_shape::PartId;
 use crate::climb::{
     find_grab, slope_angle, stamina_drain, wall_axes, wall_input, Climb, ClimbParams, Hit, Step,
     Surface,
@@ -24,6 +24,9 @@ const HALF_HEIGHT: f32 = 0.20;
 /// The collider metadata that gives the grip of an object (0 to 1).
 /// Without it, the terrain gives the grip.
 pub const GRIP_META: &str = "bf_grip";
+/// The collider metadata that gives the softness of an object (0 to 1).
+/// Without it, the terrain gives the softness: only sand is soft.
+pub const SOFT_META: &str = "bf_soft";
 
 /// What the bear does now.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -89,6 +92,31 @@ impl Surface for RaySurface {
     }
 }
 
+impl Ground for RaySurface {
+    fn softness(&mut self, hit: &Hit) -> f32 {
+        let collider = (hit.id != 0)
+            .then(|| Gd::<Object>::try_from_instance_id(InstanceId::from_i64(hit.id as i64)).ok())
+            .flatten();
+        if let Some(collider) = collider {
+            if collider.has_meta(SOFT_META) {
+                let soft = collider.get_meta(SOFT_META).try_to::<f32>();
+                return soft.unwrap_or(0.0).clamp(0.0, 1.0);
+            }
+        }
+        let Some(terrain) = &mut self.terrain else {
+            return 0.0;
+        };
+        // Only the loose sand of the riverbeds is soft.
+        let at = [hit.point.x.to_variant(), hit.point.z.to_variant()];
+        let name = terrain.call("ground_name_at", &at).to_string();
+        if name == "sand" {
+            1.0
+        } else {
+            0.0
+        }
+    }
+}
+
 /// What the player pushes now.
 #[derive(Clone, Copy, Default)]
 struct Controls {
@@ -99,14 +127,6 @@ struct Controls {
     /// The let-go button (R21).
     let_go: bool,
 }
-
-/// The arms and the legs, in the order of `BfBear::limb_swing`.
-const LIMBS: [PartId; 4] = [
-    PartId::LeftArm,
-    PartId::RightArm,
-    PartId::LeftLeg,
-    PartId::RightLeg,
-];
 
 /// The group that holds the bear. Other nodes find it there.
 pub const BEAR_GROUP: &str = "bf_bear";
@@ -345,8 +365,6 @@ pub struct BfBear {
     /// The visible bear. It turns; the collision shape does not.
     body: Option<Gd<Node3D>>,
     model: Option<Gd<BfBearModel>>,
-    /// The swing of the arms and the legs around their joints, in radians.
-    limb_swing: [f32; 4],
     base: Base<CharacterBody3D>,
 }
 
@@ -515,6 +533,11 @@ impl BfBear {
         d.set("stamina", self.stamina);
         d.set("exhausted", self.exhausted);
         d.set("limbs", LIMBS.len() as i64);
+        let anim_us = self
+            .model
+            .as_ref()
+            .map_or(0.0, |m| m.bind().anim_microseconds());
+        d.set("anim_us", anim_us);
         d.set("stick_held", self.last_wish.length() > 0.01);
         d
     }
@@ -828,13 +851,14 @@ impl BfBear {
         }
     }
 
-    /// Turns the body. On the ground, the body stands and looks along
-    /// `yaw`. On a wall, the belly is on the wall and the head is up.
+    /// Turns the model and poses its parts. On the ground, the model
+    /// stands and looks along `yaw`. On a wall, the belly is on the wall
+    /// and the head is up. The animation (`anim.rs`) poses the parts.
     fn pose_body(&mut self, delta: f32) {
         let Some(mut body) = self.body.clone() else {
             return;
         };
-        let (target, rate, travel) = match self.mode {
+        let (target, rate, mode) = match self.mode {
             Mode::Climb(climb) => {
                 let (_, up) = wall_axes(climb.normal);
                 let (up, forward) = (to_godot(up), to_godot(-climb.normal));
@@ -842,43 +866,55 @@ impl BfBear {
                 (
                     basis.get_quaternion(),
                     self.climb_turn_rate,
-                    Some(climb.travel),
+                    AnimMode::Climb {
+                        travel: climb.travel,
+                    },
                 )
             }
-            _ => (
+            Mode::Mantle { .. } => (
                 Quaternion::from_axis_angle(Vector3::UP, self.yaw),
                 self.climb_turn_rate * 2.5,
-                None,
+                AnimMode::Mantle,
+            ),
+            Mode::Walk => (
+                Quaternion::from_axis_angle(Vector3::UP, self.yaw),
+                self.climb_turn_rate * 2.5,
+                AnimMode::Ground,
             ),
         };
         let now = body.get_basis().get_quaternion();
         let k = 1.0 - (-rate.max(0.0) * delta).exp();
-        let basis = Basis::from_quaternion(now.slerp(target, k).normalized());
+        let turn = now.slerp(target, k).normalized();
+        let basis = Basis::from_quaternion(turn);
         // The body turns around the centre of the bear, not around the feet.
         let pivot = Vector3::new(0.0, HALF_HEIGHT, 0.0);
+        let place = pivot - basis * pivot;
         body.set_basis(basis);
-        body.set_position(pivot - basis * pivot);
+        body.set_position(place);
 
-        // On a wall, the arms reach up. The arms and the legs move with
-        // the distance that the bear climbs.
-        let Some(model) = self.model.clone() else {
+        let Some(mut model) = self.model.clone() else {
             return;
         };
-        let model = model.bind();
-        for (i, id) in LIMBS.into_iter().enumerate() {
-            let Some(mut limb) = model.part(id) else {
-                continue;
-            };
-            let mut wanted = 0.0;
-            if let Some(travel) = travel {
-                let phase = travel * std::f32::consts::TAU / 0.24 + i as f32 * 2.2;
-                // A negative turn around X moves a limb forward and up.
-                let reach = if i < 2 { -2.6 } else { -0.2 };
-                wanted = reach + 0.3 * phase.sin();
-            }
-            self.limb_swing[i] += (wanted - self.limb_swing[i]) * k;
-            limb.set_basis(Basis::from_axis_angle(Vector3::RIGHT, self.limb_swing[i]));
-        }
+        let Some(mut ground) = self.surface() else {
+            return;
+        };
+        let on_floor = self.mode == Mode::Walk && self.base().is_on_floor();
+        let floor_normal = if on_floor {
+            to_glam(self.base().get_floor_normal())
+        } else {
+            Vec3::Y
+        };
+        let input = AnimInput {
+            dt: delta,
+            model: glam::Affine3A::from_rotation_translation(
+                glam::Quat::from_xyzw(turn.x, turn.y, turn.z, turn.w),
+                to_glam(self.base().get_global_position() + place),
+            ),
+            on_floor,
+            floor_normal,
+            mode,
+        };
+        model.bind_mut().animate(&input, &mut ground);
     }
 
     /// Reads the keys and the gamepad.

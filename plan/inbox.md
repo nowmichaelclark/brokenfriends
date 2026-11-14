@@ -29,3 +29,9 @@ sorts them.
 - Recorder: a frame-time graph (PNG) in each zip, so a hitch pattern shows at a glance.
 - Recorder: a small "REC" dot on the screen, so Mikey knows that the recorder runs (only if he wants it).
 - Before a public release, make the playtest recorder opt-in for other players (a setting, off by default). It records hardware data and screenshots. For Mikey's builds it stays always on (R22).
+- Animation: footstep events (dust puffs, sounds later) from the moment a foot is planted (`anim.rs`, build order step 11).
+- Animation: sand that slows the bear a little, if Mikey wants the ground to change the movement and not only the look.
+- Animation: the head looks at things (the camera target, a wall before a grab, a friend), not only into the turn.
+- Animation: a forward ray for the slope ahead, so the bear leans before it reaches a hill (`research/bear-animation.md`).
+- Animation: run the pose in the render frame with interpolation, if a screen with more than 60 Hz shows a stutter.
+- Animation: a debug view of the feet targets and the stride wheel in the F3 overlay or the dev menu.

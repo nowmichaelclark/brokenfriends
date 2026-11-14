@@ -362,6 +362,10 @@ pub struct PartDef {
     pub tubes: Vec<Tube>,
     /// The seam ring, in the space of the part (relative to the joint).
     pub seam: Option<Seam>,
+    /// A point that the animation uses, in bear space. For a leg, it is
+    /// the middle of the sole. For an arm, it is the paw. For the body,
+    /// it is the centre of the hump. For other parts, it is the joint.
+    pub tip: Vec3,
 }
 
 /// The mesh of one part, ready for Godot.
@@ -400,6 +404,8 @@ pub struct Part {
     pub joint: Vec3,
     pub mesh: PartMesh,
     pub seam: Option<Seam>,
+    /// The animation point of the part in bear space (see `PartDef`).
+    pub tip: Vec3,
 }
 
 /// Finds the surface along a ray that starts inside the shape.
@@ -474,6 +480,7 @@ pub fn define(recipe: &Recipe) -> Vec<PartDef> {
         pieces: vec![body],
         tubes: Vec::new(),
         seam: None,
+        tip: v(0.0, hip_y + 0.100, -0.030),
     });
 
     // The head with a long snout, a stitched nose and mouth, and button eyes.
@@ -555,6 +562,7 @@ pub fn define(recipe: &Recipe) -> Vec<PartDef> {
             centre: head_seam_centre - neck,
             ..head_seam.1
         }),
+        tip: neck,
     });
 
     // The ears: round, a little cupped, sewn on at the top of the head.
@@ -584,6 +592,7 @@ pub fn define(recipe: &Recipe) -> Vec<PartDef> {
                 axis: out,
                 radius: 0.018 * head,
             }),
+            tip: base,
         });
     }
 
@@ -630,6 +639,7 @@ pub fn define(recipe: &Recipe) -> Vec<PartDef> {
                 centre: seam_centre - shoulder,
                 ..seam
             }),
+            tip: paw_c + v(0.0, -0.019, 0.0),
         });
     }
 
@@ -668,6 +678,7 @@ pub fn define(recipe: &Recipe) -> Vec<PartDef> {
                 centre: seam_centre - hip,
                 ..seam
             }),
+            tip: v(sole.x, sole.y, 0.012),
         });
     }
 
@@ -725,6 +736,7 @@ fn seam_ring(
 
 fn scale_part(part: &mut PartDef, k: f32) {
     part.joint *= k;
+    part.tip *= k;
     for piece in &mut part.pieces {
         piece.blend *= k;
         for (sdf, _) in &mut piece.shapes {
@@ -945,6 +957,7 @@ pub fn mesh_part(def: &PartDef, cell: f32) -> Part {
         joint: def.joint,
         mesh,
         seam: def.seam,
+        tip: def.tip,
     }
 }
 

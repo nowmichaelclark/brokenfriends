@@ -7,7 +7,9 @@
 //!
 //! Each obstacle has a tell before it acts: the crust shakes, a stone
 //! shakes at the top of its gully, dust moves in before a gust, and a
-//! vent makes more and more steam before it blows.
+//! vent makes more and more steam before it blows. A stepping stone
+//! blinks before it vanishes, and warm air rises before an updraft gets
+//! strong. Sinking sand has ripples.
 
 use bf_worldgen::obstacles::{Kind, Obstacle};
 use bf_worldgen::HeightMap;
@@ -66,6 +68,42 @@ pub struct SimParams {
     pub bear_fall_factor: f32,
     /// Puffs show only for obstacles nearer than this, in metres.
     pub puff_range_m: f32,
+    /// The part of a cycle in which an easy stepping stone is solid.
+    pub step_on_easy: f32,
+    /// The part of a cycle in which a hard stepping stone is solid.
+    pub step_on_hard: f32,
+    /// How long a stepping stone blinks before it vanishes, in seconds.
+    pub step_tell_s: f32,
+    /// How long a stepping stone shows as a ghost before it is solid, in
+    /// seconds.
+    pub step_ghost_s: f32,
+    /// The speed up of the air in an updraft at full strength, in m/s.
+    pub updraft_speed: f32,
+    /// How fast the air in an updraft changes the speed of the bear, in
+    /// m/s each second. It must be more than the gravity to lift the bear.
+    pub updraft_accel: f32,
+    /// The part of a cycle in which an updraft is strong.
+    pub updraft_strong_part: f32,
+    /// The strength of an updraft between its strong phases (0 to 1).
+    pub updraft_weak: f32,
+    /// The lift is full up to this part of the height of the column. Above
+    /// it, the lift goes to 0 at the top.
+    pub updraft_fade_part: f32,
+    /// How fast an easy patch of sand sinks under a standing bear, in
+    /// m/s.
+    pub sand_sink_easy: f32,
+    /// How fast a hard patch of sand sinks under a standing bear, in m/s.
+    pub sand_sink_hard: f32,
+    /// A bear that walks makes the sink this part as fast (0 to 1).
+    pub sand_walk_part: f32,
+    /// How fast sand comes back up when nobody stands on it, in m/s.
+    pub sand_rise: f32,
+    /// How deep the bear can sink, in metres. The bear is 0.4 m tall.
+    pub sand_max_sink_m: f32,
+    /// The slow down at once on sand (0 to 1).
+    pub sand_slow_base: f32,
+    /// The slow down at the largest sink (0 to 1).
+    pub sand_slow_max: f32,
 }
 
 impl Default for SimParams {
@@ -96,6 +134,22 @@ impl Default for SimParams {
             bear_gravity: 14.0,
             bear_fall_factor: 1.4,
             puff_range_m: 140.0,
+            step_on_easy: 0.75,
+            step_on_hard: 0.66,
+            step_tell_s: 0.7,
+            step_ghost_s: 0.5,
+            updraft_speed: 2.2,
+            updraft_accel: 34.0,
+            updraft_strong_part: 0.62,
+            updraft_weak: 0.3,
+            updraft_fade_part: 0.55,
+            sand_sink_easy: 0.09,
+            sand_sink_hard: 0.17,
+            sand_walk_part: 0.4,
+            sand_rise: 0.2,
+            sand_max_sink_m: 0.3,
+            sand_slow_base: 0.12,
+            sand_slow_max: 0.65,
         }
     }
 }
@@ -113,6 +167,8 @@ pub struct BearIn {
     pub on_floor: bool,
     /// The bear is on a wall.
     pub climbing: bool,
+    /// The speed on the ground plane in m/s.
+    pub speed: f32,
 }
 
 /// The look of a puff.
@@ -122,6 +178,8 @@ pub enum PuffKind {
     Dust,
     /// Dirty steam: vents.
     Steam,
+    /// Pale, warm air over hot rock: updrafts.
+    Heat,
 }
 
 /// A request for one puff of dust or steam on the screen.
@@ -151,6 +209,75 @@ pub struct StepOut {
     pub puffs: Vec<Puff>,
     /// The obstacles (index) whose crust fell in this step.
     pub broke: Vec<usize>,
+    /// The air lifts the bear: the speed up that it goes to and how fast
+    /// it changes, in m/s and m/s each second. Only for a bear in the air.
+    pub lift: Option<(f32, f32)>,
+    /// The sand slows the bear on the ground: 0 (no slow down) to 1.
+    pub slow: f32,
+}
+
+/// The state of a stepping stone at one moment.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum StepPhase {
+    /// The stone is solid.
+    Solid,
+    /// The stone blinks and vanishes soon. `part` goes from 0 to 1.
+    Tell { part: f32 },
+    /// The stone is not there.
+    Gone,
+    /// The stone shows as a ghost and gets solid soon. `part` goes from
+    /// 0 to 1.
+    Ghost { part: f32 },
+}
+
+impl StepPhase {
+    /// Tells if the bear can stand on the stone.
+    pub fn solid(self) -> bool {
+        matches!(self, StepPhase::Solid | StepPhase::Tell { .. })
+    }
+}
+
+/// Gives the state of stone `k` of a stepping-stone path at a time.
+///
+/// The stones of the path take turns: the stones with an even number are
+/// solid in the first part of the cycle. The stones with an odd number
+/// start half a cycle later. Thus, two stones next to each other are
+/// solid together for a short time. A bear can hop from one to the other
+/// then. The rhythm is the same in all directions.
+pub fn step_phase(o: &Obstacle, k: u32, time: f64, p: &SimParams) -> StepPhase {
+    let period = f64::from(o.period.max(1.0));
+    let shift = if k % 2 == 1 { period * 0.5 } else { 0.0 };
+    let t = (time + f64::from(o.phase) - shift).rem_euclid(period) as f32;
+    let period = period as f32;
+    let on_part = p.step_on_easy + (p.step_on_hard - p.step_on_easy) * o.difficulty;
+    let on = (period * on_part.clamp(0.5, 0.95)).min(period - p.step_ghost_s - 0.2);
+    let tell = p.step_tell_s.clamp(0.0, on - 0.2);
+    if t < on - tell {
+        StepPhase::Solid
+    } else if t < on {
+        StepPhase::Tell {
+            part: (t - (on - tell)) / tell.max(0.01),
+        }
+    } else if t < period - p.step_ghost_s {
+        StepPhase::Gone
+    } else {
+        StepPhase::Ghost {
+            part: (t - (period - p.step_ghost_s)) / p.step_ghost_s.max(0.01),
+        }
+    }
+}
+
+/// Gives the strength of an updraft at a time, from 0 to 1. It is strong
+/// in the first part of its cycle and weak in the rest.
+pub fn updraft_strength(o: &Obstacle, time: f64, p: &SimParams) -> f32 {
+    let period = f64::from(o.period.max(1.0));
+    let t = (time + f64::from(o.phase)).rem_euclid(period) as f32;
+    let period = period as f32;
+    let strong = (period * p.updraft_strong_part).clamp(1.0, period - 0.5);
+    let weak = p.updraft_weak.clamp(0.0, 1.0);
+    let up = smoothstep(0.0, 0.8, t);
+    let down = 1.0 - smoothstep(strong - 0.5, strong, t);
+    weak + (1.0 - weak) * up * down
 }
 
 /// The state of an ash crust.
@@ -194,6 +321,30 @@ struct Launch {
     time: f32,
 }
 
+/// What the bear does at a stepping-stone path.
+#[derive(Clone, Copy, Debug, Default)]
+struct StepTrack {
+    /// The bear is in the area of the trench.
+    inside: bool,
+    /// The side of the trench that the bear came from: 1 or -1.
+    from_side: f32,
+    /// The bear fell into the trench in this visit.
+    fell: bool,
+    /// The bear is near the path (for the "tell" event).
+    near: bool,
+}
+
+/// What the bear does on a patch of sinking sand.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+enum SandVisit {
+    #[default]
+    Away,
+    /// The bear stands on the sand.
+    On,
+    /// The sink is full.
+    Stuck,
+}
+
 /// Gives the velocity (up, forward) that throws the bear from a launch
 /// vent onto a ledge. The ledge is `rise` metres up and `reach` metres
 /// away. The top of the flight is `margin` metres above the ledge.
@@ -232,6 +383,10 @@ pub struct ObstacleSim {
     puff_due: Vec<f32>,
     stones: Vec<Stone>,
     launch: Option<Launch>,
+    /// For each obstacle: how deep the sand sank, in metres.
+    sink: Vec<f32>,
+    sand_visit: Vec<SandVisit>,
+    steps: Vec<StepTrack>,
     time: f64,
     random: u32,
 }
@@ -247,6 +402,9 @@ impl ObstacleSim {
             puff_due: vec![0.0; n],
             stones: Vec::new(),
             launch: None,
+            sink: vec![0.0; n],
+            sand_visit: vec![SandVisit::Away; n],
+            steps: vec![StepTrack::default(); n],
             time: 0.0,
             random: 0x2F6E_2B1D,
         }
@@ -258,6 +416,16 @@ impl ObstacleSim {
 
     pub fn stones(&self) -> &[Stone] {
         &self.stones
+    }
+
+    /// Gives how deep the sand of an obstacle sank, in metres.
+    pub fn sink(&self, index: usize) -> f32 {
+        self.sink.get(index).copied().unwrap_or(0.0)
+    }
+
+    /// Gives the time of the simulation in seconds.
+    pub fn time(&self) -> f64 {
+        self.time
     }
 
     pub fn crust(&self, index: usize) -> Crust {
@@ -461,6 +629,175 @@ impl ObstacleSim {
                                     + side * (0.3 * self.rand2()),
                                 size: 0.5 + 0.5 * self.rand(),
                                 life,
+                                kind: PuffKind::Dust,
+                            });
+                        }
+                    }
+                }
+
+                Kind::SteppingStones {
+                    count,
+                    spacing,
+                    radius,
+                    half_length,
+                    half_width,
+                    ys,
+                    ..
+                } => {
+                    let dir = dir3(o.dir);
+                    let side = Vec3::new(-o.dir[1], 0.0, o.dir[0]);
+                    let rel = bear.feet - pos;
+                    let across = rel.dot(dir);
+                    let along = rel.dot(side).abs();
+                    let in_box = along <= *half_length
+                        && across.abs() <= half_width + 1.2
+                        && rel.y > -4.0
+                        && rel.y < 3.0;
+                    let floor_y = ys.first().copied().unwrap_or(pos.y);
+                    let mut track = self.steps[i];
+                    let close = along <= half_length + 6.0 && across.abs() <= half_width + 8.0;
+                    if close && !track.near {
+                        out.events.push(format!("obstacle:tell:{name}:#{}", o.id));
+                    }
+                    track.near = close;
+                    if in_box && !track.inside {
+                        track.from_side = across.signum();
+                        track.fell = false;
+                    }
+                    if !in_box && track.inside && !track.fell && across.signum() != track.from_side
+                    {
+                        out.events.push(format!("obstacle:cross:{name}:#{}", o.id));
+                    }
+                    if in_box && !track.fell && bear.feet.y < floor_y - 0.8 {
+                        track.fell = true;
+                        out.events.push(format!("obstacle:fall:{name}:#{}", o.id));
+                    }
+                    track.inside = in_box;
+                    self.steps[i] = track;
+
+                    if shows {
+                        // Dust at the stones that blink and at the ghosts.
+                        let mut marks: Vec<(Vec3, f32)> = Vec::new();
+                        for k in 0..*count {
+                            let off = (k as f32 - (*count as f32 - 1.0) * 0.5) * spacing;
+                            let at = pos + dir * off;
+                            let y = ys.get(k as usize).copied().unwrap_or(pos.y);
+                            match step_phase(o, k, self.time, p) {
+                                StepPhase::Tell { part } => {
+                                    marks.push((Vec3::new(at.x, y, at.z), 12.0 + 16.0 * part))
+                                }
+                                StepPhase::Ghost { .. } => {
+                                    marks.push((Vec3::new(at.x, y, at.z), 6.0))
+                                }
+                                _ => {}
+                            }
+                        }
+                        let rate: f32 = marks.iter().map(|m| m.1).sum();
+                        for n in 0..self.puffs_due(i, rate, dt) as usize {
+                            let (at, _) = marks[n % marks.len().max(1)];
+                            let wobble = Vec2::new(self.rand2(), self.rand2()) * radius * 0.8;
+                            out.puffs.push(Puff {
+                                pos: at + Vec3::new(wobble.x, 0.05, wobble.y),
+                                vel: Vec3::new(0.0, 0.4 + 0.3 * self.rand(), 0.0),
+                                size: 0.22,
+                                life: 0.6,
+                                kind: PuffKind::Dust,
+                            });
+                        }
+                    }
+                }
+
+                Kind::Updraft { radius, height } => {
+                    let strength = updraft_strength(o, self.time, p);
+                    let rel = bear.feet - pos;
+                    let r = xz(rel).length();
+                    let edge = 1.0 - smoothstep(radius * 0.6, *radius, r);
+                    let fade = 1.0 - smoothstep(height * p.updraft_fade_part, *height, rel.y);
+                    if !bear.on_floor
+                        && !bear.climbing
+                        && edge > 0.0
+                        && rel.y > -0.6
+                        && rel.y < *height
+                    {
+                        let speed = p.updraft_speed * strength * edge * fade;
+                        let best = out.lift.map_or(0.0, |l| l.0);
+                        if speed > best {
+                            out.lift = Some((speed, p.updraft_accel));
+                        }
+                        if self.acted[i] != cycle {
+                            self.acted[i] = cycle;
+                            out.events.push(format!("obstacle:ride:{name}:#{}", o.id));
+                        }
+                    }
+                    if shows {
+                        // Warm air rises: more puffs when it is strong.
+                        let rate = 2.0 + 14.0 * strength * strength;
+                        for _ in 0..self.puffs_due(i, rate, dt) {
+                            let at = Vec2::new(self.rand2(), self.rand2()) * radius * 0.7;
+                            let ground = heights.sample_world(pos.x + at.x, pos.z + at.y);
+                            out.puffs.push(Puff {
+                                pos: Vec3::new(pos.x + at.x, ground + 0.1, pos.z + at.y),
+                                vel: Vec3::new(0.0, 1.2 + 1.6 * strength, 0.0),
+                                size: 0.5 + 0.3 * self.rand(),
+                                life: 0.9 + 0.5 * self.rand(),
+                                kind: PuffKind::Heat,
+                            });
+                        }
+                    }
+                }
+
+                Kind::SinkingSand { radius, lid, .. } => {
+                    let lid_y = lid.height(bear.feet.x, bear.feet.z);
+                    let sunk = self.sink[i];
+                    let above = bear.feet.y - (lid_y - sunk);
+                    let on = bear.on_floor && near <= radius - 0.2 && (-0.2..=0.4).contains(&above);
+                    let rate =
+                        p.sand_sink_easy + (p.sand_sink_hard - p.sand_sink_easy) * o.difficulty;
+                    let max = p.sand_max_sink_m.max(0.01);
+                    let moving = bear.speed > 0.3;
+                    let now = if on {
+                        let part = if moving { p.sand_walk_part } else { 1.0 };
+                        let now = (sunk + rate * part * dt).min(max);
+                        let full = now / max;
+                        let slow = p.sand_slow_base + (p.sand_slow_max - p.sand_slow_base) * full;
+                        out.slow = out.slow.max(slow.clamp(0.0, 0.95));
+                        now
+                    } else {
+                        (sunk - p.sand_rise * dt).max(0.0)
+                    };
+                    self.sink[i] = now;
+                    // Events: the bear steps on, gets stuck, or gets out.
+                    let visit = match (on, now >= max - 0.005) {
+                        (false, _) => SandVisit::Away,
+                        (true, false) => SandVisit::On,
+                        (true, true) => SandVisit::Stuck,
+                    };
+                    let before = self.sand_visit[i];
+                    if visit != before {
+                        match (before, visit) {
+                            (SandVisit::Away, _) => {
+                                out.events.push(format!("obstacle:sink:{name}:#{}", o.id));
+                            }
+                            (_, SandVisit::Stuck) => {
+                                out.events.push(format!("obstacle:stuck:{name}:#{}", o.id));
+                            }
+                            (_, SandVisit::Away) if sunk > max * 0.3 => {
+                                out.events.push(format!("obstacle:escape:{name}:#{}", o.id));
+                            }
+                            _ => {}
+                        }
+                        // Stuck to On (the sink went down a little) is not new.
+                        if !(before == SandVisit::Stuck && visit == SandVisit::On) {
+                            self.sand_visit[i] = visit;
+                        }
+                    }
+                    if shows && on && moving {
+                        for _ in 0..self.puffs_due(i, 7.0, dt) {
+                            out.puffs.push(Puff {
+                                pos: bear.feet + Vec3::Y * 0.05,
+                                vel: Vec3::new(self.rand2() * 0.3, 0.3, self.rand2() * 0.3),
+                                size: 0.16,
+                                life: 0.5,
                                 kind: PuffKind::Dust,
                             });
                         }
@@ -712,6 +1049,7 @@ mod tests {
             feet: Vec3::new(x, y, z),
             on_floor: true,
             climbing: false,
+            speed: 0.0,
         }
     }
 
@@ -731,6 +1069,10 @@ mod tests {
             }
             if out.knock.is_some() {
                 all.knock = out.knock;
+            }
+            all.slow = all.slow.max(out.slow);
+            if out.lift.is_some() {
+                all.lift = out.lift;
             }
         }
         all
@@ -884,6 +1226,262 @@ mod tests {
         run(&mut sim, &bear_at(1.0, 0.0, 0.0), &map, 0.2);
         let out = run(&mut sim, &bear_at(4.0, 0.0, 0.0), &map, 1.0);
         assert_eq!(out.events, vec!["obstacle:escape:ash_crust:#5".to_string()]);
+    }
+
+    fn stepping_stones() -> Obstacle {
+        // The path runs along +x. The trench is along z.
+        obstacle(
+            Kind::SteppingStones {
+                count: 4,
+                spacing: 1.6,
+                radius: 0.62,
+                half_length: 9.0,
+                half_width: 2.4,
+                depth: 1.8,
+                ys: vec![0.0; 4],
+            },
+            4.0,
+        )
+    }
+
+    #[test]
+    fn stepping_stones_take_turns_and_two_neighbours_are_solid_together() {
+        let p = SimParams::default();
+        let mut o = stepping_stones();
+        o.phase = 0.0;
+        let mut both = 0.0f32;
+        let mut none = 0.0f32;
+        let mut tells = 0usize;
+        let mut ghosts = 0usize;
+        for step in 0..(8.0 / DT) as usize {
+            let t = f64::from(step as f32 * DT);
+            let a = step_phase(&o, 0, t, &p);
+            let b = step_phase(&o, 1, t, &p);
+            // Stones 0 and 2 are the same, stones 1 and 3 are the same.
+            assert_eq!(a, step_phase(&o, 2, t, &p));
+            assert_eq!(b, step_phase(&o, 3, t, &p));
+            if a.solid() && b.solid() {
+                both += DT;
+            }
+            if !a.solid() && !b.solid() {
+                none += DT;
+            }
+            tells += matches!(a, StepPhase::Tell { .. }) as usize;
+            ghosts += matches!(a, StepPhase::Ghost { .. }) as usize;
+        }
+        // Easy: the on part is 0.75 of 4 s, so each stone is solid for 3 s.
+        // Two cycles: the two stones are solid together for 2 x 2 s.
+        assert!((both - 4.0).abs() < 0.1, "both {both}");
+        assert_eq!(none, 0.0, "a bear can always stand on one of them");
+        assert!(tells > 0 && ghosts > 0);
+    }
+
+    #[test]
+    fn a_harder_path_gives_less_time_to_hop() {
+        let p = SimParams::default();
+        let mut easy = stepping_stones();
+        let mut hard = stepping_stones();
+        easy.difficulty = 0.0;
+        hard.difficulty = 1.0;
+        let both = |o: &Obstacle| {
+            (0..(4.0 / DT) as usize)
+                .filter(|&s| {
+                    let t = f64::from(s as f32 * DT);
+                    step_phase(o, 0, t, &p).solid() && step_phase(o, 1, t, &p).solid()
+                })
+                .count() as f32
+                * DT
+        };
+        assert!(both(&hard) > 0.3, "the hop is possible");
+        assert!(both(&hard) < both(&easy));
+    }
+
+    #[test]
+    fn a_bear_that_falls_into_the_trench_or_crosses_it_is_logged() {
+        let map = flat();
+        let mut sim = ObstacleSim::new(vec![stepping_stones()]);
+        // The bear comes near the path: a tell.
+        let out = run(&mut sim, &bear_at(-8.0, 0.0, 0.0), &map, 0.1);
+        assert_eq!(
+            out.events,
+            vec!["obstacle:tell:stepping_stones:#5".to_string()]
+        );
+        // The bear enters on the -x side, falls and climbs out.
+        let out = run(&mut sim, &bear_at(-2.0, 0.0, 0.0), &map, 0.1);
+        assert!(out.events.is_empty(), "{:?}", out.events);
+        let out = run(&mut sim, &bear_at(-0.5, -1.5, 0.0), &map, 0.1);
+        assert_eq!(
+            out.events,
+            vec!["obstacle:fall:stepping_stones:#5".to_string()]
+        );
+        // The bear leaves on the other side after a fall: no "cross".
+        let out = run(&mut sim, &bear_at(5.0, 0.0, 0.0), &map, 0.1);
+        assert!(out.events.is_empty(), "{:?}", out.events);
+        // A new visit that ends on the other side is a cross.
+        run(&mut sim, &bear_at(3.0, 0.0, 0.0), &map, 0.1);
+        let out = run(&mut sim, &bear_at(-5.0, 0.0, 0.0), &map, 0.1);
+        assert_eq!(
+            out.events,
+            vec!["obstacle:cross:stepping_stones:#5".to_string()]
+        );
+    }
+
+    fn updraft() -> Obstacle {
+        obstacle(
+            Kind::Updraft {
+                radius: 3.0,
+                height: 8.0,
+            },
+            8.0,
+        )
+    }
+
+    fn airborne(x: f32, y: f32, z: f32) -> BearIn {
+        BearIn {
+            on_floor: false,
+            ..bear_at(x, y, z)
+        }
+    }
+
+    #[test]
+    fn an_updraft_lifts_a_bear_in_the_air_and_fades_at_the_top() {
+        let map = flat();
+        let p = SimParams::default();
+        // The strength is high at the start of the cycle (after 1 s).
+        let mut sim = ObstacleSim::new(vec![updraft()]);
+        run_for(&mut sim, &airborne(0.0, 0.5, 0.0), &map, 1.0);
+        let out = sim.step(DT, &airborne(0.0, 0.5, 0.0), &map, &p);
+        let (speed, accel) = out.lift.expect("a lift");
+        assert!(
+            speed > p.updraft_speed * 0.95 && accel > 14.0 * 1.4,
+            "{speed}"
+        );
+        // High in the column, the lift is weaker.
+        let out = sim.step(DT, &airborne(0.0, 7.5, 0.0), &map, &p);
+        let high = out.lift.map_or(0.0, |l| l.0);
+        assert!(high < speed * 0.4, "{high}");
+        // On the ground, outside the column or above it: no lift.
+        for bear in [
+            bear_at(0.0, 0.0, 0.0),
+            airborne(5.0, 0.5, 0.0),
+            airborne(0.0, 8.5, 0.0),
+        ] {
+            let out = sim.step(DT, &bear, &map, &p);
+            assert!(out.lift.is_none(), "{bear:?}");
+        }
+    }
+
+    #[test]
+    fn an_updraft_is_weaker_between_its_strong_phases_and_logs_a_ride_once() {
+        let map = flat();
+        let p = SimParams::default();
+        let o = updraft();
+        let strong = updraft_strength(&o, 2.0, &p);
+        let weak = updraft_strength(&o, 7.0, &p);
+        assert!(strong > 0.99 && (weak - p.updraft_weak).abs() < 0.01);
+        let mut sim = ObstacleSim::new(vec![o]);
+        let out = run(&mut sim, &airborne(0.0, 2.0, 0.0), &map, 8.0);
+        let rides = out.events.iter().filter(|e| e.contains(":ride:")).count();
+        assert_eq!(rides, 1);
+    }
+
+    /// Runs the simulation for some seconds and gives nothing back.
+    fn run_for(sim: &mut ObstacleSim, bear: &BearIn, map: &HeightMap, seconds: f32) {
+        run(sim, bear, map, seconds);
+    }
+
+    fn sand() -> Obstacle {
+        let lid = Lid {
+            corner: [-6.0, -6.0],
+            n: 13,
+            spacing: 1.0,
+            heights: vec![0.0; 169],
+        };
+        obstacle(
+            Kind::SinkingSand {
+                radius: 3.0,
+                depth: 0.55,
+                lid,
+            },
+            1.0,
+        )
+    }
+
+    #[test]
+    fn a_standing_bear_sinks_and_slows_down_and_a_walking_bear_sinks_less() {
+        let map = flat();
+        let p = SimParams::default();
+        let mut sim = ObstacleSim::new(vec![sand()]);
+        let out = run(&mut sim, &bear_at(0.5, 0.0, 0.0), &map, 1.0);
+        assert!(sim.sink(0) > 0.07 && sim.sink(0) < 0.11, "{}", sim.sink(0));
+        assert!(out
+            .events
+            .contains(&"obstacle:sink:sinking_sand:#5".to_string()));
+        // The bear is on the sand at its new height. After some seconds,
+        // the sink is full, and the slow down is large.
+        let low = |sink: f32| BearIn {
+            feet: Vec3::new(0.5, -sink, 0.0),
+            ..bear_at(0.5, 0.0, 0.0)
+        };
+        let mut last = StepOut::default();
+        let mut events = Vec::new();
+        for _ in 0..(5.0 / DT) as usize {
+            last = sim.step(DT, &low(sim.sink(0)), &map, &p);
+            events.extend(last.events.clone());
+        }
+        assert!((sim.sink(0) - p.sand_max_sink_m).abs() < 0.01);
+        assert!((last.slow - p.sand_slow_max).abs() < 0.02, "{}", last.slow);
+        assert_eq!(events, vec!["obstacle:stuck:sinking_sand:#5".to_string()]);
+
+        // A walking bear sinks slower.
+        let mut walker = ObstacleSim::new(vec![sand()]);
+        let moving = BearIn {
+            speed: 1.2,
+            ..bear_at(0.5, 0.0, 0.0)
+        };
+        run(&mut walker, &moving, &map, 1.0);
+        assert!(walker.sink(0) < sim_after_stand(&map) * 0.5);
+    }
+
+    fn sim_after_stand(map: &HeightMap) -> f32 {
+        let mut sim = ObstacleSim::new(vec![sand()]);
+        run(&mut sim, &bear_at(0.5, 0.0, 0.0), map, 1.0);
+        sim.sink(0)
+    }
+
+    #[test]
+    fn sand_comes_back_up_and_a_bear_that_gets_out_is_logged() {
+        let map = flat();
+        let p = SimParams::default();
+        let mut sim = ObstacleSim::new(vec![sand()]);
+        for _ in 0..(4.0 / DT) as usize {
+            let at = BearIn {
+                feet: Vec3::new(0.5, -sim.sink(0), 0.0),
+                ..bear_at(0.5, 0.0, 0.0)
+            };
+            sim.step(DT, &at, &map, &p);
+        }
+        let deep = sim.sink(0);
+        assert!(deep > 0.25);
+        // The bear leaves: the sand comes up and the escape is logged.
+        let out = run(&mut sim, &bear_at(5.0, 0.0, 0.0), &map, 0.1);
+        assert_eq!(
+            out.events,
+            vec!["obstacle:escape:sinking_sand:#5".to_string()]
+        );
+        run(&mut sim, &bear_at(5.0, 0.0, 0.0), &map, 2.0);
+        assert_eq!(sim.sink(0), 0.0);
+        assert_eq!(out.slow, 0.0);
+    }
+
+    #[test]
+    fn sand_does_nothing_to_a_bear_in_the_air_or_beside_it() {
+        let map = flat();
+        let mut sim = ObstacleSim::new(vec![sand()]);
+        let out = run(&mut sim, &airborne(0.5, 1.5, 0.0), &map, 2.0);
+        assert_eq!((sim.sink(0), out.slow), (0.0, 0.0));
+        let out = run(&mut sim, &bear_at(4.0, 0.0, 0.0), &map, 2.0);
+        assert_eq!((sim.sink(0), out.slow), (0.0, 0.0));
     }
 
     /// A slope down to +x: 0.4 m for each metre.

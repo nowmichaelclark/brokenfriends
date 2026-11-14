@@ -51,8 +51,11 @@ feel and taste. Those are the only questions for him.
   obstacles of each type
 - **obstacles (R23):** bear events with the text
   `obstacle:<what>:<type>:#<number>`. `<what>` is `tell`, `hit`,
-  `push`, `launch`, `fall`, `escape` (the bear left a crust in time),
-  or `launch_reached`, `launch_missed`, `launch_wall` (where a launch
+  `push`, `launch`, `fall`, `escape` (the bear left a crust in time,
+  or got out of sinking sand), `cross` (the bear went over the stepping
+  stones), `ride` (the bear was in an updraft), `sink` and `stuck`
+  (the bear stood on sinking sand; the sink was full), or
+  `launch_reached`, `launch_missed`, `launch_wall` (where a launch
   ended). The report counts them by type
 - **errors and warnings** from the Godot log
 

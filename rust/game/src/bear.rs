@@ -409,6 +409,13 @@ pub struct BfBear {
     /// The wind from the obstacles: a velocity that carries the bear.
     /// `BfObstacles` sets it before each physics step.
     wind: Vector3,
+    /// The air lifts a bear in the air: the speed up that it goes to
+    /// (m/s) and how fast it changes (m/s each second). `BfObstacles`
+    /// sets it before each physics step.
+    lift: Vector2,
+    /// Sand slows a bear on the ground: from 0 (no slow down) to 1.
+    /// `BfObstacles` sets it before each physics step.
+    ground_slow: f32,
     /// An obstacle threw the bear. In the air, with no input, the bear
     /// keeps this velocity on the ground plane (x, z).
     thrown: Option<Vector2>,
@@ -536,6 +543,8 @@ impl BfBear {
         self.stamina = 1.0;
         self.exhausted = false;
         self.wind = Vector3::ZERO;
+        self.lift = Vector2::ZERO;
+        self.ground_slow = 0.0;
         self.thrown = None;
         self.event("restart");
     }
@@ -595,6 +604,21 @@ impl BfBear {
     #[func]
     pub fn set_wind(&mut self, wind: Vector3) {
         self.wind = wind;
+    }
+
+    /// Sets the lift of the air for the next physics step: the speed up
+    /// (m/s) that a bear in the air goes to, and how fast it changes
+    /// (m/s each second). Use 0 and 0 for no lift.
+    #[func]
+    pub fn set_lift(&mut self, speed: f32, accel: f32) {
+        self.lift = Vector2::new(speed, accel);
+    }
+
+    /// Sets the slow down of the ground for the next physics step: 0 is
+    /// none, 0.5 is half speed and a lower jump.
+    #[func]
+    pub fn set_ground_slow(&mut self, slow: f32) {
+        self.ground_slow = slow.clamp(0.0, 0.95);
     }
 
     /// An obstacle hits or throws the bear: the bear gets this velocity.
@@ -779,7 +803,13 @@ impl BfBear {
 
         // Speed on the ground plane. Fewer limbs are slower.
         let gait = self.gait_profile();
+        let slow = if on_floor {
+            1.0 - self.ground_slow
+        } else {
+            1.0
+        };
         let speed = gait.speed_scale
+            * slow
             * if jogging {
                 self.jog_speed
             } else {
@@ -820,6 +850,10 @@ impl BfBear {
             };
             velocity.y =
                 (velocity.y - self.fall_acceleration * factor * delta).max(-self.max_fall_speed);
+            // Warm air lifts the bear, up to the speed that the air gives.
+            if self.lift.y > 0.0 && self.lift.x > velocity.y {
+                velocity.y = (velocity.y + self.lift.y * delta).min(self.lift.x);
+            }
         }
         // A bear without legs cannot jump.
         if self.timers.update(
@@ -829,7 +863,7 @@ impl BfBear {
             self.coyote_time,
             self.jump_buffer_time,
         ) {
-            let height = self.jump_height * gait.jump_scale;
+            let height = self.jump_height * gait.jump_scale * (1.0 - self.ground_slow * 0.8);
             velocity.y = jump_speed(height, self.fall_acceleration);
             self.event("jump");
         }

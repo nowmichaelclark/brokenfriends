@@ -288,8 +288,11 @@ fn obstacle_section(out: &mut String, events: &[Event]) {
     counts.sort();
     out.push_str(
         "`tell`: the obstacle started near the bear. `hit`, `push`, `launch`, `fall`: it got \
-         the bear. `escape`: the bear left a crust in time. `launch_reached`, `launch_missed`, \
-         `launch_wall`: where a launch ended.\n\n",
+         the bear. `escape`: the bear left a crust in time, or got out of sinking sand. \
+         `launch_reached`, `launch_missed`, `launch_wall`: where a launch ended. \
+         `cross`: the bear went over the stepping stones. `fall` on stepping stones: the bear \
+         fell into the trench. `ride`: the bear was in an updraft. `sink`, `stuck`: the bear \
+         stood on sinking sand, and the sink was full.\n\n",
     );
     let mut kind = "";
     for (k, what, n) in counts {

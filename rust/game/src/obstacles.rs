@@ -8,10 +8,15 @@
 //!   MultiMesh draws many copies of one mesh in one draw call.
 //! - one MultiMesh for all rolling stones (1 draw call)
 //! - one MultiMesh for all vent mounds (1 draw call)
-//! - one mesh and one collision shape for each ash crust near the camera
+//! - one MultiMesh for all stepping stones (1 draw call), and one
+//!   collision body for each stone
+//! - one mesh and one collision shape for each ash crust and each patch
+//!   of sinking sand near the camera
 
 use crate::bear::{BfBear, BEAR_GROUP, GRIP_META, SOFT_META};
-use crate::obstacle_sim::{BearIn, Crust, ObstacleSim, Puff, PuffKind, SimParams};
+use crate::obstacle_sim::{
+    step_phase, BearIn, Crust, ObstacleSim, Puff, PuffKind, SimParams, StepPhase,
+};
 use crate::terrain::{BfTerrain, TERRAIN_GROUP};
 use bf_worldgen::obstacles::{Kind, Lid, Obstacle, KIND_NAMES};
 use bf_worldgen::HeightMap;
@@ -24,9 +29,9 @@ use godot::classes::image::Format;
 use godot::classes::mesh::{ArrayType, PrimitiveType};
 use godot::classes::multi_mesh::TransformFormat;
 use godot::classes::{
-    ArrayMesh, CollisionShape3D, ConcavePolygonShape3D, Image, ImageTexture, InputEvent,
-    InputEventKey, Material, MeshInstance3D, MultiMesh, MultiMeshInstance3D, Node3D, QuadMesh,
-    SphereMesh, StandardMaterial3D, StaticBody3D,
+    ArrayMesh, CollisionShape3D, ConcavePolygonShape3D, CylinderMesh, CylinderShape3D, Image,
+    ImageTexture, InputEvent, InputEventKey, Material, MeshInstance3D, MultiMesh,
+    MultiMeshInstance3D, Node3D, QuadMesh, SphereMesh, StandardMaterial3D, StaticBody3D,
 };
 use godot::global::Key;
 use godot::prelude::*;
@@ -78,6 +83,38 @@ struct CrustNodes {
     mesh: Gd<MeshInstance3D>,
     shards: Vec<Shard>,
 }
+
+/// One stepping stone.
+struct StepStone {
+    /// The index of the obstacle in the simulation.
+    index: usize,
+    /// The number of the stone in its path.
+    k: u32,
+    /// The middle of the top of the stone.
+    top: Vector3,
+    shape: Gd<CollisionShape3D>,
+    /// The stone is solid now.
+    solid: bool,
+}
+
+/// The nodes of one patch of sinking sand.
+struct SandNodes {
+    /// The index of the obstacle in the simulation.
+    index: usize,
+    /// The place of the body when the sand has not sunk.
+    centre: Vector3,
+    body: Gd<StaticBody3D>,
+    mesh: Gd<MeshInstance3D>,
+    /// The sink that the nodes show now, in metres.
+    shown: f32,
+}
+
+/// How much of the sink of the sand the surface follows (the bear goes
+/// down the whole sink, so it is in the sand by the rest).
+const SURFACE_SINK_PART: f32 = 0.25;
+/// The radius, the height and the colour of a stepping stone.
+const STEP_RADIUS: f32 = 0.62;
+const STEP_HEIGHT: f32 = 0.3;
 
 /// Draws the obstacles of the zone and gives their effects to the bear.
 /// Dev key: F6 puts the bear at the next obstacle.
@@ -204,6 +241,87 @@ pub struct BfObstacles {
     #[init(val = SimParams::default().puff_range_m)]
     puff_range_m: f32,
 
+    /// The part of a cycle in which an easy stepping stone is solid.
+    #[export]
+    #[init(val = SimParams::default().step_on_easy)]
+    step_on_easy: f32,
+
+    /// The part of a cycle in which a hard stepping stone is solid.
+    #[export]
+    #[init(val = SimParams::default().step_on_hard)]
+    step_on_hard: f32,
+
+    /// How long a stepping stone blinks before it vanishes, in seconds.
+    #[export]
+    #[init(val = SimParams::default().step_tell_s)]
+    step_tell_s: f32,
+
+    /// How long a stepping stone shows as a ghost before it is solid, in seconds.
+    #[export]
+    #[init(val = SimParams::default().step_ghost_s)]
+    step_ghost_s: f32,
+
+    /// The speed up of the air in a strong updraft, in m/s.
+    #[export]
+    #[init(val = SimParams::default().updraft_speed)]
+    updraft_speed: f32,
+
+    /// How fast an updraft changes the speed of the bear, in m/s each second.
+    /// The value must be more than the gravity (14) to lift the bear.
+    #[export]
+    #[init(val = SimParams::default().updraft_accel)]
+    updraft_accel: f32,
+
+    /// The part of a cycle in which an updraft is strong (0 to 1).
+    #[export]
+    #[init(val = SimParams::default().updraft_strong_part)]
+    updraft_strong_part: f32,
+
+    /// The strength of an updraft between its strong phases (0 to 1).
+    #[export]
+    #[init(val = SimParams::default().updraft_weak)]
+    updraft_weak: f32,
+
+    /// The lift is full up to this part of the column height (0 to 1).
+    #[export]
+    #[init(val = SimParams::default().updraft_fade_part)]
+    updraft_fade_part: f32,
+
+    /// How fast easy sand sinks under a standing bear, in m/s.
+    #[export]
+    #[init(val = SimParams::default().sand_sink_easy)]
+    sand_sink_easy: f32,
+
+    /// How fast hard sand sinks under a standing bear, in m/s.
+    #[export]
+    #[init(val = SimParams::default().sand_sink_hard)]
+    sand_sink_hard: f32,
+
+    /// A bear that walks on sand makes the sink this part as fast (0 to 1).
+    #[export]
+    #[init(val = SimParams::default().sand_walk_part)]
+    sand_walk_part: f32,
+
+    /// How fast sand comes back up when nobody stands on it, in m/s.
+    #[export]
+    #[init(val = SimParams::default().sand_rise)]
+    sand_rise: f32,
+
+    /// How deep the bear can sink in sand, in metres. The bear is 0.4 m tall.
+    #[export]
+    #[init(val = SimParams::default().sand_max_sink_m)]
+    sand_max_sink_m: f32,
+
+    /// The slow down of the bear at once on sinking sand (0 to 1).
+    #[export]
+    #[init(val = SimParams::default().sand_slow_base)]
+    sand_slow_base: f32,
+
+    /// The slow down of the bear at the largest sink (0 to 1).
+    #[export]
+    #[init(val = SimParams::default().sand_slow_max)]
+    sand_slow_max: f32,
+
     /// The largest number of puffs of dust and steam at one time.
     #[export]
     #[init(val = 400)]
@@ -227,6 +345,10 @@ pub struct BfObstacles {
     zone_nodes: Option<Gd<Node3D>>,
     crusts: Vec<CrustNodes>,
     crust_material: Option<Gd<StandardMaterial3D>>,
+    sand_material: Option<Gd<StandardMaterial3D>>,
+    sands: Vec<SandNodes>,
+    step_stones: Vec<StepStone>,
+    step_mesh: Option<Gd<MultiMesh>>,
     /// The time since the zone showed, for the shake of the crusts.
     time: f32,
     /// The obstacle type that the next push of F6 goes to.
@@ -260,7 +382,10 @@ impl INode3D for BfObstacles {
             return;
         };
         if !self.enabled {
-            bear.bind_mut().set_wind(Vector3::ZERO);
+            let mut bear = bear.bind_mut();
+            bear.set_wind(Vector3::ZERO);
+            bear.set_lift(0.0, 0.0);
+            bear.set_ground_slow(0.0);
             return;
         }
         let params = self.sim_params(&bear);
@@ -270,6 +395,10 @@ impl INode3D for BfObstacles {
             feet: Vec3::new(feet.x, feet.y, feet.z),
             on_floor: bear.is_on_floor() && !climbing,
             climbing,
+            speed: {
+                let v = bear.get_velocity();
+                (v.x * v.x + v.z * v.z).sqrt()
+            },
         };
 
         let out = {
@@ -287,6 +416,9 @@ impl INode3D for BfObstacles {
         {
             let mut bear = bear.bind_mut();
             bear.set_wind(to_godot(out.wind));
+            let (lift, accel) = out.lift.unwrap_or((0.0, 0.0));
+            bear.set_lift(lift, accel);
+            bear.set_ground_slow(out.slow);
             if let Some(knock) = out.knock {
                 bear.knock(to_godot(knock));
             }
@@ -308,6 +440,8 @@ impl INode3D for BfObstacles {
         self.move_puffs(dt);
         self.show_stones();
         self.move_crusts(dt);
+        self.show_steps(&params);
+        self.move_sands();
     }
 
     fn input(&mut self, event: Gd<InputEvent>) {
@@ -381,6 +515,9 @@ impl BfObstacles {
                 Kind::Gust { half_length, .. } => (-(half_length + 1.5), 0.0),
                 Kind::VentPush { .. } => (-1.5, 0.0),
                 Kind::VentLaunch { .. } => (-1.5, 0.0),
+                Kind::SteppingStones { half_width, .. } => (-(half_width + 3.0), 0.0),
+                Kind::Updraft { radius, .. } => (-(radius + 2.5), 0.0),
+                Kind::SinkingSand { radius, .. } => (-(radius + 1.5), 0.0),
             };
             let x = o.pos[0] + dir[0] * along + side[0] * across;
             let z = o.pos[2] + dir[1] * along + side[1] * across;
@@ -449,6 +586,22 @@ impl BfObstacles {
             bear_gravity,
             bear_fall_factor,
             puff_range_m: self.puff_range_m,
+            step_on_easy: self.step_on_easy,
+            step_on_hard: self.step_on_hard,
+            step_tell_s: self.step_tell_s,
+            step_ghost_s: self.step_ghost_s,
+            updraft_speed: self.updraft_speed,
+            updraft_accel: self.updraft_accel,
+            updraft_strong_part: self.updraft_strong_part,
+            updraft_weak: self.updraft_weak,
+            updraft_fade_part: self.updraft_fade_part,
+            sand_sink_easy: self.sand_sink_easy,
+            sand_sink_hard: self.sand_sink_hard,
+            sand_walk_part: self.sand_walk_part,
+            sand_rise: self.sand_rise,
+            sand_max_sink_m: self.sand_max_sink_m,
+            sand_slow_base: self.sand_slow_base,
+            sand_slow_max: self.sand_slow_max,
         }
     }
 
@@ -504,6 +657,14 @@ impl BfObstacles {
             material.set_texture(TextureParam::ALBEDO, &texture);
         }
         self.crust_material = Some(material);
+
+        // Sinking sand: dark, wet-looking sand with rings.
+        let mut material = StandardMaterial3D::new_gd();
+        material.set_roughness(1.0);
+        if let Some(texture) = ripple_texture() {
+            material.set_texture(TextureParam::ALBEDO, &texture);
+        }
+        self.sand_material = Some(material);
     }
 
     fn add_multimesh(&mut self, name: &str, mesh: &Gd<MultiMesh>, bounds: Aabb) {
@@ -521,6 +682,9 @@ impl BfObstacles {
             old.queue_free();
         }
         self.crusts.clear();
+        self.sands.clear();
+        self.step_stones.clear();
+        self.step_mesh = None;
         let mut parent = Node3D::new_alloc();
         parent.set_name("Zone");
         self.base_mut().add_child(&parent);
@@ -561,19 +725,25 @@ impl BfObstacles {
             parent.add_child(&node);
         }
 
-        // The ash crusts: a lid with a collision shape over each pit.
+        // The ash crusts and the patches of sinking sand: a lid with a
+        // collision shape over each pit.
         for (index, o) in obstacles.iter().enumerate() {
-            let Kind::AshCrust { radius, lid, .. } = &o.kind else {
-                continue;
+            let (radius, lid, sand) = match &o.kind {
+                Kind::AshCrust { radius, lid, .. } => (*radius, lid, false),
+                Kind::SinkingSand { radius, lid, .. } => (*radius, lid, true),
+                _ => continue,
             };
             let centre = Vec3::from_array(o.pos);
-            let triangles = lid_triangles(lid, centre, *radius + LID_EXTRA, 0..SHARDS);
+            let triangles = lid_triangles(lid, centre, radius + LID_EXTRA, 0..SHARDS);
             let mut body = StaticBody3D::new_alloc();
-            body.set_name(&format!("Crust{}", o.id));
+            let prefix = if sand { "Sand" } else { "Crust" };
+            body.set_name(&format!("{prefix}{}", o.id));
             body.set_position(to_godot(centre));
-            // The crust is soft ash: it holds a little, and the feet sink.
-            body.set_meta(GRIP_META, &0.5f32.to_variant());
-            body.set_meta(SOFT_META, &0.6f32.to_variant());
+            // Ash holds a little, and the feet sink. Sinking sand is
+            // softer and holds less.
+            let (grip, soft) = if sand { (0.3f32, 1.0f32) } else { (0.5, 0.6) };
+            body.set_meta(GRIP_META, &grip.to_variant());
+            body.set_meta(SOFT_META, &soft.to_variant());
 
             let faces: PackedVector3Array = triangles.iter().flatten().copied().collect();
             let mut concave = ConcavePolygonShape3D::new_gd();
@@ -584,21 +754,113 @@ impl BfObstacles {
             body.add_child(&shape);
 
             let mut mesh = MeshInstance3D::new_alloc();
-            mesh.set_mesh(&triangle_mesh(&triangles, centre, Vector3::ZERO));
-            if let Some(material) = &self.crust_material {
+            let across = (radius + LID_EXTRA) * 2.12;
+            let uv = |v: Vector3| {
+                if sand {
+                    // The rings of the texture are around the middle.
+                    Vector2::new(v.x, v.z) / across + Vector2::new(0.5, 0.5)
+                } else {
+                    Vector2::new(centre.x + v.x, centre.z + v.z) * 0.3
+                }
+            };
+            mesh.set_mesh(&triangle_mesh(&triangles, Vector3::ZERO, uv));
+            let material = if sand {
+                self.sand_material.as_ref()
+            } else {
+                self.crust_material.as_ref()
+            };
+            if let Some(material) = material {
                 mesh.set_material_override(&material.clone().upcast::<Material>());
             }
             mesh.set_visibility_range_end(self.crust_draw_range_m);
             mesh.set_cast_shadows_setting(ShadowCastingSetting::OFF);
             body.add_child(&mesh);
             parent.add_child(&body);
-            self.crusts.push(CrustNodes {
-                index,
-                body,
-                shape,
-                mesh,
-                shards: Vec::new(),
-            });
+            if sand {
+                self.sands.push(SandNodes {
+                    index,
+                    centre: to_godot(centre),
+                    body,
+                    mesh,
+                    shown: 0.0,
+                });
+            } else {
+                self.crusts.push(CrustNodes {
+                    index,
+                    body,
+                    shape,
+                    mesh,
+                    shards: Vec::new(),
+                });
+            }
+        }
+
+        // The stepping stones: one MultiMesh for the looks, and one body
+        // with a cylinder for each stone. A cylinder shape is shared.
+        let mut stones = Vec::new();
+        for (index, o) in obstacles.iter().enumerate() {
+            let Kind::SteppingStones {
+                count, spacing, ys, ..
+            } = &o.kind
+            else {
+                continue;
+            };
+            for k in 0..*count {
+                let off = (k as f32 - (*count as f32 - 1.0) * 0.5) * spacing;
+                let y = ys.get(k as usize).copied().unwrap_or(o.pos[1]);
+                let top = Vector3::new(
+                    o.pos[0] + o.dir[0] * off,
+                    y + 0.02,
+                    o.pos[2] + o.dir[1] * off,
+                );
+                stones.push((index, k, top));
+            }
+        }
+        if !stones.is_empty() {
+            let mut cylinder = CylinderShape3D::new_gd();
+            cylinder.set_radius(STEP_RADIUS);
+            cylinder.set_height(STEP_HEIGHT);
+            let mut material = StandardMaterial3D::new_gd();
+            material.set_flag(Flags::ALBEDO_FROM_VERTEX_COLOR, true);
+            material.set_roughness(1.0);
+            let mut mesh = CylinderMesh::new_gd();
+            mesh.set_top_radius(0.92);
+            mesh.set_bottom_radius(1.0);
+            mesh.set_height(1.0);
+            mesh.set_radial_segments(8);
+            mesh.set_rings(0);
+            mesh.set_material(&material.upcast::<Material>());
+            let mut multi = multimesh(&mesh.upcast(), stones.len() as i32);
+            multi.set_visible_instance_count(stones.len() as i32);
+            for (index, k, top) in stones {
+                let mut body = StaticBody3D::new_alloc();
+                body.set_name(&format!("Step{}_{k}", obstacles[index].id));
+                body.set_position(top - Vector3::new(0.0, STEP_HEIGHT * 0.5, 0.0));
+                // A stone is hard rock: it holds well, and it is not soft.
+                body.set_meta(GRIP_META, &1.0f32.to_variant());
+                body.set_meta(SOFT_META, &0.0f32.to_variant());
+                let mut shape = CollisionShape3D::new_alloc();
+                shape.set_shape(&cylinder);
+                body.add_child(&shape);
+                parent.add_child(&body);
+                self.step_stones.push(StepStone {
+                    index,
+                    k,
+                    top,
+                    shape,
+                    solid: true,
+                });
+            }
+            let mut node = MultiMeshInstance3D::new_alloc();
+            node.set_name("StepStones");
+            node.set_multimesh(&multi);
+            node.set_cast_shadows_setting(ShadowCastingSetting::OFF);
+            node.set_custom_aabb(Aabb::new(
+                Vector3::new(-3000.0, -1000.0, -3000.0),
+                Vector3::new(6000.0, 3000.0, 6000.0),
+            ));
+            parent.add_child(&node);
+            self.step_mesh = Some(multi);
         }
         self.zone_nodes = Some(parent);
     }
@@ -631,7 +893,8 @@ impl BfObstacles {
                 .fold(Vector3::ZERO, |sum, &v| sum + v)
                 / count;
             let mut node = MeshInstance3D::new_alloc();
-            node.set_mesh(&triangle_mesh(&triangles, centre, middle));
+            let world_uv = |v: Vector3| Vector2::new(centre.x + v.x, centre.z + v.z) * 0.3;
+            node.set_mesh(&triangle_mesh(&triangles, middle, world_uv));
             if let Some(material) = &self.crust_material {
                 node.set_material_override(&material.clone().upcast::<Material>());
             }
@@ -718,12 +981,90 @@ impl BfObstacles {
                 // Darker than the pale ground, so the tells show.
                 PuffKind::Dust => Color::from_rgba(0.52, 0.42, 0.30, 0.6 * alpha),
                 PuffKind::Steam => Color::from_rgba(0.40, 0.38, 0.34, 0.75 * alpha),
+                // Pale and warm: it shows as a shimmer over hot rock.
+                PuffKind::Heat => Color::from_rgba(0.86, 0.66, 0.46, 0.32 * alpha),
             };
             let basis = Basis::from_scale(Vector3::new(size, size, size));
             mesh.set_instance_transform(i as i32, Transform3D::new(basis, to_godot(p.puff.pos)));
             mesh.set_instance_color(i as i32, colour);
         }
         mesh.set_visible_instance_count(count);
+    }
+
+    /// Shows the stepping stones and turns their collision on or off.
+    /// A stone that blinks is still solid. A ghost is not solid.
+    fn show_steps(&mut self, params: &SimParams) {
+        let (Some(sim), Some(mesh)) = (&self.sim, &mut self.step_mesh) else {
+            return;
+        };
+        let shake_time = self.time;
+        let sim_time = sim.time();
+        for (i, stone) in self.step_stones.iter_mut().enumerate() {
+            let o = &sim.obstacles()[stone.index];
+            let phase = step_phase(o, stone.k, sim_time, params);
+            let solid = phase.solid();
+            if solid != stone.solid {
+                stone.solid = solid;
+                stone.shape.set_deferred("disabled", &(!solid).to_variant());
+            }
+            let base = (0.50, 0.45, 0.40);
+            let (scale, colour, shake) = match phase {
+                StepPhase::Solid => (Vector3::new(1.0, 1.0, 1.0), base, 0.0),
+                StepPhase::Tell { part } => {
+                    // The stone blinks faster and faster, and it shakes.
+                    let blink = ((part * (10.0 + 30.0 * part)).sin() > 0.0) as i32 as f32;
+                    let warn = (0.88, 0.36, 0.20);
+                    let mix = |a: f32, b: f32| a + (b - a) * blink * (0.4 + 0.6 * part);
+                    (
+                        Vector3::new(1.0, 1.0, 1.0),
+                        (
+                            mix(base.0, warn.0),
+                            mix(base.1, warn.1),
+                            mix(base.2, warn.2),
+                        ),
+                        0.012 + 0.02 * part,
+                    )
+                }
+                StepPhase::Gone => (Vector3::new(0.001, 0.001, 0.001), base, 0.0),
+                StepPhase::Ghost { part } => {
+                    // A small, dark ghost grows until it is solid.
+                    let size = 0.35 + 0.5 * part;
+                    (Vector3::new(size, 0.4, size), (0.30, 0.26, 0.24), 0.0)
+                }
+            };
+            let basis = Basis::from_scale(Vector3::new(
+                STEP_RADIUS * scale.x,
+                STEP_HEIGHT * scale.y,
+                STEP_RADIUS * scale.z,
+            ));
+            let mut origin = stone.top - Vector3::new(0.0, STEP_HEIGHT * 0.5 * scale.y, 0.0);
+            if shake > 0.0 {
+                origin.x += (shake_time * 67.0).sin() * shake;
+                origin.z += (shake_time * 59.0).cos() * shake;
+            }
+            mesh.set_instance_transform(i as i32, Transform3D::new(basis, origin));
+            mesh.set_instance_color(i as i32, Color::from_rgb(colour.0, colour.1, colour.2));
+        }
+    }
+
+    /// Lowers the patches of sinking sand. The collision goes down by the
+    /// whole sink. The surface goes down by a part of it, so the bear is in
+    /// the sand.
+    fn move_sands(&mut self) {
+        let Some(sim) = &self.sim else {
+            return;
+        };
+        for sand in &mut self.sands {
+            let sink = sim.sink(sand.index);
+            if (sink - sand.shown).abs() < 0.0004 {
+                continue;
+            }
+            sand.shown = sink;
+            sand.body
+                .set_position(sand.centre - Vector3::new(0.0, sink, 0.0));
+            sand.mesh
+                .set_position(Vector3::new(0.0, sink * (1.0 - SURFACE_SINK_PART), 0.0));
+        }
     }
 
     /// Gives the stones of the simulation to the MultiMesh.
@@ -811,10 +1152,14 @@ fn lid_triangles(
     out
 }
 
-/// Makes a mesh from triangles. `centre` is the world place of the
-/// triangles (for the texture). `origin` moves the mesh: a piece of a
-/// crust turns around its middle.
-fn triangle_mesh(triangles: &[[Vector3; 3]], centre: Vec3, origin: Vector3) -> Gd<ArrayMesh> {
+/// Makes a mesh from triangles. `uv_of` gives the texture position of a
+/// corner, from its place relative to the centre of the obstacle.
+/// `origin` moves the mesh: a piece of a crust turns around its middle.
+fn triangle_mesh(
+    triangles: &[[Vector3; 3]],
+    origin: Vector3,
+    uv_of: impl Fn(Vector3) -> Vector2,
+) -> Gd<ArrayMesh> {
     let mut positions = PackedVector3Array::new();
     let mut normals = PackedVector3Array::new();
     let mut uvs = PackedVector2Array::new();
@@ -826,7 +1171,7 @@ fn triangle_mesh(triangles: &[[Vector3; 3]], centre: Vec3, origin: Vector3) -> G
         for &v in triangle {
             positions.push(v - origin);
             normals.push(normal);
-            uvs.push(Vector2::new(centre.x + v.x, centre.z + v.z) * 0.3);
+            uvs.push(uv_of(v));
         }
     }
     let mut arrays = VarArray::new();
@@ -920,6 +1265,26 @@ fn blotch_texture() -> Option<Gd<ImageTexture>> {
         let n = bf_worldgen::noise::hash01(cell(x), cell(y), 91);
         let v = 0.6 + 0.8 * n;
         [v, v, v, 1.0]
+    })
+}
+
+/// Dark, wet-looking sand with rings around the middle, for the sinking
+/// sand. The rings show that the sand moves. The middle is darker.
+fn ripple_texture() -> Option<Gd<ImageTexture>> {
+    texture(128, |x, y| {
+        // 0 in the middle of the texture, 1 at the middle of its sides.
+        let d = ((x - 0.5).powi(2) + (y - 0.5).powi(2)).sqrt() * 2.0;
+        let ring = 0.5 + 0.5 * (d * 40.0).sin();
+        let grain = bf_worldgen::noise::hash01((x * 128.0) as i32, (y * 128.0) as i32, 311);
+        let wet = 1.0 - 0.35 * (1.0 - d.min(1.0));
+        let v = (0.62 + 0.3 * ring) * wet;
+        let sand = [0.60, 0.47, 0.32];
+        [
+            sand[0] * v + grain * 0.04,
+            sand[1] * v + grain * 0.04,
+            sand[2] * v + grain * 0.04,
+            1.0,
+        ]
     })
 }
 

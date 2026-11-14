@@ -57,3 +57,8 @@ sorts them.
 - Obstacles: stones as Jolt bodies that bounce, when the ragdoll (S-114) is in.
 - Draw distance: Terrain3D makes 4 rings of 12 tiles at 767 m (about 55 000 triangles for each ring). Try `mesh_size` 32 and check the look and the primitive count, if the S-125 numbers say the terrain is too slow.
 - Draw distance: the cloud test measures the rings with software OpenGL. Add the terrain time (render gpu) for each ring count to the report after S-125, to see which ring count costs most.
+- Obstacles: stepping stones over a patch of sinking sand, not only over a trench.
+- Obstacles: an updraft over a cliff edge, placed to carry the bear to a ledge, like a launch vent that does not need a timing.
+- Obstacles: a sound and a rising ripple on sinking sand when the bear stands on it. The ripple texture does not move yet.
+- Obstacles: stepping stones that follow a wave (one after the other) as a harder type. The checkerboard rhythm is the easy one.
+- Obstacles: the F6 dev key needs a "last obstacle" key too, to go back.

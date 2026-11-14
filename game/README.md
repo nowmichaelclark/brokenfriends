@@ -311,8 +311,8 @@ what it assumes.
   of it.
   - **Places.** After the terrain is made, `bf-worldgen`
     (`obstacles.rs`) finds the places: flat ground, gullies, passes,
-    hot rock and steep faces with a ledge. A zone has about 200
-    obstacles. The search takes about 0.1 s.
+    hot rock, steep faces with a ledge, wide flat ground and riverbed
+    sand. A zone has about 250 obstacles. The search takes about 0.15 s.
   - **Fewer near the start.** No obstacle is nearer than 18 m to the
     start point. The number and the difficulty grow with the distance.
     The nearest obstacle of each type is easy.
@@ -335,18 +335,45 @@ what it assumes.
   - **Launch vent.** A yellow mound at the foot of a steep face. It
     blows up. A bear on it flies to the ledge above (1.8 to 9 m). With
     no input, the bear keeps the direction to the ledge.
+  - **Stepping stones** (help). A trench in wide flat ground: 16 to 22
+    m long, 5 to 6 m wide and 1.6 to 2.4 m deep. 4 stones cross it, 1.6
+    to 1.9 m apart. The stones take turns. The first and third are solid
+    first. The second and fourth start half a cycle later. Thus, two
+    stones next to each other are solid together for 1.1 s (easy) to
+    0.5 s (hard). A bear can hop from one stone to the next then. A
+    stone blinks and shakes for 0.7 s before it vanishes. A small dark
+    ghost grows for 0.5 s before it is solid. A cycle takes 3.2 to 4.8 s.
+    The bear can walk around the trench, or climb out of it.
+  - **Updraft** (help). A column of warm air over very hot rock, 2.4 to
+    3.4 m in radius and 6 to 10 m high. It is strong for 62% of a cycle
+    (5.5 to 8.5 s) and weak (30%) for the rest. A bear in the air goes
+    up to 2.2 m/s in it. Near the top the lift fades, so the bear hovers
+    and then falls slowly. A bear on the ground gets no lift. Pale
+    rising puffs show the column.
+  - **Sinking sand.** A patch of riverbed sand, 2.8 to 4.2 m in radius.
+    A bear that stands on it sinks by 0.09 m/s (hard: 0.17 m/s), up to
+    0.3 m. A bear that walks sinks 0.4 times as fast. The sink slows the
+    bear (12% at once, 65% at the full sink) and lowers its jump. The
+    bear can always walk out. Sand comes back up at 0.2 m/s. The patch
+    is dark with rings. Its collision goes down by the whole sink and
+    the surface by one quarter of it.
   - **Wet fur** dries in 40 s.
   - **Code.** `ObstacleSim` (`obstacle_sim.rs`) moves the obstacles
     and has unit tests. `BfObstacles` (`obstacles.rs`) draws them and
     gives the wind and the hits to the bear. All tuning values are on
-    the `Obstacles` node; the number of obstacles is on `Terrain`.
-  - **Cost.** 3 draw calls for all puffs, stones and vent mounds, and
-    1 for each crust nearer than 180 m. At most 400 puffs show.
+    the `Obstacles` node; the number of obstacles is on `Terrain`. The
+    bear gets the lift and the slow down from `BfObstacles` with
+    `set_lift` and `set_ground_slow`, as it gets the wind.
+  - **Cost.** 4 draw calls for all puffs, stones, vent mounds and
+    stepping stones, and 1 for each crust and each sand patch nearer than
+    180 m. About 60 stepping stones have a collision body each; a stone
+    that is not solid turns its shape off. At most 400 puffs show.
     Obstacles further than 170 m from the bear do nothing. The frame
     time is not measured on a laptop yet [unverified].
   - **Recorder.** Each tell, hit, push, launch and fall is a bear event
     (`obstacle:<what>:<type>:#<number>`). `report.md` counts them by
-    type in "Obstacles". It also tells where each launch ended.
+    type in "Obstacles". It also tells where each launch ended, and
+    which bears crossed or fell off the stepping stones.
 - **`main.tscn`** is the start scene: atmosphere, terrain, obstacles,
   bear, cameras, overlay and recorder.
 
@@ -614,6 +641,17 @@ Mikey does not build on his laptop (decision R10).
 - **A crust is large.** The heightmap has a sample each 1 m, so a pit
   cannot be smaller than about 4 m, and its lid is 6 m or more. For the bear, a crust is as wide
   as a pond.
+- **The new help obstacles are first guesses** (S-128). Stepping stones
+  take turns with a rhythm of 3.2 to 4.8 s; an updraft hovers the bear;
+  sand sinks 0.3 m at most. Nobody played them yet. Mikey: do the
+  stones feel fair? Is the updraft fun, or does it break the jumps? Is
+  sand a danger, or only a slow patch? The bear cannot die in sand.
+- **Stepping stones need a trench.** The terrain has no gaps, so the
+  generator digs one. The first and the last stone are on the rims; they
+  also blink. A stone in the ghost state has no collision.
+- **Sand does not pull from below.** The bear stands on a lid that goes
+  down. The bear does not sink into the real ground. At the full sink,
+  the bear stays at the bottom of the pit (0.55 m deep).
 - **Nothing hurts the bear yet.** A hit only throws the bear. Limb
   loss comes with S-114 and S-129.
 - **Stones are not physics bodies.** They follow the slope of the

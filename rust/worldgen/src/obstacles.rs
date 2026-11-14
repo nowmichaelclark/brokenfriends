@@ -5,13 +5,19 @@
 //! selects the obstacles with the seed. The same seed always gives the
 //! same obstacles. The game (`bf-game`) makes them move.
 //!
-//! The four natural obstacles of this module:
+//! The natural obstacles of this module:
 //! - **Ash crust:** thin ground over a pit, on flat ground.
 //! - **Rolling stones:** stones that roll down a gully.
 //! - **Gust:** wind along a narrow pass.
 //! - **Vent:** a hole that blows at intervals. A push vent blows to the
 //!   side. A launch vent at the foot of a steep face throws the bear up
 //!   to the ledge above.
+//! - **Stepping stones:** a trench in flat ground, with stones that
+//!   appear and vanish in a rhythm. They help the bear to cross it.
+//! - **Updraft:** a column of warm air over hot rock. It slows a fall
+//!   and lifts a bear that is in the air.
+//! - **Sinking sand:** a patch of riverbed sand that sinks under a
+//!   bear that stands on it.
 
 use crate::detmath::{sin_cos, smoothstep};
 use crate::drainage::flow;
@@ -65,19 +71,48 @@ pub enum Kind {
     /// A vent at the foot of a steep face. The ledge is `rise` metres
     /// above the vent and `reach` metres away along the direction.
     VentLaunch { rise: f32, reach: f32 },
+    /// A trench with stones that appear and vanish. The trench is
+    /// `half_length` metres long to each side of the place, along the
+    /// axis across the direction of the obstacle. It is `half_width`
+    /// metres wide to each side, along the direction, and `depth`
+    /// metres deep. `count` stones of the radius `radius` stand in a line
+    /// along the direction, `spacing` metres apart. `ys` has the height of
+    /// the top of each stone.
+    SteppingStones {
+        count: u32,
+        spacing: f32,
+        radius: f32,
+        half_length: f32,
+        half_width: f32,
+        depth: f32,
+        ys: Vec<f32>,
+    },
+    /// A column of warm air. `radius` is the radius of the column and
+    /// `height` its height above the place, in metres.
+    Updraft { radius: f32, height: f32 },
+    /// A patch of sand that sinks. `radius` is the radius of the patch.
+    /// The pit below it is `depth` metres deep. `lid` is the ground from
+    /// before the pit.
+    SinkingSand { radius: f32, depth: f32, lid: Lid },
 }
 
+/// The number of obstacle types.
+pub const KIND_COUNT: usize = 8;
+
 /// The names of all obstacle types, in the order of `Kind::index`.
-pub const KIND_NAMES: [&str; 5] = [
+pub const KIND_NAMES: [&str; KIND_COUNT] = [
     "ash_crust",
     "rolling_stones",
     "gust",
     "vent_push",
     "vent_launch",
+    "stepping_stones",
+    "updraft",
+    "sinking_sand",
 ];
 
 impl Kind {
-    /// Gives the number of the type, from 0 to 4.
+    /// Gives the number of the type, from 0 to 7.
     pub fn index(&self) -> usize {
         match self {
             Kind::AshCrust { .. } => 0,
@@ -85,6 +120,9 @@ impl Kind {
             Kind::Gust { .. } => 2,
             Kind::VentPush { .. } => 3,
             Kind::VentLaunch { .. } => 4,
+            Kind::SteppingStones { .. } => 5,
+            Kind::Updraft { .. } => 6,
+            Kind::SinkingSand { .. } => 7,
         }
     }
 
@@ -122,10 +160,10 @@ pub struct ObstacleParams {
     pub density: f32,
     /// The largest number of each type, in the order of `KIND_NAMES`,
     /// at density 1.
-    pub max_count: [usize; 5],
+    pub max_count: [usize; KIND_COUNT],
     /// The smallest distance between two obstacles of the same type, in
     /// metres, in the order of `KIND_NAMES`.
-    pub same_gap_m: [f32; 5],
+    pub same_gap_m: [f32; KIND_COUNT],
     /// The smallest distance between two obstacles of any type, in metres.
     pub any_gap_m: f32,
     /// No obstacle is nearer to the start point than this, in metres.
@@ -147,8 +185,8 @@ impl Default for ObstacleParams {
     fn default() -> Self {
         Self {
             density: 1.0,
-            max_count: [50, 36, 28, 70, 40],
-            same_gap_m: [45.0, 60.0, 70.0, 9.0, 45.0],
+            max_count: [50, 36, 28, 70, 40, 14, 24, 30],
+            same_gap_m: [45.0, 60.0, 70.0, 9.0, 45.0, 70.0, 50.0, 30.0],
             any_gap_m: 14.0,
             clear_start_m: 18.0,
             full_density_m: 350.0,
@@ -171,6 +209,9 @@ struct Site {
     /// Two sizes. Their meaning depends on the type.
     a: f32,
     b: f32,
+    /// The size of the area that the obstacle changes, in metres from
+    /// the place. 0 for a small obstacle. It keeps other obstacles away.
+    ext: f32,
 }
 
 /// Reads the finished zone for the place search.
@@ -252,7 +293,7 @@ impl Zone {
 
 /// Finds the places for all obstacle types. The result has one list for
 /// each type, in the order of `KIND_NAMES`.
-fn find_sites(zone: &Zone, params: &ObstacleParams) -> [Vec<Site>; 5] {
+fn find_sites(zone: &Zone, params: &ObstacleParams) -> [Vec<Site>; KIND_COUNT] {
     let size = zone.heights.size;
     let spacing = zone.heights.spacing;
     let half = size as f32 * 0.5;
@@ -276,7 +317,7 @@ fn find_sites(zone: &Zone, params: &ObstacleParams) -> [Vec<Site>; 5] {
         coarse[z.clamp(0, max) as usize * cs + x.clamp(0, max) as usize]
     };
     let margin = ((params.border_m / cell).ceil() as usize).max(4);
-    let mut sites: [Vec<Site>; 5] = Default::default();
+    let mut sites: [Vec<Site>; KIND_COUNT] = Default::default();
     if cs < margin * 2 + 8 {
         return sites;
     }
@@ -299,6 +340,7 @@ fn find_sites(zone: &Zone, params: &ObstacleParams) -> [Vec<Site>; 5] {
                     dir: [1.0, 0.0],
                     a: 2.2 + 1.2 * rand(key, seed, 11),
                     b: 0.0,
+                    ext: 4.6,
                 });
             }
 
@@ -350,6 +392,7 @@ fn find_sites(zone: &Zone, params: &ObstacleParams) -> [Vec<Site>; 5] {
                     dir,
                     a: 7.0 + 5.0 * rand(key, seed, 22),
                     b: width.clamp(3.0, 9.0),
+                    ext: 0.0,
                 });
             }
 
@@ -368,8 +411,60 @@ fn find_sites(zone: &Zone, params: &ObstacleParams) -> [Vec<Site>; 5] {
                         dir: [cos, sin],
                         a: 1.3 + 0.6 * rand(key, seed, 34),
                         b: 0.0,
+                        ext: 0.0,
                     });
                 }
+            }
+
+            // Stepping stones: a trench in wide, flat ground. The stones
+            // cross it.
+            if !on_sand
+                && !land.lake(x, z)
+                && land.flat(x, z, 4.4, 0.5)
+                && land.flat(x, z, 8.5, 1.0)
+            {
+                let at = (hash2(key.0, key.1, seed ^ 0x57E9) % 8) as usize;
+                let half_length = 8.0 + 3.0 * rand(key, seed, 51);
+                sites[5].push(Site {
+                    key,
+                    x,
+                    z,
+                    dir: DIRS8[at],
+                    a: half_length,
+                    b: 2.3 + 0.4 * rand(key, seed, 52),
+                    ext: half_length + 1.5,
+                });
+            }
+
+            // Updraft: very hot rock, flat ground.
+            if hot > 0.28 && !on_sand && land.flat(x, z, 3.0, 0.5) {
+                sites[6].push(Site {
+                    key,
+                    x,
+                    z,
+                    dir: [1.0, 0.0],
+                    a: 2.4 + 1.0 * rand(key, seed, 61),
+                    b: 6.0 + 4.0 * rand(key, seed, 62),
+                    ext: 0.0,
+                });
+            }
+
+            // Sinking sand: riverbed sand on flat ground.
+            if on_sand
+                && land.sand(x + 2.0, z)
+                && land.sand(x - 2.0, z)
+                && land.flat(x, z, 3.5, 0.4)
+            {
+                let radius = 2.8 + 1.4 * rand(key, seed, 71);
+                sites[7].push(Site {
+                    key,
+                    x,
+                    z,
+                    dir: [1.0, 0.0],
+                    a: radius,
+                    b: 0.0,
+                    ext: radius + 1.5,
+                });
             }
 
             // Launch vent: flat ground at the foot of a steep face with
@@ -452,6 +547,7 @@ fn stone_site(
         dir,
         a: length,
         b: 0.0,
+        ext: 0.0,
     })
 }
 
@@ -494,6 +590,7 @@ fn launch_site(land: &Land, x: f32, z: f32, d: [f32; 2]) -> Option<Site> {
                 dir: d,
                 a: rise,
                 b: u + 0.7,
+                ext: 0.0,
             });
         }
         u += 0.5;
@@ -524,6 +621,8 @@ pub fn place_obstacles(zone: &mut Zone, params: &ObstacleParams) -> Vec<Obstacle
             } else {
                 params.any_gap_m
             };
+            // A large obstacle keeps a wider area free.
+            let gap = gap.max(c.ext + s.ext + 2.0);
             (c.x - s.x).powi(2) + (c.z - s.z).powi(2) >= gap * gap
         })
     };
@@ -533,7 +632,7 @@ pub fn place_obstacles(zone: &mut Zone, params: &ObstacleParams) -> Vec<Obstacle
         let mut nearest: Option<(f32, &Site)> = None;
         for s in list {
             let d = from_start(s);
-            if d >= params.clear_start_m.max(25.0)
+            if d >= params.clear_start_m.max(25.0) + s.ext
                 && d <= params.first_within_m
                 && nearest.is_none_or(|n| d < n.0)
                 && fits(&chosen, kind, s)
@@ -558,7 +657,7 @@ pub fn place_obstacles(zone: &mut Zone, params: &ObstacleParams) -> Vec<Obstacle
                 break;
             }
             let d = from_start(s);
-            if d < params.clear_start_m {
+            if d < params.clear_start_m + s.ext {
                 continue;
             }
             let ramp = smoothstep(params.clear_start_m, params.full_density_m, d);
@@ -617,7 +716,7 @@ pub fn place_obstacles(zone: &mut Zone, params: &ObstacleParams) -> Vec<Obstacle
                 5.5 - 1.5 * difficulty + 1.5 * r(3),
                 [s.x, zone.heights.sample_world(s.x, s.z), s.z],
             ),
-            _ => (
+            4 => (
                 Kind::VentLaunch {
                     rise: s.a,
                     reach: s.b,
@@ -625,6 +724,28 @@ pub fn place_obstacles(zone: &mut Zone, params: &ObstacleParams) -> Vec<Obstacle
                 4.0 + 1.5 * r(3),
                 [s.x, zone.heights.sample_world(s.x, s.z), s.z],
             ),
+            5 => {
+                let (kind, pos) = make_stepping_stones(zone, &s, difficulty);
+                (kind, 4.4 - 1.2 * difficulty + 0.4 * r(3), pos)
+            }
+            6 => (
+                Kind::Updraft {
+                    radius: s.a,
+                    height: s.b,
+                },
+                7.0 - 1.5 * difficulty + 1.5 * r(3),
+                [s.x, zone.heights.sample_world(s.x, s.z), s.z],
+            ),
+            _ => {
+                let depth = SAND_PIT_DEPTH;
+                let (lid, pos) = dig_pit(zone, &s, depth);
+                let kind = Kind::SinkingSand {
+                    radius: s.a,
+                    depth,
+                    lid,
+                };
+                (kind, 1.0, pos)
+            }
         };
         out.push(Obstacle {
             id: id as u32,
@@ -639,9 +760,67 @@ pub fn place_obstacles(zone: &mut Zone, params: &ObstacleParams) -> Vec<Obstacle
     out
 }
 
-/// Digs the pit of an ash crust into the zone. Gives the lid (the
-/// heights from before) and the place of the crust. The place is on a
-/// sample of the heightmap.
+/// The depth of the pit below a patch of sinking sand, in metres. It is
+/// deeper than the sink of the sand, so the sand always has room.
+pub const SAND_PIT_DEPTH: f32 = 0.55;
+
+/// Digs the trench of a stepping-stone path into the zone and gives the
+/// stones. The place of the obstacle is the middle of the trench.
+fn make_stepping_stones(zone: &mut Zone, s: &Site, difficulty: f32) -> (Kind, [f32; 3]) {
+    let (half_length, half_width) = (s.a, s.b);
+    let depth = 1.6 + 0.8 * difficulty;
+    let dir = s.dir;
+    // The stones cross the trench. The first and the last stone are at
+    // the two rims.
+    let count = 4u32;
+    let spacing = half_width * 2.0 / (count - 1) as f32;
+    let ys: Vec<f32> = (0..count)
+        .map(|k| {
+            let off = (k as f32 - (count - 1) as f32 * 0.5) * spacing;
+            zone.heights
+                .sample_world(s.x + dir[0] * off, s.z + dir[1] * off)
+        })
+        .collect();
+    let centre_y = zone.heights.sample_world(s.x, s.z);
+
+    // Dig the trench: full depth in the middle, a wall at each side, a
+    // slope at each end.
+    let map = &mut zone.heights;
+    let (size, spacing_map) = (map.size, map.spacing);
+    let half = size as f32 * 0.5;
+    let reach = ((half_length + half_width + 3.0) / spacing_map).ceil() as isize;
+    let sample = |w: f32| (w / spacing_map + half).round() as isize;
+    let (cx, cz) = (sample(s.x), sample(s.z));
+    let world = |i: isize| (i as f32 - half) * spacing_map;
+    for dz in -reach..=reach {
+        for dx in -reach..=reach {
+            let (ix, iz) = (cx + dx, cz + dz);
+            if ix < 0 || iz < 0 || ix >= size as isize || iz >= size as isize {
+                continue;
+            }
+            let (rx, rz) = (world(ix) - s.x, world(iz) - s.z);
+            let across = (rx * dir[0] + rz * dir[1]).abs();
+            let along = (-rx * dir[1] + rz * dir[0]).abs();
+            let wall = 1.0 - smoothstep(half_width - 1.0, half_width + 0.3, across);
+            let end = 1.0 - smoothstep(half_length - 2.5, half_length, along);
+            map.data[iz as usize * size + ix as usize] -= depth * wall * end;
+        }
+    }
+    let kind = Kind::SteppingStones {
+        count,
+        spacing,
+        radius: 0.62,
+        half_length,
+        half_width,
+        depth,
+        ys,
+    };
+    (kind, [s.x, centre_y, s.z])
+}
+
+/// Digs a round pit into the zone, for an ash crust or for sinking
+/// sand. Gives the lid (the heights from before) and the place of the
+/// obstacle. The place is on a sample of the heightmap.
 fn dig_pit(zone: &mut Zone, s: &Site, depth: f32) -> (Lid, [f32; 3]) {
     let map = &mut zone.heights;
     let (size, spacing) = (map.size, map.spacing);
@@ -789,6 +968,86 @@ mod tests {
             assert!((rise - 4.0).abs() < 0.5, "rise {rise}");
             let top = v.pos[0] + v.dir[0] * reach;
             assert!(top > 22.0, "the reach ends on the ledge");
+        }
+    }
+
+    #[test]
+    fn stepping_stones_stand_over_a_finite_trench() {
+        let mut zone = zone_from(512, |_, _| 10.0);
+        let before = zone.heights.clone();
+        let list = place_obstacles(&mut zone, &ObstacleParams::default());
+        let paths: Vec<_> = list
+            .iter()
+            .filter(|o| o.kind.name() == "stepping_stones")
+            .collect();
+        assert!(!paths.is_empty());
+        for o in paths {
+            let Kind::SteppingStones {
+                count,
+                spacing,
+                radius,
+                half_length,
+                half_width,
+                depth,
+                ys,
+            } = &o.kind
+            else {
+                unreachable!()
+            };
+            let [x, y, z] = o.pos;
+            assert_eq!(ys.len(), *count as usize);
+            assert!(ys.iter().all(|h| (h - 10.0).abs() < 1e-3));
+            assert!((y - 10.0).abs() < 1e-3);
+            // The trench is deep in the middle.
+            assert!(zone.heights.sample_world(x, z) < y - depth * 0.95);
+            // A bear can walk around it: the ends of the trench are flat.
+            let (ax, az) = (-o.dir[1], o.dir[0]);
+            let end = half_length + 1.0;
+            let at = zone.heights.sample_world(x + ax * end, z + az * end);
+            assert!((at - before.sample_world(x + ax * end, z + az * end)).abs() < 1e-3);
+            // The stones are in a line along the direction. The gaps are
+            // small enough to jump.
+            let gap = spacing - radius * 2.0;
+            assert!(gap > 0.2 && gap < 1.2, "gap {gap}");
+            assert!(spacing * (*count as f32 - 1.0) >= half_width * 2.0 - 0.01);
+        }
+    }
+
+    #[test]
+    fn sinking_sand_is_on_riverbed_sand_and_has_room_to_sink() {
+        let mut zone = zone_from(512, |x, _| 10.0 + x * 0.01);
+        zone.riverbed = vec![200; 512 * 512];
+        let before = zone.heights.clone();
+        let list = place_obstacles(&mut zone, &ObstacleParams::default());
+        let patches: Vec<_> = list
+            .iter()
+            .filter(|o| o.kind.name() == "sinking_sand")
+            .collect();
+        assert!(!patches.is_empty());
+        for o in patches {
+            let Kind::SinkingSand { radius, depth, lid } = &o.kind else {
+                unreachable!()
+            };
+            let [x, y, z] = o.pos;
+            assert!(*radius >= 2.8 && *radius <= 4.2);
+            assert!(*depth >= SAND_PIT_DEPTH - 1e-4);
+            assert!((lid.height(x, z) - before.sample_world(x, z)).abs() < 1e-3);
+            assert!((zone.heights.sample_world(x, z) - (y - depth)).abs() < 1e-3);
+        }
+    }
+
+    #[test]
+    fn hot_flat_rock_gets_updrafts() {
+        let mut zone = zone_from(768, |_, _| 10.0);
+        let list = place_obstacles(&mut zone, &ObstacleParams::default());
+        let columns: Vec<_> = list.iter().filter(|o| o.kind.name() == "updraft").collect();
+        assert!(!columns.is_empty());
+        for o in columns {
+            let Kind::Updraft { radius, height } = o.kind else {
+                unreachable!()
+            };
+            assert!((2.4..=3.4).contains(&radius));
+            assert!((6.0..=10.0).contains(&height));
         }
     }
 

@@ -1,6 +1,7 @@
 //! The F3 debug overlay.
 
 use crate::bear::BEAR_GROUP;
+use crate::obstacles::OBSTACLES_GROUP;
 use crate::smoke_edge::SMOKE_GROUP;
 use crate::terrain::TERRAIN_GROUP;
 use godot::classes::performance::Monitor;
@@ -108,6 +109,7 @@ impl BfDebugOverlay {
         let mut seed = String::from("no terrain");
         let mut bear = String::from("no bear");
         let mut smoke = String::from("no smoke edge");
+        let mut obstacles = String::from("none");
         if self.base().is_inside_tree() {
             let tree = self.base().get_tree();
             if let Some(mut node) = tree.get_first_node_in_group(BEAR_GROUP) {
@@ -115,6 +117,9 @@ impl BfDebugOverlay {
             }
             if let Some(mut node) = tree.get_first_node_in_group(SMOKE_GROUP) {
                 smoke = node.call("debug_text", &[]).to_string();
+            }
+            if let Some(mut node) = tree.get_first_node_in_group(OBSTACLES_GROUP) {
+                obstacles = node.call("debug_text", &[]).to_string();
             }
             if let Some(mut terrain) = tree.get_first_node_in_group(TERRAIN_GROUP) {
                 seed = terrain.call("current_seed", &[]).to_string();
@@ -131,7 +136,8 @@ impl BfDebugOverlay {
              seed {seed}\n\
              bear: {bear}\n\
              smoke: {smoke}\n\
-             F2: fly camera   F3: hide   F4: new zone   F9: mark   F10: menu (pad: hold Back)"
+             obstacles: {obstacles}\n\
+             F2: fly camera   F3: hide   F4: new zone   F6: next obstacle   F9: mark   F10: menu (pad: hold Back)"
         )
     }
 }

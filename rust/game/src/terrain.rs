@@ -6,6 +6,7 @@
 
 use crate::view_distance::terrain_lods;
 use bf_worldgen::highlands::{generate, HighlandsParams};
+use bf_worldgen::obstacles::{place_obstacles, Obstacle, ObstacleParams, KIND_NAMES};
 use bf_worldgen::Zone;
 use godot::classes::image::Format;
 use godot::classes::{ClassDb, Image, ImageTexture, InputEvent, InputEventKey, Node3D};
@@ -27,6 +28,7 @@ const REGION_MAP_SIZE: i32 = 32;
 /// A zone that a worker thread made.
 struct Generated {
     zone: Zone,
+    obstacles: Vec<Obstacle>,
     colours: Vec<[u8; 3]>,
     seconds: f32,
 }
@@ -111,6 +113,21 @@ pub struct BfTerrain {
     #[init(val = HighlandsParams::default().river_max_width_m)]
     river_max_width_m: f32,
 
+    /// Multiplies the number of obstacles (R23). 0 makes a zone with no obstacles.
+    #[export]
+    #[init(val = 1.0)]
+    obstacle_density: f32,
+
+    /// No obstacle is nearer to the start point than this, in metres.
+    #[export]
+    #[init(val = ObstacleParams::default().clear_start_m)]
+    obstacle_clear_start_m: f32,
+
+    /// At this distance from the start point, the obstacles have their full difficulty, in metres.
+    #[export]
+    #[init(val = ObstacleParams::default().hard_at_m)]
+    obstacle_hard_at_m: f32,
+
     /// The grip of rust-coloured rock for a bear that climbs (0 to 1).
     #[export]
     #[init(val = 1.0)]
@@ -141,6 +158,9 @@ pub struct BfTerrain {
 
     /// The current zone.
     zone: Option<Zone>,
+
+    /// The obstacles of the current zone (R23).
+    obstacles: Vec<Obstacle>,
 
     /// The time to make the current zone on the worker thread, in seconds.
     generation_seconds: f32,
@@ -217,16 +237,26 @@ impl BfTerrain {
         let size = self.sample_count();
         let spacing = self.vertex_spacing.max(0.25);
         let params = self.params();
+        let obstacle_params = ObstacleParams {
+            density: self.obstacle_density.max(0.0),
+            clear_start_m: self.obstacle_clear_start_m.max(0.0),
+            hard_at_m: self.obstacle_hard_at_m.max(50.0),
+            ..ObstacleParams::default()
+        };
         let (sender, receiver) = channel();
         self.join_worker();
         let worker = std::thread::spawn(move || {
             let start = Instant::now();
-            let zone = generate(seed, size, spacing, &params);
+            let mut zone = generate(seed, size, spacing, &params);
+            // The obstacles come after the terrain. The ash crusts dig
+            // their pits into the heights.
+            let obstacles = place_obstacles(&mut zone, &obstacle_params);
             let colours = zone.ground_colours();
             let seconds = start.elapsed().as_secs_f32();
             // If the game stopped, nobody receives the zone. That is not an error.
             let _ = sender.send(Generated {
                 zone,
+                obstacles,
                 colours,
                 seconds,
             });
@@ -323,6 +353,30 @@ impl BfTerrain {
         GString::from(name)
     }
 
+    /// Gives the start point of the zone (x, z): the flattest place
+    /// near the centre.
+    #[func]
+    pub fn start_point(&self) -> Vector2 {
+        let (x, z) = self.zone.as_ref().map_or((0.0, 0.0), Zone::start_point);
+        Vector2::new(x, z)
+    }
+
+    /// Gives the number of obstacles of each type as text, for example
+    /// "ash_crust 50, rolling_stones 36".
+    #[func]
+    pub fn obstacle_text(&self) -> GString {
+        let text = KIND_NAMES
+            .iter()
+            .enumerate()
+            .map(|(i, name)| {
+                let count = self.obstacles.iter().filter(|o| o.kind.index() == i);
+                format!("{name} {}", count.count())
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+        GString::from(&text)
+    }
+
     /// Gives the time to make the current zone, in seconds.
     #[func]
     pub fn generation_seconds(&self) -> f32 {
@@ -351,6 +405,16 @@ impl BfTerrain {
 }
 
 impl BfTerrain {
+    /// Gives the current zone, if there is one.
+    pub fn zone(&self) -> Option<&Zone> {
+        self.zone.as_ref()
+    }
+
+    /// Gives the obstacles of the current zone.
+    pub fn obstacles(&self) -> &[Obstacle] {
+        &self.obstacles
+    }
+
     /// Gives the number of samples on each side of the zone.
     fn sample_count(&self) -> usize {
         let spacing = self.vertex_spacing.max(0.25);
@@ -469,9 +533,11 @@ impl BfTerrain {
     fn show(&mut self, generated: Generated) {
         let Generated {
             zone,
+            obstacles,
             colours,
             seconds,
         } = generated;
+        self.obstacles = obstacles;
         let start = Instant::now();
         let map = &zone.heights;
         let size = map.size as i32;
@@ -546,8 +612,9 @@ impl BfTerrain {
         let show_ms = start.elapsed().as_secs_f64() * 1000.0;
         godot_print!(
             "BfTerrain: seed {}, {size} x {size} samples, heights {lo:.0} to {hi:.0} m, \
-             generation {seconds:.1} s, Terrain3D import {show_ms:.0} ms",
-            zone.seed
+             generation {seconds:.1} s, Terrain3D import {show_ms:.0} ms, obstacles: {}",
+            zone.seed,
+            self.obstacle_text()
         );
         self.zone = Some(zone);
         self.generation_seconds = seconds;

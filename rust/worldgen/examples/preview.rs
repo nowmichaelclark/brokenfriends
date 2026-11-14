@@ -46,9 +46,10 @@ fn main() {
     let params = HighlandsParams::default();
     for seed in seeds {
         let start = Instant::now();
-        let zone = generate(seed, size, spacing, &params);
+        let mut zone = generate(seed, size, spacing, &params);
         let seconds = start.elapsed().as_secs_f32();
         print_numbers(&zone, seconds);
+        print_obstacles(&mut zone);
 
         let colours = zone.ground_colours();
         write_height(&zone, &out.join(format!("seed_{seed}_height.png")));
@@ -86,6 +87,26 @@ fn main() {
         );
     }
     println!("The images are in {}", out.display());
+}
+
+/// Places the obstacles (this digs the pits of the ash crusts) and
+/// prints how many of each type the zone has.
+fn print_obstacles(zone: &mut Zone) {
+    use bf_worldgen::obstacles::{place_obstacles, ObstacleParams, KIND_NAMES};
+    let start = Instant::now();
+    let (sx, sz) = zone.start_point();
+    let list = place_obstacles(zone, &ObstacleParams::default());
+    let ms = start.elapsed().as_secs_f32() * 1000.0;
+    let mut text = format!("  obstacles: {} in {ms:.0} ms", list.len());
+    for (i, name) in KIND_NAMES.iter().enumerate() {
+        let of_kind = list.iter().filter(|o| o.kind.index() == i);
+        let nearest = of_kind
+            .clone()
+            .map(|o| ((o.pos[0] - sx).powi(2) + (o.pos[2] - sz).powi(2)).sqrt())
+            .fold(f32::INFINITY, f32::min);
+        text += &format!(", {name} {} (nearest {nearest:.0} m)", of_kind.count());
+    }
+    println!("{text}");
 }
 
 fn print_numbers(zone: &Zone, seconds: f32) {

@@ -12,6 +12,8 @@
 transform = Transform3D(0.707, -0.24, 0.665, 0, 0.94, 0.34, -0.707, -0.24, 0.665, 800, 420, 800)
 far = 3000.0
 
+[node name="Obstacles" type="BfObstacles" parent="."]
+
 [node name="Bear" type="BfBear" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 600, 0)
 

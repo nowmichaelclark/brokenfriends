@@ -1,7 +1,9 @@
 # Obstacles (R23)
 
 Status: draft, 2026-11-14. Mikey's idea (R23) and a first proposal.
-Items marked **proposed** need Mikey's yes.
+Items marked **proposed** need Mikey's yes. S-127 built the framework
+and four obstacles: ash crust, rolling stones, gusts and vents (push
+and launch). `game/README.md` tells how they work now.
 
 ## Mikey's idea
 

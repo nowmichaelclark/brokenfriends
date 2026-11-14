@@ -382,13 +382,17 @@ impl BfRecorder {
         let seed = terrain.call("current_seed", &[]).to::<i64>();
         let seconds = terrain.call("generation_seconds", &[]).to::<f32>();
         let import = terrain.call("import_ms", &[]).to::<f32>();
+        let obstacles = terrain.call("obstacle_text", &[]).to_string();
         let mut event = self.event_here(
             "zone",
-            format!("seed {seed}, generation {seconds:.2} s, Terrain3D import {import:.0} ms"),
+            format!(
+                "seed {seed}, generation {seconds:.2} s, Terrain3D import {import:.0} ms, \
+                 obstacles: {obstacles}"
+            ),
         );
         event.value = Some(seed as f64);
         self.write_event(event);
-        let zone = json!({"t": t, "seed": seed, "generation_s": seconds, "import_ms": import});
+        let zone = json!({"t": t, "seed": seed, "generation_s": seconds, "import_ms": import, "obstacles": obstacles});
         if let Some(zones) = self.session["zones"].as_array_mut() {
             zones.push(zone);
         } else {

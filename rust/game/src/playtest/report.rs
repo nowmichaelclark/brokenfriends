@@ -80,6 +80,7 @@ pub fn make_report(r: &ReportInput) -> String {
     zone_section(&mut out, r.events);
     hitch_section(&mut out, r.events);
     mark_section(&mut out, r.events);
+    obstacle_section(&mut out, r.events);
     event_section(&mut out, r.events);
     out
 }
@@ -262,6 +263,48 @@ fn mark_section(out: &mut String, events: &[Event]) {
     }
 }
 
+/// Counts the obstacle events (R23) by obstacle type and by what
+/// occurred. An obstacle event is a bear event with the text
+/// `obstacle:<what>:<type>:#<number>`.
+fn obstacle_section(out: &mut String, events: &[Event]) {
+    out.push_str("\n## Obstacles\n\n");
+    // (type, what, count)
+    let mut counts: Vec<(&str, &str, usize)> = Vec::new();
+    for e in events.iter().filter(|e| e.kind == "bear") {
+        let mut parts = e.info.split(':');
+        let (Some("obstacle"), Some(what), Some(kind)) = (parts.next(), parts.next(), parts.next())
+        else {
+            continue;
+        };
+        match counts.iter_mut().find(|c| c.0 == kind && c.1 == what) {
+            Some(c) => c.2 += 1,
+            None => counts.push((kind, what, 1)),
+        }
+    }
+    if counts.is_empty() {
+        out.push_str("- no obstacle did anything to the bear\n");
+        return;
+    }
+    counts.sort();
+    out.push_str(
+        "`tell`: the obstacle started near the bear. `hit`, `push`, `launch`, `fall`: it got \
+         the bear. `escape`: the bear left a crust in time. `launch_reached`, `launch_missed`, \
+         `launch_wall`: where a launch ended.\n\n",
+    );
+    let mut kind = "";
+    for (k, what, n) in counts {
+        if k != kind {
+            if !kind.is_empty() {
+                out.push('\n');
+            }
+            let _ = write!(out, "- {k}:");
+            kind = k;
+        }
+        let _ = write!(out, " {what} {n},");
+    }
+    out.push('\n');
+}
+
 fn event_section(out: &mut String, events: &[Event]) {
     out.push_str("\n## All events\n\n");
     let mut counts: Vec<(&str, usize)> = Vec::new();
@@ -386,6 +429,32 @@ mod tests {
         append_tests(&mut report, &["### Test: A\n".into(), "### Test: B".into()]);
         assert!(report.contains("## Tests"));
         assert!(report.find("### Test: A").unwrap() < report.find("### Test: B").unwrap());
+    }
+
+    #[test]
+    fn report_counts_the_obstacle_events_by_type() {
+        let bear = |info: &str| Event {
+            kind: "bear".into(),
+            info: info.into(),
+            ..Default::default()
+        };
+        let events = vec![
+            bear("jump"),
+            bear("obstacle:hit:rolling_stones:#12"),
+            bear("obstacle:hit:rolling_stones:#12"),
+            bear("obstacle:fall:ash_crust:#3"),
+            bear("obstacle:escape:ash_crust:#4"),
+            bear("obstacle:launch:vent_launch:#150"),
+        ];
+        let mut out = String::new();
+        obstacle_section(&mut out, &events);
+        assert!(out.contains("- ash_crust: escape 1, fall 1,"), "{out}");
+        assert!(out.contains("- rolling_stones: hit 2,"), "{out}");
+        assert!(out.contains("- vent_launch: launch 1,"), "{out}");
+
+        let mut out = String::new();
+        obstacle_section(&mut out, &[bear("jump")]);
+        assert!(out.contains("no obstacle did anything"));
     }
 
     #[test]

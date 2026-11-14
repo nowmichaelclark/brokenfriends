@@ -16,6 +16,8 @@ mod fly_camera;
 mod follow_camera;
 mod limbs;
 mod motion;
+mod obstacle_sim;
+mod obstacles;
 mod overlay;
 mod playtest;
 mod recorder;

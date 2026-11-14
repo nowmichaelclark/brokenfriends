@@ -278,8 +278,49 @@ what it assumes.
     as "after a recorder screenshot."
   - **Without a window,** the recorder is off. `-- --bf-record` on the
     command line turns it on (no screenshots then).
-- **`main.tscn`** is the start scene: atmosphere, terrain, bear,
-  cameras, overlay and recorder.
+- **Obstacles** (R23, `plan/obstacles.md`). An obstacle is data: a
+  type, a place, a size, a rhythm and a difficulty. The seed sets all
+  of it.
+  - **Places.** After the terrain is made, `bf-worldgen`
+    (`obstacles.rs`) finds the places: flat ground, gullies, passes,
+    hot rock and steep faces with a ledge. A zone has about 200
+    obstacles. The search takes about 0.1 s.
+  - **Fewer near the start.** No obstacle is nearer than 18 m to the
+    start point. The number and the difficulty grow with the distance.
+    The nearest obstacle of each type is easy.
+  - **Ash crust.** A pale, cracked disc on flat ground, 6 to 9 m
+    wide, over a pit of 0.9 to 1.6 m. When the bear walks on it, it
+    shakes for 0.9 s (hard: 0.45 s) and then falls. A fast bear gets
+    off in time. The bear can climb out of the pit. A crust that fell
+    stays broken until a new zone is made.
+  - **Rolling stones.** At the top of a gully, 1 to 3 stones shake for
+    1 s with dust, then roll down, one after another. A new wave comes
+    each 8 to 14 s. A stone that hits the bear throws it down the
+    slope. Stones start only if the bear is nearer than 90 m.
+  - **Gust.** Wind along a narrow pass, in a rhythm of 7 to 9.5 s.
+    Dust comes in for 1.2 s, then the wind blows for 2.2 s at 1.2 to
+    2.6 m/s. The wind carries the bear. A bear in the air gets 1.5
+    times the wind. A jog goes through, or the bear waits.
+  - **Push vent.** A dark mound that leans to one side. It makes more
+    and more steam for 1 s, then blows for 0.45 s. A bear in front of
+    it is thrown to that side (3 to 5.5 m/s) and its fur gets wet.
+  - **Launch vent.** A yellow mound at the foot of a steep face. It
+    blows up. A bear on it flies to the ledge above (1.8 to 9 m). With
+    no input, the bear keeps the direction to the ledge.
+  - **Wet fur** dries in 40 s.
+  - **Code.** `ObstacleSim` (`obstacle_sim.rs`) moves the obstacles
+    and has unit tests. `BfObstacles` (`obstacles.rs`) draws them and
+    gives the wind and the hits to the bear. All tuning values are on
+    the `Obstacles` node; the number of obstacles is on `Terrain`.
+  - **Cost.** 3 draw calls for all puffs, stones and vent mounds, and
+    1 for each crust nearer than 180 m. At most 400 puffs show.
+    Obstacles further than 170 m from the bear do nothing. The frame
+    time is not measured on a laptop yet [unverified].
+  - **Recorder.** Each tell, hit, push, launch and fall is a bear event
+    (`obstacle:<what>:<type>:#<number>`). `report.md` counts them by
+    type in "Obstacles". It also tells where each launch ended.
+- **`main.tscn`** is the start scene: atmosphere, terrain, obstacles,
+  bear, cameras, overlay and recorder.
 
 ## Play the latest build (Mikey)
 
@@ -335,6 +376,7 @@ makes the zip of the crashed session.
 | Debug overlay | F3 | dev menu |
 | New zone | F4 | dev menu |
 | Save playtest | | dev menu |
+| Go to the next obstacle (dev) | F6 | |
 | Playtest mark | F9 | tap Back/Select |
 | Remove or give back a limb (debug) | 1, 2, 3, 4 | (dev menu, S-113) |
 | Give back all limbs (debug) | 0 | (dev menu, S-113) |
@@ -535,6 +577,24 @@ Mikey does not build on his laptop (decision R10).
   on about 35 to 50%. Lower `relief_m` or `valley_at` for more flat
   ground.
 - **The zone border is open.** The terrain stops at the border.
+- **The first obstacles are natural and have no sound** (S-127). The
+  tells are for the eyes only: colour, shake, dust and steam. Mikey:
+  are these four the right feel?
+- **"Hot rock" is a noise field.** The generator has no heat data.
+  Push vents are on flat ground where a slow noise field is high, so
+  they come in groups. The ground there has no other colour yet.
+- **A crust is large.** The heightmap has a sample each 1 m, so a pit
+  cannot be smaller than about 4 m, and its lid is 6 m or more. For the bear, a crust is as wide
+  as a pond.
+- **Nothing hurts the bear yet.** A hit only throws the bear. Limb
+  loss comes with S-114 and S-129.
+- **Stones are not physics bodies.** They follow the slope of the
+  heightmap and go through each other. A hit is a distance test.
+- **Obstacle numbers are first guesses** (wind speed, throw speed,
+  shake time, rhythm). Nobody played them yet. Mikey tells Claude
+  what feels unfair or dull.
+- **F6 is a keyboard key.** The gamepad dev menu does not have "next
+  obstacle" yet.
 - **Same world on all computers.** The generator uses its own `sin`,
   `cos` and `exp` (`detmath.rs`), not the functions of the operating
   system. A test on Windows did not run yet [unverified].

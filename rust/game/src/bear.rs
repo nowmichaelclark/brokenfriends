@@ -401,6 +401,22 @@ pub struct BfBear {
     /// The limbs that the bear has.
     limbs: LimbSet,
 
+    /// The time until wet fur is dry again, in seconds.
+    #[export]
+    #[init(val = 40.0)]
+    dry_seconds: f32,
+
+    /// The wind from the obstacles: a velocity that carries the bear.
+    /// `BfObstacles` sets it before each physics step.
+    wind: Vector3,
+    /// An obstacle threw the bear. In the air, with no input, the bear
+    /// keeps this velocity on the ground plane (x, z).
+    thrown: Option<Vector2>,
+    /// How wet the fur is, from 0 to 1. It dries with time.
+    wet: f32,
+    /// The wet value that the model has now.
+    wet_shown: f32,
+
     timers: JumpTimers,
     jump_was_down: bool,
     let_go_was_down: bool,
@@ -467,6 +483,7 @@ impl ICharacterBody3D for BfBear {
             Mode::Mantle { from, to, time } => self.mantle(delta, from, to, time),
         }
         self.pose_body(delta);
+        self.dry(delta);
     }
 
     fn input(&mut self, event: Gd<InputEvent>) {
@@ -505,31 +522,21 @@ impl BfBear {
         let Some(mut terrain) = tree.get_first_node_in_group(TERRAIN_GROUP) else {
             return;
         };
-        let mut height = |x: f32, z: f32| {
-            terrain
-                .call("height_at", &[x.to_variant(), z.to_variant()])
-                .to::<f32>()
-        };
-        let mut best = (f32::MAX, 0.0, 0.0);
-        for iz in -10..=10 {
-            for ix in -10..=10 {
-                let (x, z) = (ix as f32 * 20.0, iz as f32 * 20.0);
-                let h = height(x, z);
-                let rise = (height(x + 2.0, z) - h).abs() + (height(x, z + 2.0) - h).abs();
-                // A flat place wins. Of two flat places, the nearer one wins.
-                let score = rise + (x.abs() + z.abs()) * 0.0005;
-                if score < best.0 {
-                    best = (score, x, z);
-                }
-            }
-        }
-        let (_, x, z) = best;
-        let position = Vector3::new(x, height(x, z) + 0.3, z);
+        // The terrain knows the start point. The obstacles stay away
+        // from it.
+        let start = terrain.call("start_point", &[]).try_to::<Vector2>();
+        let (x, z) = start.map_or((0.0, 0.0), |p| (p.x, p.y));
+        let height = terrain
+            .call("height_at", &[x.to_variant(), z.to_variant()])
+            .to::<f32>();
+        let position = Vector3::new(x, height + 0.3, z);
         self.base_mut().set_global_position(position);
         self.base_mut().set_velocity(Vector3::ZERO);
         self.mode = Mode::Walk;
         self.stamina = 1.0;
         self.exhausted = false;
+        self.wind = Vector3::ZERO;
+        self.thrown = None;
         self.event("restart");
     }
 
@@ -581,6 +588,56 @@ impl BfBear {
     #[func]
     pub fn report_event(&mut self, name: GString) {
         self.event(&name.to_string());
+    }
+
+    /// Sets the wind from the obstacles for the next physics step. The
+    /// wind is a velocity that carries the bear, in m/s.
+    #[func]
+    pub fn set_wind(&mut self, wind: Vector3) {
+        self.wind = wind;
+    }
+
+    /// An obstacle hits or throws the bear: the bear gets this velocity.
+    /// A bear on a wall lets go. In the air, the bear keeps the speed
+    /// until the player gives a direction or the bear lands.
+    #[func]
+    pub fn knock(&mut self, velocity: Vector3) {
+        match self.mode {
+            Mode::Climb(_) => {
+                self.event("let_go:knock");
+                self.let_go(velocity);
+            }
+            Mode::Mantle { .. } => {
+                self.mode = Mode::Walk;
+                self.base_mut().set_velocity(velocity);
+            }
+            Mode::Walk => self.base_mut().set_velocity(velocity),
+        }
+        self.timers = JumpTimers::default();
+        self.thrown = Some(Vector2::new(velocity.x, velocity.z));
+        self.regrab_left = self.regrab_time;
+    }
+
+    /// Makes the fur wet (1 is fully wet). The fur dries with time.
+    #[func]
+    pub fn make_wet(&mut self, wet: f32) {
+        self.wet = self.wet.max(wet.clamp(0.0, 1.0));
+    }
+
+    /// Puts the bear at a place on the ground (a dev tool).
+    #[func]
+    pub fn go_to(&mut self, position: Vector3) {
+        self.base_mut().set_global_position(position);
+        self.base_mut().set_velocity(Vector3::ZERO);
+        self.mode = Mode::Walk;
+        self.thrown = None;
+        self.event("dev:go_to");
+    }
+
+    /// Gives the gravity on the bear (m/s each second) and the factor
+    /// for a fall. The launch vents use them.
+    pub fn gravity(&self) -> (f32, f32) {
+        (self.fall_acceleration, self.fall_gravity_factor)
     }
 
     /// Gives the stamina, from 0 (empty) to 1 (full).
@@ -704,6 +761,10 @@ impl BfBear {
         let on_floor = self.base().is_on_floor();
 
         let mut velocity = self.base().get_velocity();
+        // A throw ends when the bear is on the ground and does not go up.
+        if on_floor && velocity.y <= 0.01 {
+            self.thrown = None;
+        }
 
         // A jog uses stamina. A tired bear walks.
         let jogging = jog && wish != Vector2::ZERO && !self.exhausted && self.stamina > 0.0;
@@ -724,7 +785,15 @@ impl BfBear {
             } else {
                 self.walk_speed
             };
-        let target = (wish.x * speed, wish.y * speed);
+        let mut target = (wish.x * speed, wish.y * speed);
+        // The wind carries the bear: it is a part of the speed that the
+        // bear goes to. An obstacle that threw the bear gives the speed
+        // in the air while the player gives no direction.
+        target.0 += self.wind.x;
+        target.1 += self.wind.z;
+        if let (false, true, Some(thrown)) = (on_floor, wish == Vector2::ZERO, self.thrown) {
+            target = (thrown.x, thrown.y);
+        }
         let rate = if wish == Vector2::ZERO {
             self.deceleration
         } else {
@@ -948,6 +1017,21 @@ impl BfBear {
         self.regrab_left = self.regrab_time;
         self.push_time = 0.0;
         self.base_mut().set_velocity(velocity);
+    }
+
+    /// Dries the fur a little and gives the wet value to the model.
+    fn dry(&mut self, delta: f32) {
+        self.wet = (self.wet - delta / self.dry_seconds.max(0.1)).max(0.0);
+        if (self.wet - self.wet_shown).abs() < 0.02 && (self.wet > 0.0 || self.wet_shown == 0.0) {
+            return;
+        }
+        self.wet_shown = self.wet;
+        if let Some(model) = &mut self.model {
+            let mut model = model.bind_mut();
+            for part in crate::bear_shape::PartId::ALL {
+                model.set_part_wet(GString::from(part.name()), self.wet);
+            }
+        }
     }
 
     /// Keeps an event for the playtest recorder. At most 64 events wait;

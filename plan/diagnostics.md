@@ -47,7 +47,13 @@ feel and taste. Those are the only questions for him.
 - **state changes:** climb start and stop, jump, slide, tumble, death
   (`death:smoke:time`, `death:smoke:depth`), restart, `smoke_enter`,
   `smoke_leave`
-- **new zone (F4):** the seed and the time to make it
+- **new zone (F4):** the seed, the time to make it and the number of
+  obstacles of each type
+- **obstacles (R23):** bear events with the text
+  `obstacle:<what>:<type>:#<number>`. `<what>` is `tell`, `hit`,
+  `push`, `launch`, `fall`, `escape` (the bear left a crust in time),
+  or `launch_reached`, `launch_missed`, `launch_wall` (where a launch
+  ended). The report counts them by type
 - **errors and warnings** from the Godot log
 
 **Screenshots** (`shots/`, JPEG, 960 x 540):

@@ -48,3 +48,10 @@ sorts them.
 - Dev menu: a "Climb test" with a fixed wall and a fixed input path, for the climb and the animation numbers.
 - Tests: a "stand still" test that measures the bear and the animation alone, to split the cost of the terrain from the cost of the bear.
 - Tests: a time limit for the test camera path on a slow computer (the cloud runs at 4 fps and a path takes 50 s of real time).
+- Obstacles: sound for each tell (rumble, hiss, wind), when the game has sound.
+- Obstacles: add "next obstacle" (F6) and "obstacles on/off" to the gamepad dev menu (S-113).
+- Obstacles: a crust that grows back after some minutes, or after the bear restarts.
+- Obstacles: hot rock with its own ground colour (dark, scorched), so vent fields show from far away.
+- Obstacles: the follow camera can go below a crust lid, because it reads the heightmap only.
+- Obstacles: a map image of all obstacle places in the preview tool, to check the spread.
+- Obstacles: stones as Jolt bodies that bounce, when the ragdoll (S-114) is in.

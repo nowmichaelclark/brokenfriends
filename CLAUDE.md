@@ -82,11 +82,15 @@ this style.
 
 ## End of every agenda row
 
-1. In `rust/`, run `cargo fmt`, `cargo clippy` and `cargo test`. Fix
-   the problems that they show.
-2. Open the game without a window:
-   `godot --headless --path game --quit-after 300`. Make sure that it
-   loads without errors.
+1. Run `tools/check.sh`. It runs `cargo fmt`, `clippy` and `test`,
+   builds the library, installs Godot 4.7.1 (into `tools/.cache/`)
+   and Terrain3D if they are missing, and loads the game headless. Fix
+   the problems that it shows. During the work, `tools/check.sh
+   --quick` runs only the Rust checks.
+2. If the session cannot run Godot (for example, a permission
+   prompt), do not look for another way. Say so in the summary. Then
+   wait for the GitHub game build (step 6), which loads the game
+   headless too.
 3. Update `plan/STATE.md`. Delete your row. Change the rows that your
    row unblocks to **ready**. Add new rows for follow-up work at the
    bottom. Give each new row a model and an effort level.

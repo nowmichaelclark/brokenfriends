@@ -16,3 +16,4 @@ playtests/
 __pycache__/
 *.pyc
 .DS_Store
+tools/.cache/

@@ -169,3 +169,28 @@ S-120 does steps 1 to 7. S-122 does steps 8 to 10. S-114 does steps
 | Filament cloth model, https://google.github.io/filament/Filament.md.html | Sheen, wrap diffuse | Apache-2.0 (verify) |
 | Lagarde, wet surfaces, https://seblagarde.wordpress.com/2013/04/14/water-drop-3b-physically-based-wet-surfaces/ | Wet fur | Blog; ideas only |
 | Making of Shadow of the Colossus (2005), https://lukasz.dk/files/making_of_sotc.pdf | IK on top of few motions, on weak hardware | Interview |
+
+## What S-122 found and built (2026-11-14)
+
+A search for open sources found nothing that covers limb loss or
+hopping gaits. These sources are near:
+- **Gibbon: Beyond the Trees** (Hemisphere Games, 2022,
+  https://hemispheregames.com/2022/03/19/physics-based-animation-in-gibbon-beyond-the-trees):
+  a planner picks the next hold, and the body hangs from the hand.
+  The rig is solved in layers (centre of mass first, then 5 points,
+  then the skeleton). Article only; no code licence.
+- **Rune Johansen, procedural creatures**
+  (https://blog.runevision.com/2025/01/procedural-creature-progress-2021-2024.html):
+  ray casts find the footsteps; no missing legs. No code.
+- **Overgrowth source** (Apache-2.0): the repo has no climbing code
+  that the search found.
+
+What S-122 built from this doc, with our own code:
+- A hold for each hand and foot. A step starts when the body is 5.5 cm
+  from the home of the limb. The fan has 4 rays for a hand and 2 for
+  a foot. The score is `facing + grip - 0.5 x distance / spread`.
+- The partner limb (the other hand, the other foot) must hold before a
+  limb steps. This gives the steps in turn with no timer.
+- The gait contacts are general: the feet in a walk and a hop, the
+  paws in a crawl and a drag. The same step planner moves all of them.
+

@@ -34,6 +34,10 @@ pub struct BearSample {
     /// The time of one animation step of the bear, in microseconds.
     #[serde(default)]
     pub anim_us: f32,
+    /// The gait from the limbs: walk, hop, arm_crawl, one_arm_drag or
+    /// wriggle.
+    #[serde(default)]
+    pub gait: String,
 }
 
 /// The camera in one sample.

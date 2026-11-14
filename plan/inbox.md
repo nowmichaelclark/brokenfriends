@@ -36,3 +36,7 @@ sorts them.
 - Animation: run the pose in the render frame with interpolation, if a screen with more than 60 Hz shows a stutter.
 - Animation: a debug view of the feet targets and the stride wheel in the F3 overlay or the dev menu.
 - Crumbling ground that drops the bear into a cave (R23), when the caves exist (demo 2).
+- Climb: let the climb movement use the holds of the hands (for example, no move up when no hand finds a hold), so the look and the rule agree.
+- Climb: at a mantle, put the paws on the top of the ledge and pull the body up over them.
+- Limbs: a lower collision capsule for a bear that lies (no legs), so it can crawl under low things.
+- Limbs: a "pull, rest" rhythm in the speed of the one-arm drag, not only in the look.

@@ -3,6 +3,7 @@
 
 use crate::anim::{AnimInput, AnimParams, BearAnim, Ground, Pose, Rig, LIMBS};
 use crate::bear_shape::{self, PartId, Recipe, Seam};
+use crate::limbs::LimbSet;
 use godot::classes::image::Format;
 use godot::classes::mesh::{ArrayType, PrimitiveType};
 use godot::classes::{
@@ -348,6 +349,106 @@ pub struct BfBearModel {
     #[init(val = 0.3)]
     hump_damping: f32,
 
+    /// How high the body goes in a hop on one leg, in metres.
+    #[export]
+    #[init(val = 0.035)]
+    hop_height_m: f32,
+
+    /// The part of a hop in which the foot stands (0.2 to 0.8).
+    #[export]
+    #[init(val = 0.45)]
+    hop_duty: f32,
+
+    /// How far the body leans over the leg in a hop, in degrees.
+    #[export]
+    #[init(val = 6.0)]
+    hop_lean_degrees: f32,
+
+    /// How far the arms go out for balance in a hop, in degrees.
+    #[export]
+    #[init(val = 34.0)]
+    hop_arms_out_degrees: f32,
+
+    /// How far a bear without legs tips forward onto its belly, in degrees.
+    #[export]
+    #[init(val = 77.0)]
+    lie_angle_degrees: f32,
+
+    /// The height of the hips above the ground when the bear lies, in metres.
+    #[export]
+    #[init(val = 0.065)]
+    lie_height_m: f32,
+
+    /// The part of the belly tilt that the head removes, to look ahead (0 to 1).
+    #[export]
+    #[init(val = 0.75)]
+    lie_head: f32,
+
+    /// In a crawl, a paw lands at this part of the arm length from the shoulder.
+    #[export]
+    #[init(val = 0.9)]
+    crawl_reach: f32,
+
+    /// How far the body rolls along its length in a crawl or a drag, in degrees.
+    #[export]
+    #[init(val = 9.0)]
+    drag_roll_degrees: f32,
+
+    /// How far the body turns from side to side in a wriggle, in degrees.
+    #[export]
+    #[init(val = 14.0)]
+    wriggle_yaw_degrees: f32,
+
+    /// How far the body rolls along its length in a wriggle, in degrees.
+    #[export]
+    #[init(val = 11.0)]
+    wriggle_roll_degrees: f32,
+
+    /// On a wall, a hand reaches up this part of the arm length (0 to 1).
+    #[export]
+    #[init(val = 0.7)]
+    hand_reach: f32,
+
+    /// On a wall, a hand or a foot steps when it is this far from its place, in metres.
+    #[export]
+    #[init(val = 0.055)]
+    hold_step_m: f32,
+
+    /// The time of a step of a hand on a wall, in seconds.
+    #[export]
+    #[init(val = 0.16)]
+    hand_step_time: f32,
+
+    /// The time of a step of a foot on a wall, in seconds.
+    #[export]
+    #[init(val = 0.14)]
+    foot_step_time: f32,
+
+    /// The distance between the rays of the fan that finds a hold, in metres.
+    #[export]
+    #[init(val = 0.035)]
+    fan_spread_m: f32,
+
+    /// How far a hand or a foot comes off the wall in a step, in metres.
+    #[export]
+    #[init(val = 0.03)]
+    hold_lift_m: f32,
+
+    /// The part of the hand movement that the body follows on a wall (0 to 1).
+    #[export]
+    #[init(val = 0.4)]
+    hang_follow: f32,
+
+    /// How far the body hangs below the hands, and more while a hand steps, in metres.
+    #[export]
+    #[init(val = 0.01)]
+    hang_sag_m: f32,
+
+    /// The roll of the body on a wall for each metre between the hand heights, in radians.
+    #[export]
+    #[init(val = 3.0)]
+    hang_roll: f32,
+
     parts: Vec<(PartId, Gd<MeshInstance3D>, Gd<ShaderMaterial>)>,
     /// The fixed points that the animation needs.
     rig: Option<Rig>,
@@ -473,6 +574,14 @@ impl BfBearModel {
         }
     }
 
+    /// Shows only the limbs that the bear has. A lost limb is hidden
+    /// (S-114 makes it a separate object in the world).
+    pub fn show_limbs(&mut self, limbs: LimbSet) {
+        for (id, node, _) in &mut self.parts {
+            node.set_visible(limbs.has_part(*id));
+        }
+    }
+
     /// Gives the tuning values of the animation from the exported fields.
     fn anim_params(&self) -> AnimParams {
         AnimParams {
@@ -514,6 +623,26 @@ impl BfBearModel {
             hump_wobble: self.hump_wobble_mm * 0.001,
             hump_frequency: self.hump_frequency,
             hump_damping: self.hump_damping,
+            hop_height: self.hop_height_m.max(0.0),
+            hop_duty: self.hop_duty.clamp(0.2, 0.8),
+            hop_lean: self.hop_lean_degrees.to_radians(),
+            hop_arms_out: self.hop_arms_out_degrees.to_radians(),
+            lie_angle: self.lie_angle_degrees.to_radians(),
+            lie_height: self.lie_height_m.max(0.0),
+            lie_head: self.lie_head.clamp(0.0, 1.0),
+            crawl_reach: self.crawl_reach.clamp(0.3, 1.2),
+            drag_roll: self.drag_roll_degrees.to_radians(),
+            wriggle_yaw: self.wriggle_yaw_degrees.to_radians(),
+            wriggle_roll: self.wriggle_roll_degrees.to_radians(),
+            hand_reach: self.hand_reach.clamp(0.0, 1.0),
+            hold_step: self.hold_step_m.max(0.01),
+            hand_step_time: self.hand_step_time.max(0.02),
+            foot_step_time: self.foot_step_time.max(0.02),
+            fan_spread: self.fan_spread_m.max(0.005),
+            hold_lift: self.hold_lift_m.max(0.0),
+            hang_follow: self.hang_follow.clamp(0.0, 1.0),
+            hang_sag: self.hang_sag_m.max(0.0),
+            hang_roll: self.hang_roll,
         }
     }
 

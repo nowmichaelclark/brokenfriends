@@ -115,12 +115,50 @@ what it assumes.
     soft parts. The paws, the head, the ears and the hump stay behind
     when the bear accelerates, and then swing back. The hump is a part
     of the body mesh; the fur shader moves it.
-  - **On a wall,** the pose is the same as before: the arms reach up,
-    and the limbs swing with the climb distance (S-122 changes this).
+  - **Holds on a wall.** Each hand and foot holds one place on the
+    wall. A hand holds above its shoulder, and a foot below its hip.
+    When the body moves 5.5 cm away from that place, the limb steps.
+    A fan of 4 rays (2 for a foot) looks for a new hold a little ahead
+    in the climb direction. Each hit gets a score from its distance,
+    how much it faces the bear, and its grip. The two hands step in
+    turn, and so do the two feet.
+  - **The body hangs from the hands.** It follows the hands a little,
+    hangs lower while a hand steps, and its shoulders follow the line
+    of the hands. With one arm, it hangs to the side of that hand. If
+    no ray finds a hold (above the top of a wall), the hand reaches to
+    the wall and tries again after 0.15 s.
   - **Cost.** One step takes about 7 microseconds in the cloud
-    container. It uses 2 ray casts at most while the bear moves, and
-    none while the bear stands. The playtest recorder writes the time
-    (`anim_us` in `samples.jsonl`).
+    container. On the ground, it uses 2 ray casts at most while the
+    bear moves, and none while the bear stands. On a wall, a step of a
+    hand uses 4 ray casts and a step of a foot 2; a bear that holds
+    still uses none. The playtest recorder writes the time (`anim_us`
+    in `samples.jsonl`).
+- **Limbs and gaits** (R12, R18, `rust/game/src/limbs.rs`). The bear
+  knows which arms and legs it has. A table gives the gait, the speed,
+  the jump and the climb limits for each set of limbs:
+
+  | Legs | 2 arms | 1 arm | 0 arms |
+  |---|---|---|---|
+  | 2 | walk; full climb | walk (95%); climb up to 68 degrees | walk (95%); no climb |
+  | 1 | hop (60%); jump 60% | hop (51%); climb up to 68 degrees | hop (42%); small jumps; no climb |
+  | 0 | arm-crawl (30%); no jump | one-arm drag (18%) | wriggle (10%); no climb |
+
+  - **Hop.** The one foot stands below the middle of the body. The body
+    goes up 3.5 cm in each hop and leans over the leg. The arms go out
+    for balance.
+  - **Without legs,** the bear tips forward onto its belly and lifts
+    its head. In an arm-crawl, the paws plant in front of the
+    shoulders, pull, and step in turn. A one-arm drag pulls with one
+    paw and rolls a little. A wriggle turns the body from side to side.
+  - **Climb costs.** The climb stamina costs more with fewer limbs: one
+    arm x1.6, one leg x1.15, no legs x1.3 (the factors multiply). A
+    bear without arms lets go of a wall.
+  - **Debug keys.** 1 to 4 remove or give back the left arm, the right
+    arm, the left leg and the right leg. 0 gives back all limbs. A lost
+    limb is hidden. Code calls `set_limb("LeftArm", false)` and
+    `restore_limbs()` on `Bear`.
+  - **Recorder.** Each sample has the number of limbs and the gait.
+    Each change is an event (`limb_off:LeftArm`, `gait:hop`).
 - **`BfFollowCamera`** is the third-person camera. The mouse or the
   right stick turns it around the bear. It reads the heightmap and
   comes nearer when the ground is in the way.
@@ -224,6 +262,8 @@ makes the zip of the crashed session.
 | Debug overlay | F3 | |
 | New zone | F4 | |
 | Playtest mark | F9 | tap Back/Select |
+| Remove or give back a limb (debug) | 1, 2, 3, 4 | (dev menu, S-113) |
+| Give back all limbs (debug) | 0 | (dev menu, S-113) |
 
 All tuning values of the bear and the camera are in the Inspector
 (select `Bear` or `FollowCamera`). The values of the animation are on
@@ -364,9 +404,22 @@ Mikey does not build on his laptop (decision R10).
 - **The animation runs in the physics step** (60 times each second),
   as the movement does. A screen with more than 60 Hz shows no extra
   steps.
-- **The wall pose did not change.** On a wall, the belly is on the
-  wall, the arms turn up at the shoulders, and the arms and legs swing
-  a little with the climb distance (S-122).
+- **Lost limbs are hidden** (S-122). A lost limb does not stay in the
+  world yet. S-114 makes it a separate object.
+- **A bear that lies keeps its tall collision capsule.** Only the
+  visible bear lies down. The capsule stays 0.40 m tall, so a bear
+  without legs cannot crawl under low things.
+- **The gait speeds and limits are first guesses** (S-122): the
+  numbers in the table above, the one-arm climb limit of 68 degrees
+  and the stamina factors (on `Bear`). Mikey: does a bear on one leg
+  or without legs feel right?
+- **No jump without legs.** A bear without legs cannot jump. It can
+  still grab a wall with its arms.
+- **The drag has an even speed.** The one-arm drag looks like "pull,
+  rest," but the movement code moves the bear at an even speed.
+- **The holds on a wall are only a look.** The climb movement
+  (`climb.rs`) does not read the holds. The hands can show a hold that
+  the climb did not use.
 - **The look of the bear** (R17). The fur is honey tan, the pads are
   pale cream, and the thread is almost black. Mikey has not seen it
   in the Mobile renderer yet [unverified]. The screenshots came from

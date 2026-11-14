@@ -13,6 +13,7 @@ mod bear_shape;
 mod climb;
 mod fly_camera;
 mod follow_camera;
+mod limbs;
 mod motion;
 mod overlay;
 mod playtest;

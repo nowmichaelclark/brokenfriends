@@ -7,12 +7,13 @@ use crate::climb::{
     Surface,
 };
 use crate::follow_camera::FOLLOW_CAMERA_GROUP;
+use crate::limbs::{profile, GaitProfile, GaitTuning, LimbSet};
 use crate::motion::{angle_difference, approach, jump_speed, JumpTimers};
 use crate::terrain::TERRAIN_GROUP;
 use glam::{Vec2, Vec3};
 use godot::classes::{
-    CapsuleShape3D, CharacterBody3D, CollisionShape3D, ICharacterBody3D, Input,
-    PhysicsDirectSpaceState3D, PhysicsRayQueryParameters3D,
+    CapsuleShape3D, CharacterBody3D, CollisionShape3D, ICharacterBody3D, Input, InputEvent,
+    InputEventKey, PhysicsDirectSpaceState3D, PhysicsRayQueryParameters3D,
 };
 use godot::global::{JoyAxis, JoyButton, Key};
 use godot::prelude::*;
@@ -144,6 +145,11 @@ pub const BEAR_GROUP: &str = "bf_bear";
 /// the wall" is down. Jump makes a hop up the wall, and it uses
 /// stamina (R20). Jump with the stick away from the wall jumps off.
 /// The let-go button drops the bear (R21).
+///
+/// The bear can lose limbs (R12). The limbs that it has set its gait,
+/// its speed, its jump and its climb limits (`limbs.rs`). Debug keys:
+/// 1 to 4 remove or give back the left arm, the right arm, the left leg
+/// and the right leg. 0 gives back all limbs.
 #[derive(GodotClass)]
 #[class(base = CharacterBody3D, init)]
 pub struct BfBear {
@@ -337,6 +343,64 @@ pub struct BfBear {
     #[init(val = 12.0)]
     climb_turn_rate: f32,
 
+    /// The speed of a bear with two legs and fewer than two arms, as a part of the normal speed.
+    #[export]
+    #[init(val = 0.95)]
+    armless_walk_speed_scale: f32,
+
+    /// The speed of a hop on one leg with two arms, as a part of the normal speed.
+    #[export]
+    #[init(val = 0.6)]
+    hop_speed_scale: f32,
+
+    /// The hop gets slower by this part for each missing arm (0 to 1).
+    #[export]
+    #[init(val = 0.15)]
+    hop_arm_slowdown: f32,
+
+    /// The jump height on one leg, as a part of the normal jump.
+    #[export]
+    #[init(val = 0.6)]
+    hop_jump_scale: f32,
+
+    /// The speed of an arm-crawl (no legs), as a part of the normal speed.
+    #[export]
+    #[init(val = 0.3)]
+    crawl_speed_scale: f32,
+
+    /// The speed of a one-arm drag (no legs, one arm), as a part of the normal speed.
+    #[export]
+    #[init(val = 0.18)]
+    drag_speed_scale: f32,
+
+    /// The speed of a wriggle (no limbs), as a part of the normal speed.
+    #[export]
+    #[init(val = 0.1)]
+    wriggle_speed_scale: f32,
+
+    /// The steepest surface that a bear with one arm can hold, in degrees.
+    #[export]
+    #[init(val = 68.0)]
+    one_arm_climb_degrees: f32,
+
+    /// The climb stamina use of a bear with one arm is multiplied by this value.
+    #[export]
+    #[init(val = 1.6)]
+    one_arm_stamina_factor: f32,
+
+    /// The climb stamina use of a bear with one leg is multiplied by this value.
+    #[export]
+    #[init(val = 1.15)]
+    one_leg_stamina_factor: f32,
+
+    /// The climb stamina use of a bear with no legs is multiplied by this value.
+    #[export]
+    #[init(val = 1.3)]
+    no_legs_stamina_factor: f32,
+
+    /// The limbs that the bear has.
+    limbs: LimbSet,
+
     timers: JumpTimers,
     jump_was_down: bool,
     let_go_was_down: bool,
@@ -404,6 +468,31 @@ impl ICharacterBody3D for BfBear {
         }
         self.pose_body(delta);
     }
+
+    fn input(&mut self, event: Gd<InputEvent>) {
+        let Ok(key) = event.try_cast::<InputEventKey>() else {
+            return;
+        };
+        if !key.is_pressed() || key.is_echo() {
+            return;
+        }
+        // Debug keys: 1 to 4 remove or give back one limb, 0 gives back all.
+        let limb = match key.get_keycode() {
+            Key::KEY_1 => Some(0),
+            Key::KEY_2 => Some(1),
+            Key::KEY_3 => Some(2),
+            Key::KEY_4 => Some(3),
+            Key::KEY_0 => {
+                self.change_limbs(LimbSet::ALL);
+                None
+            }
+            _ => None,
+        };
+        if let Some(i) = limb {
+            let has = self.limbs.has(i);
+            self.change_limbs(self.limbs.with(i, !has));
+        }
+    }
 }
 
 #[godot_api]
@@ -444,6 +533,40 @@ impl BfBear {
         self.event("restart");
     }
 
+    /// Removes or gives back a limb: "LeftArm", "RightArm", "LeftLeg"
+    /// or "RightLeg". S-114 and the dev menu (S-113) call this.
+    #[func]
+    pub fn set_limb(&mut self, part: GString, present: bool) {
+        let name = part.to_string();
+        let Some(i) = LIMBS.iter().position(|l| l.name() == name) else {
+            godot_warn!("BfBear: no limb with the name {name}");
+            return;
+        };
+        self.change_limbs(self.limbs.with(i, present));
+    }
+
+    /// Gives back all limbs.
+    #[func]
+    pub fn restore_limbs(&mut self) {
+        self.change_limbs(LimbSet::ALL);
+    }
+
+    /// Tells if the bear has a limb, for example "LeftLeg".
+    #[func]
+    pub fn has_limb(&self, part: GString) -> bool {
+        let name = part.to_string();
+        LIMBS
+            .iter()
+            .position(|l| l.name() == name)
+            .is_some_and(|i| self.limbs.has(i))
+    }
+
+    /// Gives the name of the gait now, for example "walk" or "hop".
+    #[func]
+    pub fn gait_name(&self) -> GString {
+        GString::from(self.gait_profile().gait.name())
+    }
+
     /// Gives the stamina, from 0 (empty) to 1 (full).
     #[func]
     pub fn stamina_part(&self) -> f32 {
@@ -466,7 +589,7 @@ impl BfBear {
     #[func]
     pub fn debug_text(&self) -> GString {
         let stamina = self.stamina * 100.0;
-        let text = match self.mode {
+        let mode = match self.mode {
             Mode::Walk if self.exhausted => format!("walk (tired)   stamina {stamina:.0}%"),
             Mode::Walk => format!("walk   stamina {stamina:.0}%"),
             Mode::Mantle { .. } => format!("onto a ledge   stamina {stamina:.0}%"),
@@ -477,6 +600,11 @@ impl BfBear {
                 c.slide_speed
             ),
         };
+        let text = format!(
+            "{mode}   gait {}   limbs {}",
+            self.gait_profile().gait.name(),
+            self.limbs.label()
+        );
         GString::from(&text)
     }
 
@@ -532,7 +660,8 @@ impl BfBear {
         d.set("grip", grip);
         d.set("stamina", self.stamina);
         d.set("exhausted", self.exhausted);
-        d.set("limbs", LIMBS.len() as i64);
+        d.set("limbs", self.limbs.count() as i64);
+        d.set("gait", self.gait_profile().gait.name());
         let anim_us = self
             .model
             .as_ref()
@@ -571,12 +700,14 @@ impl BfBear {
             }
         }
 
-        // Speed on the ground plane.
-        let speed = if jogging {
-            self.jog_speed
-        } else {
-            self.walk_speed
-        };
+        // Speed on the ground plane. Fewer limbs are slower.
+        let gait = self.gait_profile();
+        let speed = gait.speed_scale
+            * if jogging {
+                self.jog_speed
+            } else {
+                self.walk_speed
+            };
         let target = (wish.x * speed, wish.y * speed);
         let rate = if wish == Vector2::ZERO {
             self.deceleration
@@ -605,14 +736,16 @@ impl BfBear {
             velocity.y =
                 (velocity.y - self.fall_acceleration * factor * delta).max(-self.max_fall_speed);
         }
+        // A bear without legs cannot jump.
         if self.timers.update(
             delta,
             on_floor,
-            jump_pressed,
+            jump_pressed && gait.can_jump(),
             self.coyote_time,
             self.jump_buffer_time,
         ) {
-            velocity.y = jump_speed(self.jump_height, self.fall_acceleration);
+            let height = self.jump_height * gait.jump_scale;
+            velocity.y = jump_speed(height, self.fall_acceleration);
             self.event("jump");
         }
 
@@ -654,6 +787,7 @@ impl BfBear {
     fn try_grab(&mut self, delta: f32, wish: Vector2) {
         let velocity = self.base().get_velocity();
         let can_grab = wish != Vector2::ZERO
+            && self.gait_profile().climb.can_climb
             && !self.exhausted
             && self.regrab_left <= 0.0
             && velocity.length() <= self.max_grab_speed;
@@ -695,6 +829,13 @@ impl BfBear {
         let_go_pressed: bool,
     ) {
         let p = self.climb_params();
+        let gait = self.gait_profile();
+        // A bear without arms cannot hold a wall.
+        if !gait.climb.can_climb {
+            self.event("let_go:no_arms");
+            self.let_go(to_godot(climb.slide_velocity()));
+            return;
+        }
         let Some(mut surface) = self.surface() else {
             self.event("let_go:no_physics");
             self.let_go(Vector3::ZERO);
@@ -719,7 +860,7 @@ impl BfBear {
             // Otherwise: a hop up the wall (R20). It costs stamina.
             if !climb.is_hopping() {
                 climb.hop(self.climb_hop_height, self.climb_hop_time);
-                self.stamina -= self.climb_hop_stamina.max(0.0);
+                self.stamina -= self.climb_hop_stamina.max(0.0) * gait.climb.stamina_factor;
                 self.event("hop");
             }
         }
@@ -731,7 +872,8 @@ impl BfBear {
 
         let moving = input.length() > 0.05;
         let sliding = climb.slide_speed > 0.01;
-        self.stamina -= stamina_drain(climb.angle, moving, sliding, &p) * delta;
+        let factor = gait.climb.stamina_factor;
+        self.stamina -= stamina_drain(climb.angle, moving, sliding, &p) * factor * delta;
         if self.stamina <= 0.0 {
             self.stamina = 0.0;
             self.exhausted = true;
@@ -829,13 +971,55 @@ impl BfBear {
         })
     }
 
+    /// Gives what the limbs of the bear can do (the gait table).
+    fn gait_profile(&self) -> GaitProfile {
+        let tuning = GaitTuning {
+            armless_walk_speed: self.armless_walk_speed_scale.clamp(0.05, 1.0),
+            hop_speed: self.hop_speed_scale.clamp(0.05, 1.0),
+            hop_arm_slowdown: self.hop_arm_slowdown.clamp(0.0, 0.45),
+            hop_jump: self.hop_jump_scale.clamp(0.0, 1.0),
+            crawl_speed: self.crawl_speed_scale.clamp(0.02, 1.0),
+            drag_speed: self.drag_speed_scale.clamp(0.02, 1.0),
+            wriggle_speed: self.wriggle_speed_scale.clamp(0.02, 1.0),
+            one_arm_max_degrees: self.one_arm_climb_degrees,
+            one_arm_stamina: self.one_arm_stamina_factor.max(0.1),
+            one_leg_stamina: self.one_leg_stamina_factor.max(0.1),
+            no_legs_stamina: self.no_legs_stamina_factor.max(0.1),
+        };
+        profile(self.limbs, &tuning)
+    }
+
+    /// Changes the limbs of the bear. The model hides the lost limbs, and
+    /// the recorder gets an event for each change.
+    fn change_limbs(&mut self, limbs: LimbSet) {
+        if limbs == self.limbs {
+            return;
+        }
+        for (i, limb) in LIMBS.iter().enumerate() {
+            if limbs.has(i) != self.limbs.has(i) {
+                let what = if limbs.has(i) { "limb_on" } else { "limb_off" };
+                self.event(&format!("{what}:{}", limb.name()));
+            }
+        }
+        self.limbs = limbs;
+        self.event(&format!("gait:{}", self.gait_profile().gait.name()));
+        if let Some(mut model) = self.model.clone() {
+            model.bind_mut().show_limbs(limbs);
+        }
+    }
+
     /// Gives the tuning values of the climb from the exported fields.
     fn climb_params(&self) -> ClimbParams {
         let start = self.max_slope_degrees;
+        // With one arm, the bear holds only less steep surfaces.
+        let max = match self.gait_profile().climb.max_degrees {
+            Some(limit) => self.climb_max_degrees.min(limit),
+            None => self.climb_max_degrees,
+        };
         ClimbParams {
             start_angle: start.to_radians(),
             stop_angle: (start - self.climb_stop_margin_degrees.max(0.0)).to_radians(),
-            max_angle: self.climb_max_degrees.max(start).to_radians(),
+            max_angle: max.max(start).to_radians(),
             radius: RADIUS,
             half_height: HALF_HEIGHT,
             reach: self.climb_reach.max(0.02),
@@ -913,6 +1097,8 @@ impl BfBear {
             on_floor,
             floor_normal,
             mode,
+            limbs: self.limbs,
+            profile: self.gait_profile(),
         };
         model.bind_mut().animate(&input, &mut ground);
     }

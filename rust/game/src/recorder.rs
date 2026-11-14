@@ -724,6 +724,7 @@ impl BfRecorder {
                 .and_then(|v| v.try_to::<i64>().ok())
                 .unwrap_or(0) as u32,
             anim_us: get_f("anim_us"),
+            gait: d.get("gait").map(|v| v.to_string()).unwrap_or_default(),
         }
     }
 

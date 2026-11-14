@@ -81,5 +81,6 @@ methods are not published.
    the wet value.
 2. S-120 (done): animation part 1, the body and the walk
    (`rust/game/src/anim.rs`, `spring.rs`).
-3. S-122: animation part 2, climbing hands and limb sets.
+3. S-122 (done): animation part 2, climbing hands and limb sets
+   (`anim.rs`, `limbs.rs`).
 4. S-114: tumbling, tearing and lost limbs.

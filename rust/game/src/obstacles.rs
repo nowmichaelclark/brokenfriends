@@ -322,6 +322,76 @@ pub struct BfObstacles {
     #[init(val = SimParams::default().sand_slow_max)]
     sand_slow_max: f32,
 
+    /// How much a thorn snag slows the bear (0 to 1).
+    #[export]
+    #[init(val = SimParams::default().thorn_slow)]
+    thorn_slow: f32,
+
+    /// A bear slower than this in the thorns gets no damage, in m/s.
+    #[export]
+    #[init(val = SimParams::default().thorn_free_speed)]
+    thorn_free_speed: f32,
+
+    /// At this speed in the thorns, the damage to the seam is full, in m/s.
+    #[export]
+    #[init(val = SimParams::default().thorn_tear_speed)]
+    thorn_tear_speed: f32,
+
+    /// The seam health that the thorns take away each second at full damage.
+    #[export]
+    #[init(val = SimParams::default().thorn_damage_per_s)]
+    thorn_damage_per_s: f32,
+
+    /// A bear slower than this over rock teeth gets no damage, in m/s.
+    #[export]
+    #[init(val = SimParams::default().teeth_tear_speed)]
+    teeth_tear_speed: f32,
+
+    /// The seam health that each m/s above `teeth_tear_speed` takes away.
+    #[export]
+    #[init(val = SimParams::default().teeth_damage_per_speed)]
+    teeth_damage_per_speed: f32,
+
+    /// The row of rock teeth is this deep along the slope, to each side, in metres.
+    #[export]
+    #[init(val = SimParams::default().teeth_depth_m)]
+    teeth_depth_m: f32,
+
+    /// Rocks fall only if the bear is nearer than this, in metres.
+    #[export]
+    #[init(val = SimParams::default().rock_wake_m)]
+    rock_wake_m: f32,
+
+    /// How long dust shows at the landing place before a rock falls, in seconds.
+    #[export]
+    #[init(val = SimParams::default().rock_tell_s)]
+    rock_tell_s: f32,
+
+    /// The gravity on a falling rock in m/s each second.
+    #[export]
+    #[init(val = SimParams::default().rock_gravity)]
+    rock_gravity: f32,
+
+    /// How long a rock lies (and pins a limb) before it breaks, in seconds.
+    #[export]
+    #[init(val = SimParams::default().rock_hold_s)]
+    rock_hold_s: f32,
+
+    /// A pinned bear that pulls for this long tears the limb off, in seconds.
+    #[export]
+    #[init(val = SimParams::default().rock_pull_s)]
+    rock_pull_s: f32,
+
+    /// The seam health that a pin takes away from a bear that waits.
+    #[export]
+    #[init(val = SimParams::default().rock_wait_damage)]
+    rock_wait_damage: f32,
+
+    /// How much a pin slows the bear (0 to 1).
+    #[export]
+    #[init(val = SimParams::default().rock_pin_slow)]
+    rock_pin_slow: f32,
+
     /// The largest number of puffs of dust and steam at one time.
     #[export]
     #[init(val = 400)]
@@ -399,6 +469,8 @@ impl INode3D for BfObstacles {
                 let v = bear.get_velocity();
                 (v.x * v.x + v.z * v.z).sqrt()
             },
+            full_speed: bear.get_velocity().length(),
+            stick_held: bear.bind().stick_held(),
         };
 
         let out = {
@@ -424,6 +496,9 @@ impl INode3D for BfObstacles {
             }
             if out.wet {
                 bear.make_wet(1.0);
+            }
+            for &(limb, amount) in &out.tears {
+                bear.tear_limb(limb as i32, amount);
             }
             for event in &out.events {
                 bear.report_event(GString::from(event));
@@ -469,6 +544,9 @@ impl BfObstacles {
         };
         let obstacles = terrain.bind().obstacles().to_vec();
         self.build_zone(&obstacles);
+        if let Some(zone) = terrain.bind().zone() {
+            self.build_rippers(&obstacles, &zone.heights);
+        }
         self.sim = Some(ObstacleSim::new(obstacles));
         self.puffs.clear();
         self.time = 0.0;
@@ -518,6 +596,11 @@ impl BfObstacles {
                 Kind::SteppingStones { half_width, .. } => (-(half_width + 3.0), 0.0),
                 Kind::Updraft { radius, .. } => (-(radius + 2.5), 0.0),
                 Kind::SinkingSand { radius, .. } => (-(radius + 1.5), 0.0),
+                Kind::ThornSnag { radius } => (-(radius + 1.5), 0.0),
+                // Above the teeth on the slope.
+                Kind::RockTeeth { .. } => (-5.0, 0.0),
+                // Away from the face, outside the area of the rocks.
+                Kind::FallingRocks { spread, .. } => (-(spread + 2.0), 0.0),
             };
             let x = o.pos[0] + dir[0] * along + side[0] * across;
             let z = o.pos[2] + dir[1] * along + side[1] * across;
@@ -602,6 +685,20 @@ impl BfObstacles {
             sand_max_sink_m: self.sand_max_sink_m,
             sand_slow_base: self.sand_slow_base,
             sand_slow_max: self.sand_slow_max,
+            thorn_slow: self.thorn_slow,
+            thorn_free_speed: self.thorn_free_speed,
+            thorn_tear_speed: self.thorn_tear_speed,
+            thorn_damage_per_s: self.thorn_damage_per_s,
+            teeth_tear_speed: self.teeth_tear_speed,
+            teeth_damage_per_speed: self.teeth_damage_per_speed,
+            teeth_depth_m: self.teeth_depth_m,
+            rock_wake_m: self.rock_wake_m,
+            rock_tell_s: self.rock_tell_s,
+            rock_gravity: self.rock_gravity,
+            rock_hold_s: self.rock_hold_s,
+            rock_pull_s: self.rock_pull_s,
+            rock_wait_damage: self.rock_wait_damage,
+            rock_pin_slow: self.rock_pin_slow,
         }
     }
 
@@ -865,6 +962,96 @@ impl BfObstacles {
         self.zone_nodes = Some(parent);
     }
 
+    /// Makes the thorn bushes and the rock teeth of a zone: one
+    /// MultiMesh for each. They do not move.
+    fn build_rippers(&mut self, obstacles: &[Obstacle], heights: &HeightMap) {
+        let Some(mut parent) = self.zone_nodes.clone() else {
+            return;
+        };
+        let mut add = |name: &str, mesh: Gd<ArrayMesh>, copies: Vec<(Transform3D, Color)>| {
+            if copies.is_empty() {
+                return;
+            }
+            let mut material = StandardMaterial3D::new_gd();
+            material.set_flag(Flags::ALBEDO_FROM_VERTEX_COLOR, true);
+            material.set_roughness(1.0);
+            material.set_cull_mode(CullMode::DISABLED);
+            let mut mesh = mesh;
+            mesh.surface_set_material(0, &material.upcast::<Material>());
+            let mut multi = multimesh(&mesh.upcast(), copies.len() as i32);
+            multi.set_visible_instance_count(copies.len() as i32);
+            for (i, (transform, colour)) in copies.into_iter().enumerate() {
+                multi.set_instance_transform(i as i32, transform);
+                multi.set_instance_color(i as i32, colour);
+            }
+            let mut node = MultiMeshInstance3D::new_alloc();
+            node.set_name(name);
+            node.set_multimesh(&multi);
+            node.set_cast_shadows_setting(ShadowCastingSetting::OFF);
+            parent.add_child(&node);
+        };
+
+        // Thorn bushes: dark, dry branches. Each bush has its own turn.
+        let mut bushes = Vec::new();
+        // Rock teeth: pale, sharp stones in a row across the slope.
+        let mut teeth = Vec::new();
+        for o in obstacles {
+            let unit = |salt: u32| {
+                (o.id
+                    .wrapping_mul(0x9E37_79B9)
+                    .wrapping_add(salt.wrapping_mul(0x85EB_CA6B))
+                    >> 8) as f32
+                    / 16_777_216.0
+            };
+            match &o.kind {
+                Kind::ThornSnag { radius } => {
+                    let basis =
+                        Basis::from_axis_angle(Vector3::UP, unit(1) * std::f32::consts::TAU)
+                            .scaled(Vector3::new(
+                                *radius,
+                                radius * (0.8 + 0.4 * unit(2)),
+                                *radius,
+                            ));
+                    let origin = Vector3::new(o.pos[0], o.pos[1] - 0.02, o.pos[2]);
+                    let grey = 0.75 + 0.25 * unit(3);
+                    bushes.push((
+                        Transform3D::new(basis, origin),
+                        Color::from_rgb(0.24 * grey, 0.17 * grey, 0.13 * grey),
+                    ));
+                }
+                Kind::RockTeeth { half_width, count } => {
+                    let across = Vector3::new(-o.dir[1], 0.0, o.dir[0]);
+                    let down = Vector3::new(o.dir[0], 0.0, o.dir[1]);
+                    for k in 0..*count {
+                        let part = if *count > 1 {
+                            k as f32 / (*count - 1) as f32 * 2.0 - 1.0
+                        } else {
+                            0.0
+                        };
+                        let at = Vector3::new(o.pos[0], 0.0, o.pos[2])
+                            + across * (part * half_width)
+                            + down * ((unit(10 + k) - 0.5) * 0.5);
+                        let y = heights.sample_world(at.x, at.z);
+                        let wide = 0.045 + 0.04 * unit(40 + k);
+                        let high = 0.14 + 0.12 * unit(70 + k);
+                        // The teeth lean up the slope, against the bear.
+                        let basis = Basis::from_axis_angle(across, 0.35)
+                            * Basis::from_axis_angle(Vector3::UP, unit(100 + k) * 6.0)
+                                .scaled(Vector3::new(wide, high, wide));
+                        let grey = 0.8 + 0.2 * unit(130 + k);
+                        teeth.push((
+                            Transform3D::new(basis, Vector3::new(at.x, y - 0.02, at.z)),
+                            Color::from_rgb(0.80 * grey, 0.76 * grey, 0.69 * grey),
+                        ));
+                    }
+                }
+                _ => {}
+            }
+        }
+        add("ThornSnags", thorn_mesh(), bushes);
+        add("RockTeeth", tooth_mesh(), teeth);
+    }
+
     /// A crust falls: its collision goes away, and its lid becomes
     /// pieces that fall into the pit.
     fn break_crust(&mut self, index: usize, heights: &HeightMap) {
@@ -1096,6 +1283,16 @@ impl BfObstacles {
             }
             mesh.set_instance_transform(i as i32, Transform3D::new(basis, origin));
         }
+        // The falling rocks use the same mesh, after the stones.
+        let mut count = count;
+        for (pos, radius) in sim.visible_rocks() {
+            if count >= mesh.get_instance_count() {
+                break;
+            }
+            let basis = Basis::from_scale(Vector3::new(radius, radius * 0.86, radius * 0.94));
+            mesh.set_instance_transform(count, Transform3D::new(basis, to_godot(pos)));
+            count += 1;
+        }
         mesh.set_visible_instance_count(count);
     }
 }
@@ -1182,6 +1379,72 @@ fn triangle_mesh(
     let mut out = ArrayMesh::new_gd();
     out.add_surface_from_arrays(PrimitiveType::TRIANGLES, &arrays);
     out
+}
+
+/// Makes a mesh from triangles with one white colour. The colour of
+/// each copy comes from the MultiMesh.
+fn white_mesh(triangles: &[[Vector3; 3]]) -> Gd<ArrayMesh> {
+    let mut positions = PackedVector3Array::new();
+    let mut normals = PackedVector3Array::new();
+    let mut colours = PackedColorArray::new();
+    for t in triangles {
+        let normal = (t[2] - t[0]).cross(t[1] - t[0]).normalized();
+        for &v in t {
+            positions.push(v);
+            normals.push(normal);
+            colours.push(Color::from_rgb(1.0, 1.0, 1.0));
+        }
+    }
+    let mut arrays = VarArray::new();
+    arrays.resize(ArrayType::MAX.ord() as usize, &Variant::nil());
+    arrays.set(ArrayType::VERTEX.ord() as usize, &positions.to_variant());
+    arrays.set(ArrayType::NORMAL.ord() as usize, &normals.to_variant());
+    arrays.set(ArrayType::COLOR.ord() as usize, &colours.to_variant());
+    let mut out = ArrayMesh::new_gd();
+    out.add_surface_from_arrays(PrimitiveType::TRIANGLES, &arrays);
+    out
+}
+
+/// Makes the mesh of a dead thorn bush with the radius 1: thin
+/// branches from the middle, each with one thorn. 36 triangles.
+fn thorn_mesh() -> Gd<ArrayMesh> {
+    const BRANCHES: usize = 18;
+    let mut triangles = Vec::new();
+    for b in 0..BRANCHES {
+        let f = b as f32;
+        // Fixed, uneven numbers: the bush looks wild and is always the same.
+        let angle = f * 2.399_963 + (f * 1.7).sin() * 0.3;
+        let reach = 0.55 + 0.45 * (f * 3.1).sin().abs();
+        let high = 0.25 + 0.55 * (f * 1.3 + 0.5).cos().abs();
+        let out = Vector3::new(angle.cos(), 0.0, angle.sin());
+        let side = Vector3::new(-out.z, 0.0, out.x);
+        let root = out * 0.08;
+        let tip = out * reach + Vector3::UP * high;
+        triangles.push([root - side * 0.04, root + side * 0.04, tip]);
+        // The thorn: a small spike at the middle of the branch.
+        let mid = root.lerp(tip, 0.55);
+        let along = (tip - root).normalized();
+        triangles.push([
+            mid - along * 0.05,
+            mid + along * 0.05,
+            mid + side * 0.2 + Vector3::UP * 0.1,
+        ]);
+    }
+    white_mesh(&triangles)
+}
+
+/// Makes the mesh of one rock tooth: a pyramid with the foot radius 1
+/// and the height 1. The point is not in the middle. 4 triangles.
+fn tooth_mesh() -> Gd<ArrayMesh> {
+    let top = Vector3::new(0.25, 1.0, 0.1);
+    let foot = [
+        Vector3::new(1.0, 0.0, 0.0),
+        Vector3::new(0.0, 0.0, 1.0),
+        Vector3::new(-1.0, 0.0, 0.0),
+        Vector3::new(0.0, 0.0, -1.0),
+    ];
+    let triangles: Vec<[Vector3; 3]> = (0..4).map(|i| [foot[i], top, foot[(i + 1) % 4]]).collect();
+    white_mesh(&triangles)
 }
 
 /// Makes the mesh of a vent: a low mound with a dark hole on top. The

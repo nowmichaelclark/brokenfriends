@@ -32,8 +32,9 @@ What is built (all on `main`, all tested by the GitHub build):
   limbs that come off and stay in the world, sewing.
 - Smog, sun, sky, dust; the draw distance follows the smog; the smoke
   edge around the zone (death means a restart at the start point).
-- Eight obstacle types (ash crust, rolling stones, gusts, push vents,
-  launch vents, stepping stones, updrafts, sinking sand).
+- Eleven obstacle types (ash crust, rolling stones, gusts, push vents,
+  launch vents, stepping stones, updrafts, sinking sand, thorn snags,
+  rock teeth, falling rocks). The last three tear seams (S-129).
 - Diagnostics: the playtest recorder (one zip with `report.md`), the
   gamepad dev menu, a Tests page (Benchmark, Draw distance test,
   Autoplay tour), and autoplay on GitHub after each push and each
@@ -81,7 +82,7 @@ Recommended order:
    (obstacles: launch vents miss too often and tear both legs off;
    rolling stones never hit), S-135 (tumble and seams: legs come off
    too easily), S-126, S-130, S-131 (Sonnet 5.5, medium).
-4. S-108 (ground scatter), and S-129 if S-138 did not reach it.
+4. S-108 (ground scatter). S-129 is done.
 5. S-109, a Brain session: play the full demo, decide what to fix,
    plan demo 2 (caves, `tech.md` and `research/caves-and-sdf.md`).
 

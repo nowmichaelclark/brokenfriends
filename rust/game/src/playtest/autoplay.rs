@@ -594,7 +594,12 @@ pub fn build(kind: TaskKind, ctx: &Ctx) -> Task {
         TaskKind::Obstacle(_) => match ctx.obstacle {
             // `go_to_next` put the bear next to the obstacle already.
             Some(o) => {
-                let jog = matches!(o.kind.as_str(), "ash_crust" | "stepping_stones");
+                // The rock teeth tear only a fast bear; the bot jogs
+                // down over them, which is slower than their limit.
+                let jog = matches!(
+                    o.kind.as_str(),
+                    "ash_crust" | "stepping_stones" | "thorn_snag" | "rock_teeth"
+                );
                 // Wait longer than one cycle of the obstacle (`obstacles.rs`).
                 let wait = match o.kind.as_str() {
                     "rolling_stones" => 12.0,
@@ -602,6 +607,8 @@ pub fn build(kind: TaskKind, ctx: &Ctx) -> Task {
                     "vent_push" => 6.5,
                     "vent_launch" => 5.0,
                     "sinking_sand" => 4.0,
+                    // One full cycle: the tell, the fall and the pin.
+                    "falling_rocks" => 14.0,
                     _ => 2.5,
                 };
                 // Where to go: a push vent hits only a bear on its line
@@ -609,6 +616,9 @@ pub fn build(kind: TaskKind, ctx: &Ctx) -> Task {
                 let (ahead, near, max_s) = match o.kind.as_str() {
                     "vent_push" => (0.6, 0.12, 4.5),
                     "stepping_stones" => (6.0, 0.6, 8.0),
+                    // Through the bush, and down over the teeth.
+                    "thorn_snag" => (1.2, 0.4, 6.0),
+                    "rock_teeth" => (2.0, 0.5, 6.0),
                     _ => (0.0, 0.4, 4.5),
                 };
                 let mut legs = vec![

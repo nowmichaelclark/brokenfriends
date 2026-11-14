@@ -744,6 +744,30 @@ impl BfBear {
         self.start_tumble(velocity, cause);
     }
 
+    /// Tells if the player holds the move stick (not in a tumble).
+    #[func]
+    pub fn stick_held(&self) -> bool {
+        self.last_wish.length() > 0.01 && self.mode != Mode::Tumble
+    }
+
+    /// Takes health away from a seam, for an obstacle (S-129). `limb` is
+    /// 0 to 3, in the order of the limbs. If the bear does not have
+    /// that limb, the next limb that it has gets the damage. Gives the
+    /// limb that got it, or -1.
+    #[func]
+    pub fn tear_limb(&mut self, limb: i32, amount: f32) -> i32 {
+        for k in 0..4 {
+            let i = (limb.max(0) as usize + k) % 4;
+            if self.limbs.has(i) {
+                if let Some(change) = self.seams.damage(i, amount) {
+                    self.seam_changed(change);
+                }
+                return i as i32;
+            }
+        }
+        -1
+    }
+
     /// Tells if the bear has a limb, for example "LeftLeg".
     #[func]
     pub fn has_limb(&self, part: GString) -> bool {

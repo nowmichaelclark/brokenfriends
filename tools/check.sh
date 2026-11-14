@@ -85,12 +85,12 @@ if grep -E "^(ERROR|SCRIPT ERROR)" "${log}"; then
 fi
 rm -f "${log}"
 
-step "Autoplay tour (seed 7, about 2.5 min of game time)"
+step "Autoplay tour (seed 7, about 3.5 min of game time)"
 # The bot plays the bear through virtual gamepad input (S-133). It
 # quits with exit code 1 if the bear fell through the ground.
 log="$(mktemp)"
 set +e
-timeout 300 "${godot_bin}" --headless --path "${root}/game" --fixed-fps 60 -- \
+timeout 420 "${godot_bin}" --headless --path "${root}/game" --fixed-fps 60 -- \
   --bf-autoplay=tour --bf-autoplay-seeds=7 >"${log}" 2>&1
 code=$?
 set -e

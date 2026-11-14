@@ -18,6 +18,13 @@
 //!   and lifts a bear that is in the air.
 //! - **Sinking sand:** a patch of riverbed sand that sinks under a
 //!   bear that stands on it.
+//!
+//! The obstacles that can tear a limb off (S-129):
+//! - **Thorn snag:** a dead thorn bush on cool, flat ground. It holds
+//!   the fur of the bear.
+//! - **Rock teeth:** a row of sharp rock edges across a slope.
+//! - **Falling rocks:** rocks that fall from a steep face onto the
+//!   flat ground at its foot.
 
 use crate::detmath::{sin_cos, smoothstep};
 use crate::drainage::flow;
@@ -94,10 +101,24 @@ pub enum Kind {
     /// The pit below it is `depth` metres deep. `lid` is the ground from
     /// before the pit.
     SinkingSand { radius: f32, depth: f32, lid: Lid },
+    /// A dead thorn bush. `radius` is the radius of the bush in metres.
+    ThornSnag { radius: f32 },
+    /// A row of sharp rock edges across a slope. The direction of the
+    /// obstacle is downhill. The row is `half_width` metres long to
+    /// each side of the place and has `count` teeth.
+    RockTeeth { half_width: f32, count: u32 },
+    /// Rocks that fall from a steep face. The direction of the obstacle
+    /// is to the face. `radius` is the radius of a rock. A rock falls
+    /// `drop_m` metres and lands at most `spread` metres from the place.
+    FallingRocks {
+        radius: f32,
+        drop_m: f32,
+        spread: f32,
+    },
 }
 
 /// The number of obstacle types.
-pub const KIND_COUNT: usize = 8;
+pub const KIND_COUNT: usize = 11;
 
 /// The names of all obstacle types, in the order of `Kind::index`.
 pub const KIND_NAMES: [&str; KIND_COUNT] = [
@@ -109,10 +130,13 @@ pub const KIND_NAMES: [&str; KIND_COUNT] = [
     "stepping_stones",
     "updraft",
     "sinking_sand",
+    "thorn_snag",
+    "rock_teeth",
+    "falling_rocks",
 ];
 
 impl Kind {
-    /// Gives the number of the type, from 0 to 7.
+    /// Gives the number of the type, from 0 to 10.
     pub fn index(&self) -> usize {
         match self {
             Kind::AshCrust { .. } => 0,
@@ -123,6 +147,9 @@ impl Kind {
             Kind::SteppingStones { .. } => 5,
             Kind::Updraft { .. } => 6,
             Kind::SinkingSand { .. } => 7,
+            Kind::ThornSnag { .. } => 8,
+            Kind::RockTeeth { .. } => 9,
+            Kind::FallingRocks { .. } => 10,
         }
     }
 
@@ -143,6 +170,7 @@ pub struct Obstacle {
     pub pos: [f32; 3],
     /// A unit direction on the ground plane (x, z). Stones: downhill.
     /// Gust: the wind. Push vent: the jet. Launch vent: to the ledge.
+    /// Rock teeth: downhill. Falling rocks: to the steep face.
     pub dir: [f32; 2],
     /// The rhythm: the time of one cycle in seconds.
     pub period: f32,
@@ -185,8 +213,10 @@ impl Default for ObstacleParams {
     fn default() -> Self {
         Self {
             density: 1.0,
-            max_count: [50, 36, 28, 70, 40, 14, 24, 30],
-            same_gap_m: [45.0, 60.0, 70.0, 9.0, 45.0, 70.0, 50.0, 30.0],
+            max_count: [50, 36, 28, 70, 40, 14, 24, 30, 40, 30, 24],
+            same_gap_m: [
+                45.0, 60.0, 70.0, 9.0, 45.0, 70.0, 50.0, 30.0, 25.0, 40.0, 45.0,
+            ],
             any_gap_m: 14.0,
             clear_start_m: 18.0,
             full_density_m: 350.0,
@@ -467,6 +497,69 @@ fn find_sites(zone: &Zone, params: &ObstacleParams) -> [Vec<Site>; KIND_COUNT] {
                 });
             }
 
+            // Thorn snag: a dead bush on cool, flat ground. One cell in
+            // three can have one.
+            if hot < 0.05 && !on_sand && !land.lake(x, z) && rand(key, seed, 81) < 0.34 {
+                let limit = half * spacing - params.border_m;
+                let jx = (x + (rand(key, seed, 82) - 0.5) * (cell - 1.0)).clamp(-limit, limit);
+                let jz = (z + (rand(key, seed, 83) - 0.5) * (cell - 1.0)).clamp(-limit, limit);
+                if land.flat(jx, jz, 1.5, 0.6) && !land.sand(jx, jz) {
+                    sites[8].push(Site {
+                        key,
+                        x: jx,
+                        z: jz,
+                        dir: [1.0, 0.0],
+                        a: 0.55 + 0.35 * rand(key, seed, 84),
+                        b: 0.0,
+                        ext: 0.0,
+                    });
+                }
+            }
+
+            // Rock teeth: a slope of about 24 to 48 degrees that goes
+            // on above the place, so the bear can come down fast.
+            let gx = (ch(xi + 1, zi) - ch(xi - 1, zi)) / (2.0 * cell);
+            let gz = (ch(xi, zi + 1) - ch(xi, zi - 1)) / (2.0 * cell);
+            let grade = (gx * gx + gz * gz).sqrt();
+            if (0.45..=1.1).contains(&grade) && !on_sand {
+                let down = [-gx / grade, -gz / grade];
+                let above = land.h(x - down[0] * 8.0, z - down[1] * 8.0) - h0;
+                let below = h0 - land.h(x + down[0] * 4.0, z + down[1] * 4.0);
+                if above >= 3.0 && below >= 1.0 {
+                    sites[9].push(Site {
+                        key,
+                        x,
+                        z,
+                        dir: down,
+                        a: 1.2 + 0.8 * rand(key, seed, 91),
+                        b: 0.0,
+                        ext: 0.0,
+                    });
+                }
+            }
+
+            // Falling rocks: flat ground at the foot of a steep face.
+            if !land.lake(x, z) && !on_sand && land.flat(x, z, 1.5, 0.55) {
+                let first = (hash2(key.0, key.1, seed ^ 0xFA11) % 8) as usize;
+                for k in 0..8 {
+                    let d = DIRS8[(first + k) % 8];
+                    let near = land.h(x + d[0] * 4.0, z + d[1] * 4.0) - h0;
+                    let far = land.h(x + d[0] * 8.0, z + d[1] * 8.0) - h0;
+                    if near >= 4.0 && far >= 7.0 {
+                        sites[10].push(Site {
+                            key,
+                            x,
+                            z,
+                            dir: d,
+                            a: far.clamp(5.0, 12.0),
+                            b: 1.2 + 0.8 * rand(key, seed, 101),
+                            ext: 0.0,
+                        });
+                        break;
+                    }
+                }
+            }
+
             // Launch vent: flat ground at the foot of a steep face with
             // a ledge on top.
             if !land.lake(x, z) && land.flat(x, z, 1.5, 0.55) {
@@ -734,6 +827,28 @@ pub fn place_obstacles(zone: &mut Zone, params: &ObstacleParams) -> Vec<Obstacle
                     height: s.b,
                 },
                 7.0 - 1.5 * difficulty + 1.5 * r(3),
+                [s.x, zone.heights.sample_world(s.x, s.z), s.z],
+            ),
+            8 => (
+                Kind::ThornSnag { radius: s.a },
+                1.0,
+                [s.x, zone.heights.sample_world(s.x, s.z), s.z],
+            ),
+            9 => (
+                Kind::RockTeeth {
+                    half_width: s.a,
+                    count: 5 + (s.a * 2.0) as u32 + (difficulty * 2.99) as u32,
+                },
+                1.0,
+                [s.x, zone.heights.sample_world(s.x, s.z), s.z],
+            ),
+            10 => (
+                Kind::FallingRocks {
+                    radius: 0.16 + 0.1 * r(2),
+                    drop_m: s.a,
+                    spread: s.b,
+                },
+                10.0 - 3.0 * difficulty + 2.0 * r(3),
                 [s.x, zone.heights.sample_world(s.x, s.z), s.z],
             ),
             _ => {
@@ -1080,6 +1195,75 @@ mod tests {
                 let gap = ((x - other.pos[0]).powi(2) + (z - other.pos[2]).powi(2)).sqrt();
                 assert!(gap >= p.any_gap_m - 3.0, "{o:?} and {other:?}");
             }
+        }
+    }
+
+    #[test]
+    fn thorn_snags_stand_on_flat_ground() {
+        let mut zone = zone_from(512, |_, _| 10.0);
+        let list = place_obstacles(&mut zone, &ObstacleParams::default());
+        let thorns: Vec<&Obstacle> = list
+            .iter()
+            .filter(|o| o.kind.name() == "thorn_snag")
+            .collect();
+        assert!(thorns.len() > 5, "{} thorn snags", thorns.len());
+        for o in thorns {
+            let Kind::ThornSnag { radius } = o.kind else {
+                unreachable!()
+            };
+            assert!((0.5..=0.95).contains(&radius));
+            assert!((o.pos[1] - 10.0).abs() < 1e-3);
+        }
+        assert_eq!(count(&list, "rock_teeth"), 0);
+        assert_eq!(count(&list, "falling_rocks"), 0);
+    }
+
+    #[test]
+    fn rock_teeth_cross_a_slope_and_point_downhill() {
+        // A slope of 35 degrees that goes down to +x.
+        let mut zone = zone_from(512, |x, _| 200.0 - x * 0.7);
+        let list = place_obstacles(&mut zone, &ObstacleParams::default());
+        let teeth: Vec<&Obstacle> = list
+            .iter()
+            .filter(|o| o.kind.name() == "rock_teeth")
+            .collect();
+        assert!(teeth.len() > 3, "{} rows of rock teeth", teeth.len());
+        for o in teeth {
+            assert!(o.dir[0] > 0.99, "dir {:?}", o.dir);
+            let Kind::RockTeeth { half_width, count } = o.kind else {
+                unreachable!()
+            };
+            assert!((1.2..=2.0).contains(&half_width));
+            assert!((5..=11).contains(&count));
+        }
+        assert_eq!(count(&list, "thorn_snag"), 0);
+    }
+
+    #[test]
+    fn falling_rocks_are_at_the_foot_of_a_steep_face() {
+        // Flat ground, and a face of 20 m at x = 40.
+        let mut zone = zone_from(512, |x, _| 10.0 + 20.0 * smoothstep(38.0, 44.0, x));
+        let list = place_obstacles(&mut zone, &ObstacleParams::default());
+        let rocks: Vec<&Obstacle> = list
+            .iter()
+            .filter(|o| o.kind.name() == "falling_rocks")
+            .collect();
+        assert!(!rocks.is_empty());
+        for o in rocks {
+            assert!(o.pos[0] > 28.0 && o.pos[0] < 40.0, "x {}", o.pos[0]);
+            assert!(o.dir[0] > 0.5, "dir {:?}", o.dir);
+            let Kind::FallingRocks {
+                radius,
+                drop_m,
+                spread,
+            } = o.kind
+            else {
+                unreachable!()
+            };
+            assert!((0.16..=0.26).contains(&radius));
+            assert!((5.0..=12.0).contains(&drop_m));
+            assert!((1.2..=2.0).contains(&spread));
+            assert!(o.period >= 7.0);
         }
     }
 

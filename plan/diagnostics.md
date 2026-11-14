@@ -57,7 +57,10 @@ feel and taste. Those are the only questions for him.
   `obstacle:<what>:<type>:#<number>`. `<what>` is `tell`, `hit`,
   `push`, `launch`, `fall`, `escape` (the bear left a crust in time,
   or got out of sinking sand), `cross` (the bear went over the stepping
-  stones), `ride` (the bear was in an updraft), `sink` and `stuck`
+  stones, or slowly over rock teeth), `snag` (the bear went into
+  thorns), `tear` (an obstacle did damage to a seam), `pin` and `free`
+  (a rock fell on a limb; the bear waited until it broke),
+  `ride` (the bear was in an updraft), `sink` and `stuck`
   (the bear stood on sinking sand; the sink was full), or
   `launch_reached`, `launch_missed`, `launch_wall` (where a launch
   ended). The report counts them by type
@@ -131,7 +134,7 @@ playtest.
   the ground, or shakes.
 
 **Where it runs**
-- **GitHub, after each push:** a short tour (about 2 minutes) on 3
+- **GitHub, after each push:** a short tour (about 3.5 minutes) on 3
   seeds, headless. The build fails if the game crashes, prints errors,
   or if the bear falls through the ground. "Stuck" and "climb loop"
   counts go into the build log.

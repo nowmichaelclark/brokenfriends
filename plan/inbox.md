@@ -74,3 +74,6 @@ sorts them.
 - Tumble: recovery and seam damage could use the wetness (a wet bear is heavier).
 - Autoplay: in the fast headless tour (release library, `--fixed-fps 60`), Jolt printed once "job system exceeded the maximum number of jobs". Check if it repeats in the nightly log.
 - Recorder: watch for a stalled desktop without the game (a thread that measures its own sleep), so a report can tell "the whole computer stopped" from "only our window waited".
+- Obstacles: collision for thorn bushes and rock teeth, and rock teeth in the real slide paths (record where the bear slides first).
+- Obstacles: a dark shadow disc on the ground as the tell of a falling rock, not only dust.
+- Playtest laptop: the game window draws nothing while it is fully behind other windows; a test session must keep it in front, or the screenshots and render numbers are stale.

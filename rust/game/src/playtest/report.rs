@@ -321,7 +321,10 @@ fn obstacle_section(out: &mut String, events: &[Event]) {
          `launch_reached`, `launch_missed`, `launch_wall`: where a launch ended. \
          `cross`: the bear went over the stepping stones. `fall` on stepping stones: the bear \
          fell into the trench. `ride`: the bear was in an updraft. `sink`, `stuck`: the bear \
-         stood on sinking sand, and the sink was full.\n\n",
+         stood on sinking sand, and the sink was full. `snag`: the bear went into a thorn \
+         bush. `tear`: an obstacle did damage to a seam. `pin`: a rock fell on a limb. `free`: \
+         the bear waited until the rock broke. `escape` on falling rocks: the bear left the \
+         landing place in time. `cross` on rock teeth: the bear went over them slowly.\n\n",
     );
     let mut kind = "";
     for (k, what, n) in counts {

@@ -3,7 +3,9 @@
 Status: draft, 2026-11-14. Mikey's idea (R23) and a first proposal.
 Items marked **proposed** need Mikey's yes. S-127 built the framework
 and four obstacles: ash crust, rolling stones, gusts and vents (push
-and launch). `game/README.md` tells how they work now.
+and launch). S-128 built stepping stones, updrafts and sinking sand.
+S-129 built the limb rippers: thorn snags, rock teeth and falling
+rocks. `game/README.md` tells how they work now.
 
 ## Mikey's idea
 
@@ -60,7 +62,7 @@ any buildings (R6: the natural world comes first).
   vanish in a rhythm. They make a path over a gap or sand.
 - **Updrafts:** warm air over hot rock that slows a fall.
 
-**Limb rippers (after S-114, tearing)**
+**Limb rippers (built in S-129)**
 - **Thorn snags:** dead thorn bushes that catch the fur. A slow pull
   frees the bear; a fast pull tears a seam.
 - **Rock teeth:** sharp rock edges in a slide path. A fast slide over

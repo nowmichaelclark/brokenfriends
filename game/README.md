@@ -271,11 +271,12 @@ what it assumes.
   the right shoulder button), as a real gamepad does. Thus it tests the
   real controls. Only the teleport at the start of a task and the limb
   changes use the dev tools (`go_to`, `set_limb`).
-  - **Tour.** On each seed, 13 tasks in about 2.5 minutes of game time:
+  - **Tour.** On each seed, 16 tasks in about 3.5 minutes of game time:
     a jog to a point 70 m away, a climb of the nearest steep face (more
     than 58 degrees), a jump off the nearest ledge (a drop of 1.2 m or
-    more), one obstacle of each of the 8 types (`go_to_next`, as F6;
-    the bot crosses the stepping stones and jumps in the updraft), the smoke
+    more), one obstacle of each of the 11 types (`go_to_next`, as F6;
+    the bot crosses the stepping stones, jumps in the updraft, jogs
+    through the thorns and over the teeth, and waits under the rocks), the smoke
     edge (in, out, in again, then stand until death), and the limb sets
     one leg, no legs and one arm.
   - **Wander.** Seeded random input: a new stick direction each 0.6 to
@@ -403,8 +404,9 @@ what it assumes.
   of it.
   - **Places.** After the terrain is made, `bf-worldgen`
     (`obstacles.rs`) finds the places: flat ground, gullies, passes,
-    hot rock, steep faces with a ledge, wide flat ground and riverbed
-    sand. A zone has about 250 obstacles. The search takes about 0.15 s.
+    hot rock, steep faces with a ledge, wide flat ground, riverbed
+    sand, cool flat ground, slopes and the feet of steep faces. A zone
+    has about 340 obstacles. The search takes about 0.3 s.
   - **Fewer near the start.** No obstacle is nearer than 18 m to the
     start point. The number and the difficulty grow with the distance.
     The nearest obstacle of each type is easy.
@@ -449,6 +451,27 @@ what it assumes.
     bear can always walk out. Sand comes back up at 0.2 m/s. The patch
     is dark with rings. Its collision goes down by the whole sink and
     the surface by one quarter of it.
+  - **Thorn snag** (S-129). A dead thorn bush on cool, flat ground, 1.1
+    to 1.8 m wide. It slows the bear by 70%. A bear that moves slower
+    than 0.5 m/s in it gets no damage: a walk is safe. A faster bear
+    loses seam health on one limb, up to 0.54 each second (hard: 1.26)
+    at 1.6 m/s or more. A jog into the bush tears a seam. Bits fly while
+    the seam tears.
+  - **Rock teeth** (S-129). A row of 5 to 11 pale, sharp stones across a
+    slope of 24 to 48 degrees, 2.4 to 4 m long. A bear that comes over
+    them faster than 4.5 m/s (a slide or a fall, not a jog) loses seam
+    health on one leg: 0.14 for each m/s above the limit (hard: 0.26).
+    One pass tears one time. The teeth have no collision.
+  - **Falling rocks** (S-129). Flat ground at the foot of a steep face.
+    When the bear is nearer than 30 m, a rock falls each 7 to 12 s.
+    First, dust falls for 1.8 s at the place where the rock will land.
+    If the bear is in the area (1.2 to 2 m), that place is the bear. A
+    bear that stays is pinned: one limb is under the rock, and the bear
+    cannot walk. After 5 s the rock breaks, and the seam loses 0.2. If
+    the player holds the stick for 1 s, the bear pulls free and the limb
+    comes off. The lost limb stays there; the bear can sew it on again.
+  - **Which limb.** The obstacle selects a limb. If the bear does not
+    have it, the next limb gets the damage (`BfBear::tear_limb`).
   - **Wet fur** dries in 40 s.
   - **Code.** `ObstacleSim` (`obstacle_sim.rs`) moves the obstacles
     and has unit tests. `BfObstacles` (`obstacles.rs`) draws them and
@@ -456,13 +479,14 @@ what it assumes.
     the `Obstacles` node; the number of obstacles is on `Terrain`. The
     bear gets the lift and the slow down from `BfObstacles` with
     `set_lift` and `set_ground_slow`, as it gets the wind.
-  - **Cost.** 4 draw calls for all puffs, stones, vent mounds and
-    stepping stones, and 1 for each crust and each sand patch nearer than
+  - **Cost.** 6 draw calls for all puffs, stones (with the falling
+    rocks), vent mounds, stepping stones, thorn bushes and rock teeth, and 1 for each crust and each sand patch nearer than
     180 m. About 60 stepping stones have a collision body each; a stone
     that is not solid turns its shape off. At most 400 puffs show.
     Obstacles further than 170 m from the bear do nothing. The frame
     time is not measured on a laptop yet [unverified].
-  - **Recorder.** Each tell, hit, push, launch and fall is a bear event
+  - **Recorder.** Each tell, hit, push, launch, fall, snag, tear and
+    pin is a bear event
     (`obstacle:<what>:<type>:#<number>`). `report.md` counts them by
     type in "Obstacles". It also tells where each launch ended, and
     which bears crossed or fell off the stepping stones.
@@ -782,9 +806,22 @@ Mikey does not build on his laptop (decision R10).
 - **Sand does not pull from below.** The bear stands on a lid that goes
   down. The bear does not sink into the real ground. At the full sink,
   the bear stays at the bottom of the pit (0.55 m deep).
-- **Obstacles do not tear seams yet.** A hit only throws the bear. A
-  hard landing after a throw can make a tumble. S-129 adds obstacles
-  that tear limbs.
+- **Only three obstacles tear seams** (S-129): thorn snags, rock teeth
+  and falling rocks. The other obstacles only throw the bear; a hard
+  landing after a throw can make a tumble.
+- **The limb rippers are first guesses** (S-129). Nobody played them
+  yet. Mikey: is a walk through thorns too safe or too slow? Is 1 s of
+  pull a good price for a limb? Should a pinned bear be able to jump?
+- **A falling rock comes for the bear.** If the bear is in the area,
+  the dust and the rock go to the place of the bear at that moment. To
+  move away is always enough. A rock does not hurt a bear in the air
+  or on the wall, and it does not knock the bear over.
+- **Thorn bushes and rock teeth have no collision.** The bear goes
+  through the meshes. The teeth are only on slopes, not in real slide
+  paths: the game has no data about where the bear slides yet.
+- **A pin holds with the ground slow down** (95%). The bear can turn
+  and make a very small jump. If something moves the bear more than
+  0.35 m, the limb comes off.
 - **Stones are not physics bodies.** They follow the slope of the
   heightmap and go through each other. A hit is a distance test.
 - **Obstacle numbers are first guesses** (wind speed, throw speed,

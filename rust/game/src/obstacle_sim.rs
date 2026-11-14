@@ -10,6 +10,13 @@
 //! vent makes more and more steam before it blows. A stepping stone
 //! blinks before it vanishes, and warm air rises before an updraft gets
 //! strong. Sinking sand has ripples.
+//!
+//! Three obstacles can tear a limb (S-129). A thorn snag holds the fur:
+//! a slow bear gets out, a fast bear tears a seam. Rock teeth tear a
+//! leg of a bear that comes over them fast. A falling rock shows dust
+//! at the place where it will land, then it pins a limb of a bear that
+//! stays there. The bear can wait until the rock breaks, or pull and
+//! lose the limb.
 
 use bf_worldgen::obstacles::{Kind, Obstacle};
 use bf_worldgen::HeightMap;
@@ -104,6 +111,34 @@ pub struct SimParams {
     pub sand_slow_base: f32,
     /// The slow down at the largest sink (0 to 1).
     pub sand_slow_max: f32,
+    /// How much a thorn snag slows the bear (0 to 1).
+    pub thorn_slow: f32,
+    /// A bear slower than this in the thorns gets no damage, in m/s.
+    pub thorn_free_speed: f32,
+    /// At this speed in the thorns, the damage is full, in m/s.
+    pub thorn_tear_speed: f32,
+    /// The seam health that the thorns take away each second at full damage.
+    pub thorn_damage_per_s: f32,
+    /// A bear slower than this over rock teeth gets no damage, in m/s.
+    pub teeth_tear_speed: f32,
+    /// The seam health that each m/s above `teeth_tear_speed` takes away.
+    pub teeth_damage_per_speed: f32,
+    /// The row of rock teeth is this deep along the slope, to each side, in metres.
+    pub teeth_depth_m: f32,
+    /// Rocks fall only if the bear is nearer than this, in metres.
+    pub rock_wake_m: f32,
+    /// How long dust shows at the landing place before the rock falls, in seconds.
+    pub rock_tell_s: f32,
+    /// The gravity on a falling rock in m/s each second.
+    pub rock_gravity: f32,
+    /// How long a rock lies (and pins) before it breaks, in seconds.
+    pub rock_hold_s: f32,
+    /// A pinned bear that pulls for this long tears the limb off, in seconds.
+    pub rock_pull_s: f32,
+    /// The seam health that a pin takes away from a bear that waits.
+    pub rock_wait_damage: f32,
+    /// How much a pin slows the bear (0 to 1).
+    pub rock_pin_slow: f32,
 }
 
 impl Default for SimParams {
@@ -150,6 +185,20 @@ impl Default for SimParams {
             sand_max_sink_m: 0.3,
             sand_slow_base: 0.12,
             sand_slow_max: 0.65,
+            thorn_slow: 0.7,
+            thorn_free_speed: 0.5,
+            thorn_tear_speed: 1.6,
+            thorn_damage_per_s: 0.9,
+            teeth_tear_speed: 4.5,
+            teeth_damage_per_speed: 0.2,
+            teeth_depth_m: 0.45,
+            rock_wake_m: 30.0,
+            rock_tell_s: 1.8,
+            rock_gravity: 12.0,
+            rock_hold_s: 5.0,
+            rock_pull_s: 1.0,
+            rock_wait_damage: 0.2,
+            rock_pin_slow: 0.95,
         }
     }
 }
@@ -169,6 +218,10 @@ pub struct BearIn {
     pub climbing: bool,
     /// The speed on the ground plane in m/s.
     pub speed: f32,
+    /// The full speed, with the fall, in m/s.
+    pub full_speed: f32,
+    /// The player holds the move stick.
+    pub stick_held: bool,
 }
 
 /// The look of a puff.
@@ -212,8 +265,13 @@ pub struct StepOut {
     /// The air lifts the bear: the speed up that it goes to and how fast
     /// it changes, in m/s and m/s each second. Only for a bear in the air.
     pub lift: Option<(f32, f32)>,
-    /// The sand slows the bear on the ground: 0 (no slow down) to 1.
+    /// The sand, the thorns or a pin slow the bear on the ground: 0
+    /// (no slow down) to 1.
     pub slow: f32,
+    /// Damage to seams: a limb (0 to 3, in the order of the limbs of the
+    /// bear) and the health that it loses. If the bear does not have
+    /// the limb, the damage goes to the next limb that it has.
+    pub tears: Vec<(usize, f32)>,
 }
 
 /// The state of a stepping stone at one moment.
@@ -312,6 +370,57 @@ pub struct Stone {
     cooldown: f32,
 }
 
+/// A rock of a falling-rocks obstacle.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Rock {
+    /// No rock now.
+    Idle,
+    /// Dust falls at `target`, where the rock will land. `left` is the
+    /// time until the rock falls. `aimed` tells if the bear was there.
+    Tell {
+        left: f32,
+        target: Vec3,
+        aimed: bool,
+    },
+    /// The rock is in the air. `pos` is its centre.
+    Falling {
+        pos: Vec3,
+        speed: f32,
+        ground: f32,
+        aimed: bool,
+    },
+    /// The rock lies on the ground until it breaks.
+    Resting {
+        pos: Vec3,
+        left: f32,
+        pin: Option<Pin>,
+    },
+}
+
+/// A limb under a rock.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Pin {
+    /// The limb, 0 to 3.
+    pub limb: usize,
+    /// How long the bear pulled, in seconds.
+    pulled: f32,
+    /// The feet of the bear when the rock landed.
+    at: Vec3,
+}
+
+/// What the bear does at a thorn snag or at rock teeth.
+#[derive(Clone, Copy, Debug, Default)]
+struct RipVisit {
+    /// The bear is near (for the "tell" event).
+    near: bool,
+    /// The bear is in the thorns or over the teeth.
+    inside: bool,
+    /// The obstacle did damage in this visit.
+    hurt: bool,
+    /// The number of visits. It selects the limb.
+    count: u32,
+}
+
 /// A launch that waits for its result.
 #[derive(Clone, Copy, Debug)]
 struct Launch {
@@ -387,6 +496,8 @@ pub struct ObstacleSim {
     sink: Vec<f32>,
     sand_visit: Vec<SandVisit>,
     steps: Vec<StepTrack>,
+    rips: Vec<RipVisit>,
+    rocks: Vec<Rock>,
     time: f64,
     random: u32,
 }
@@ -405,6 +516,8 @@ impl ObstacleSim {
             sink: vec![0.0; n],
             sand_visit: vec![SandVisit::Away; n],
             steps: vec![StepTrack::default(); n],
+            rips: vec![RipVisit::default(); n],
+            rocks: vec![Rock::Idle; n],
             time: 0.0,
             random: 0x2F6E_2B1D,
         }
@@ -421,6 +534,27 @@ impl ObstacleSim {
     /// Gives how deep the sand of an obstacle sank, in metres.
     pub fn sink(&self, index: usize) -> f32 {
         self.sink.get(index).copied().unwrap_or(0.0)
+    }
+
+    /// Gives the rock of a falling-rocks obstacle.
+    #[cfg(test)]
+    pub fn rock(&self, index: usize) -> Rock {
+        self.rocks.get(index).copied().unwrap_or(Rock::Idle)
+    }
+
+    /// Gives the rocks that show now: the centre and the radius of each.
+    pub fn visible_rocks(&self) -> Vec<(Vec3, f32)> {
+        let mut out = Vec::new();
+        for (o, rock) in self.obstacles.iter().zip(&self.rocks) {
+            if let (
+                Kind::FallingRocks { radius, .. },
+                Rock::Falling { pos, .. } | Rock::Resting { pos, .. },
+            ) = (&o.kind, rock)
+            {
+                out.push((*pos, *radius));
+            }
+        }
+        out
     }
 
     /// Gives the time of the simulation in seconds.
@@ -882,6 +1016,271 @@ impl ObstacleSim {
                         }
                     }
                 }
+
+                Kind::ThornSnag { radius } => {
+                    let low = (bear.feet.y - pos.y).abs() <= 0.5;
+                    let inside = near <= *radius && low && !bear.climbing;
+                    let mut visit = self.rips[i];
+                    if near <= radius + 2.0 && !visit.near {
+                        visit.near = true;
+                        out.events.push(format!("obstacle:tell:{name}:#{}", o.id));
+                    } else if near > radius + 2.5 {
+                        visit.near = false;
+                    }
+                    if inside && !visit.inside {
+                        visit.count += 1;
+                        visit.hurt = false;
+                        out.events.push(format!("obstacle:snag:{name}:#{}", o.id));
+                    }
+                    if inside {
+                        out.slow = out.slow.max(p.thorn_slow);
+                        let part = smoothstep(p.thorn_free_speed, p.thorn_tear_speed, bear.speed);
+                        let damage = p.thorn_damage_per_s * (0.6 + 0.8 * o.difficulty) * part * dt;
+                        if damage > 0.0 {
+                            out.tears.push(((o.id + visit.count) as usize % 4, damage));
+                            if !visit.hurt {
+                                visit.hurt = true;
+                                out.events.push(format!("obstacle:tear:{name}:#{}", o.id));
+                            }
+                            // Stuffing and bits of the bush fly.
+                            for _ in 0..self.puffs_due(i, 30.0 * part, dt) {
+                                let side = Vec3::new(self.rand2(), 0.0, self.rand2());
+                                out.puffs.push(Puff {
+                                    pos: centre + side * 0.12,
+                                    vel: (side + Vec3::Y * (1.0 + self.rand())) * 0.6,
+                                    size: 0.08,
+                                    life: 0.5,
+                                    kind: PuffKind::Dust,
+                                });
+                            }
+                        }
+                    } else if visit.inside && !visit.hurt {
+                        out.events.push(format!("obstacle:escape:{name}:#{}", o.id));
+                    }
+                    visit.inside = inside;
+                    self.rips[i] = visit;
+                }
+
+                Kind::RockTeeth { half_width, .. } => {
+                    let dir = dir3(o.dir);
+                    let rel = bear.feet - pos;
+                    let along = xz(rel).dot(xz(dir));
+                    let across = (xz(rel) - xz(dir) * along).length();
+                    let ground = heights.sample_world(bear.feet.x, bear.feet.z);
+                    let low = bear.feet.y - ground <= 0.3;
+                    let inside =
+                        along.abs() <= p.teeth_depth_m.max(0.05) && across <= *half_width && low;
+                    let mut visit = self.rips[i];
+                    if near <= half_width + 3.0 && !visit.near {
+                        visit.near = true;
+                        out.events.push(format!("obstacle:tell:{name}:#{}", o.id));
+                    } else if near > half_width + 3.5 {
+                        visit.near = false;
+                    }
+                    if inside && !visit.inside {
+                        visit.count += 1;
+                        visit.hurt = false;
+                    }
+                    if inside && !visit.hurt {
+                        let over = bear.full_speed - p.teeth_tear_speed;
+                        if over > 0.0 {
+                            visit.hurt = true;
+                            let damage =
+                                over * p.teeth_damage_per_speed * (0.7 + 0.6 * o.difficulty);
+                            // The legs go first over the teeth.
+                            out.tears
+                                .push((2 + (o.id + visit.count) as usize % 2, damage));
+                            out.events.push(format!("obstacle:tear:{name}:#{}", o.id));
+                            for _ in 0..10 {
+                                let side = Vec3::new(self.rand2(), 0.0, self.rand2());
+                                out.puffs.push(Puff {
+                                    pos: centre + side * 0.15,
+                                    vel: (side + Vec3::Y * (1.2 + self.rand())) * 0.8,
+                                    size: 0.1,
+                                    life: 0.6,
+                                    kind: PuffKind::Dust,
+                                });
+                            }
+                        }
+                    } else if !inside && visit.inside && !visit.hurt {
+                        out.events.push(format!("obstacle:cross:{name}:#{}", o.id));
+                    }
+                    visit.inside = inside;
+                    self.rips[i] = visit;
+                }
+
+                Kind::FallingRocks {
+                    radius,
+                    drop_m,
+                    spread,
+                } => {
+                    let (radius, drop_m, spread) = (*radius, *drop_m, *spread);
+                    let rock = self.rocks[i];
+                    self.rocks[i] = match rock {
+                        Rock::Idle => {
+                            if self.acted[i] != cycle && near <= p.rock_wake_m {
+                                self.acted[i] = cycle;
+                                // The rock comes for a bear below the
+                                // face. If no bear is there, it lands
+                                // at a place in the area.
+                                let aimed = near <= spread && (bear.feet.y - pos.y).abs() <= 1.5;
+                                let at = if aimed {
+                                    xz(bear.feet)
+                                } else {
+                                    xz(pos) + Vec2::new(self.rand2(), self.rand2()) * spread * 0.7
+                                };
+                                let ground = heights.sample_world(at.x, at.y);
+                                if near <= spread + 4.0 {
+                                    out.events.push(format!("obstacle:tell:{name}:#{}", o.id));
+                                }
+                                Rock::Tell {
+                                    left: p.rock_tell_s.max(0.1),
+                                    target: Vec3::new(at.x, ground, at.y),
+                                    aimed,
+                                }
+                            } else {
+                                Rock::Idle
+                            }
+                        }
+                        Rock::Tell {
+                            left,
+                            target,
+                            aimed,
+                        } => {
+                            if shows {
+                                // Dust and grit fall where the rock will land.
+                                for _ in 0..self.puffs_due(i, 26.0, dt) {
+                                    let side = Vec3::new(self.rand2(), 0.0, self.rand2()) * radius;
+                                    let high = self.rand() * 2.5;
+                                    out.puffs.push(Puff {
+                                        pos: target + side + Vec3::Y * (0.1 + high),
+                                        vel: Vec3::new(0.0, -2.5 - self.rand(), 0.0),
+                                        size: 0.07 + 0.05 * self.rand(),
+                                        life: 0.5,
+                                        kind: PuffKind::Dust,
+                                    });
+                                }
+                            }
+                            let left = left - dt;
+                            if left > 0.0 {
+                                Rock::Tell {
+                                    left,
+                                    target,
+                                    aimed,
+                                }
+                            } else {
+                                Rock::Falling {
+                                    pos: target + Vec3::Y * (drop_m + radius),
+                                    speed: 0.0,
+                                    ground: target.y,
+                                    aimed,
+                                }
+                            }
+                        }
+                        Rock::Falling {
+                            pos: at,
+                            speed,
+                            ground,
+                            aimed,
+                        } => {
+                            let speed = speed + p.rock_gravity.max(0.1) * dt;
+                            let y = at.y - speed * dt;
+                            if y > ground + radius {
+                                Rock::Falling {
+                                    pos: Vec3::new(at.x, y, at.z),
+                                    speed,
+                                    ground,
+                                    aimed,
+                                }
+                            } else {
+                                let landed = Vec3::new(at.x, ground + radius, at.z);
+                                for _ in 0..16 {
+                                    let side = Vec3::new(self.rand2(), 0.0, self.rand2());
+                                    out.puffs.push(Puff {
+                                        pos: landed + side * radius,
+                                        vel: side * 1.2 + Vec3::Y * (0.4 + 0.6 * self.rand()),
+                                        size: 0.3 + 0.3 * self.rand(),
+                                        life: 1.0,
+                                        kind: PuffKind::Dust,
+                                    });
+                                }
+                                let hit = xz(bear.feet).distance(xz(landed))
+                                    <= radius + BEAR_RADIUS
+                                    && (bear.feet.y - ground).abs() <= 0.6
+                                    && !bear.climbing;
+                                let pin = if hit {
+                                    Some(Pin {
+                                        limb: (self.rand() * 4.0) as usize % 4,
+                                        pulled: 0.0,
+                                        at: bear.feet,
+                                    })
+                                } else {
+                                    None
+                                };
+                                if hit {
+                                    out.events.push(format!("obstacle:pin:{name}:#{}", o.id));
+                                } else if aimed {
+                                    out.events.push(format!("obstacle:escape:{name}:#{}", o.id));
+                                }
+                                // On a pin, the rock lies beside the body, on
+                                // the limb, so the player sees it.
+                                let beside = if hit {
+                                    let side = Vec3::new(self.rand2(), 0.0, self.rand2());
+                                    side.normalize_or(Vec3::X) * BEAR_RADIUS
+                                } else {
+                                    Vec3::ZERO
+                                };
+                                Rock::Resting {
+                                    pos: landed + beside,
+                                    left: p.rock_hold_s.max(0.1),
+                                    pin,
+                                }
+                            }
+                        }
+                        Rock::Resting { pos: at, left, pin } => {
+                            let left = left - dt;
+                            let mut pin = pin;
+                            if let Some(mut held) = pin {
+                                out.slow = out.slow.max(p.rock_pin_slow);
+                                if bear.stick_held {
+                                    held.pulled += dt;
+                                }
+                                let moved = bear.feet.distance(held.at) > 0.35;
+                                if held.pulled >= p.rock_pull_s || moved {
+                                    // The bear pulls free. The limb
+                                    // stays under the rock.
+                                    out.tears.push((held.limb, 1.0));
+                                    out.events.push(format!("obstacle:tear:{name}:#{}", o.id));
+                                    pin = None;
+                                } else if left <= 0.0 {
+                                    // The bear waited. The seam is a
+                                    // little worse.
+                                    out.tears.push((held.limb, p.rock_wait_damage));
+                                    out.events.push(format!("obstacle:free:{name}:#{}", o.id));
+                                    pin = None;
+                                } else {
+                                    pin = Some(held);
+                                }
+                            }
+                            if left > 0.0 {
+                                Rock::Resting { pos: at, left, pin }
+                            } else {
+                                // The rock breaks.
+                                for _ in 0..10 {
+                                    let side = Vec3::new(self.rand2(), self.rand(), self.rand2());
+                                    out.puffs.push(Puff {
+                                        pos: at + side * radius,
+                                        vel: side * 0.8,
+                                        size: 0.25,
+                                        life: 0.8,
+                                        kind: PuffKind::Dust,
+                                    });
+                                }
+                                Rock::Idle
+                            }
+                        }
+                    };
+                }
             }
         }
 
@@ -1050,6 +1449,8 @@ mod tests {
             on_floor: true,
             climbing: false,
             speed: 0.0,
+            full_speed: 0.0,
+            stick_held: false,
         }
     }
 
@@ -1071,6 +1472,7 @@ mod tests {
                 all.knock = out.knock;
             }
             all.slow = all.slow.max(out.slow);
+            all.tears.extend(out.tears);
             if out.lift.is_some() {
                 all.lift = out.lift;
             }
@@ -1437,6 +1839,8 @@ mod tests {
         let mut walker = ObstacleSim::new(vec![sand()]);
         let moving = BearIn {
             speed: 1.2,
+            full_speed: 0.0,
+            stick_held: false,
             ..bear_at(0.5, 0.0, 0.0)
         };
         run(&mut walker, &moving, &map, 1.0);
@@ -1566,5 +1970,181 @@ mod tests {
         run(&mut b, &bear, &map, 23.0);
         assert!(!a.stones().is_empty());
         assert_eq!(a.stones(), b.stones());
+    }
+    fn thorns() -> Obstacle {
+        obstacle(Kind::ThornSnag { radius: 0.8 }, 1.0)
+    }
+
+    fn events_of(out: &StepOut, what: &str) -> usize {
+        out.events.iter().filter(|e| e.contains(what)).count()
+    }
+
+    #[test]
+    fn a_slow_bear_gets_out_of_the_thorns_with_no_damage() {
+        let map = flat();
+        let mut sim = ObstacleSim::new(vec![thorns()]);
+        let mut bear = bear_at(0.2, 0.0, 0.0);
+        bear.speed = 0.4;
+        let inside = run(&mut sim, &bear, &map, 2.0);
+        assert!(inside.tears.is_empty());
+        assert!((inside.slow - SimParams::default().thorn_slow).abs() < 1e-6);
+        assert_eq!(events_of(&inside, "obstacle:snag:thorn_snag:#5"), 1);
+        let after = run(&mut sim, &bear_at(3.0, 0.0, 0.0), &map, 0.5);
+        assert_eq!(events_of(&after, "obstacle:escape:thorn_snag:#5"), 1);
+        assert_eq!(after.slow, 0.0);
+    }
+
+    #[test]
+    fn a_fast_bear_tears_one_seam_in_the_thorns() {
+        let map = flat();
+        let p = SimParams::default();
+        let mut sim = ObstacleSim::new(vec![thorns()]);
+        let mut bear = bear_at(0.2, 0.0, 0.0);
+        bear.speed = 2.0;
+        let out = run(&mut sim, &bear, &map, 1.0);
+        let total: f32 = out.tears.iter().map(|t| t.1).sum();
+        // Difficulty 0: 60% of the full damage.
+        assert!((total - p.thorn_damage_per_s * 0.6).abs() < 0.03, "{total}");
+        let limb = out.tears[0].0;
+        assert!(limb < 4 && out.tears.iter().all(|t| t.0 == limb));
+        assert_eq!(events_of(&out, "obstacle:tear:thorn_snag"), 1);
+        // The bear leaves: a torn visit is not an escape.
+        let after = run(&mut sim, &bear_at(3.0, 0.0, 0.0), &map, 0.5);
+        assert_eq!(events_of(&after, "escape"), 0);
+        // A bear above the bush (a jump over it) is not in it.
+        let mut sim = ObstacleSim::new(vec![thorns()]);
+        let mut high = bear_at(0.2, 1.0, 0.0);
+        high.speed = 2.0;
+        high.on_floor = false;
+        assert!(run(&mut sim, &high, &map, 1.0).tears.is_empty());
+    }
+
+    fn teeth() -> Obstacle {
+        obstacle(
+            Kind::RockTeeth {
+                half_width: 1.5,
+                count: 7,
+            },
+            1.0,
+        )
+    }
+
+    /// Moves the bear over the teeth along x at a speed.
+    fn cross_teeth(speed: f32) -> StepOut {
+        let map = flat();
+        let p = SimParams::default();
+        let mut sim = ObstacleSim::new(vec![teeth()]);
+        let mut all = StepOut::default();
+        let mut x = -2.0;
+        while x < 2.0 {
+            let mut bear = bear_at(x, 0.0, 0.5);
+            bear.speed = speed;
+            bear.full_speed = speed;
+            let out = sim.step(DT, &bear, &map, &p);
+            all.events.extend(out.events);
+            all.tears.extend(out.tears);
+            x += speed * DT;
+        }
+        all
+    }
+
+    #[test]
+    fn rock_teeth_tear_a_leg_of_a_fast_bear_only() {
+        let p = SimParams::default();
+        let slow = cross_teeth(3.2);
+        assert!(slow.tears.is_empty());
+        assert_eq!(events_of(&slow, "obstacle:cross:rock_teeth:#5"), 1);
+        assert_eq!(events_of(&slow, "obstacle:tell:rock_teeth:#5"), 1);
+
+        let fast = cross_teeth(7.0);
+        assert_eq!(fast.tears.len(), 1, "one tear in one pass");
+        let (limb, amount) = fast.tears[0];
+        assert!(limb == 2 || limb == 3, "a leg, not limb {limb}");
+        let expected = (7.0 - p.teeth_tear_speed) * p.teeth_damage_per_speed * 0.7;
+        assert!((amount - expected).abs() < 1e-4, "{amount}");
+        assert_eq!(events_of(&fast, "obstacle:tear:rock_teeth:#5"), 1);
+        assert_eq!(events_of(&fast, "cross"), 0);
+    }
+
+    fn rocks() -> Obstacle {
+        obstacle(
+            Kind::FallingRocks {
+                radius: 0.2,
+                drop_m: 6.0,
+                spread: 1.5,
+            },
+            10.0,
+        )
+    }
+
+    #[test]
+    fn a_rock_shows_dust_and_then_pins_a_bear_that_stays() {
+        let map = flat();
+        let p = SimParams::default();
+        let mut sim = ObstacleSim::new(vec![rocks()]);
+        let bear = bear_at(0.5, 0.0, 0.3);
+        // The tell: dust at the feet of the bear, no rock yet.
+        let tell = run(&mut sim, &bear, &map, p.rock_tell_s - 0.1);
+        assert_eq!(events_of(&tell, "obstacle:tell:falling_rocks:#5"), 1);
+        assert!(matches!(sim.rock(0), Rock::Tell { aimed: true, .. }));
+        assert!(tell.puffs.len() > 10);
+        assert!(tell.puffs.iter().all(|f| (f.pos.x - 0.5).abs() < 0.25));
+        assert!(sim.visible_rocks().is_empty());
+        // The rock falls and lands on the bear.
+        let fall = run(&mut sim, &bear, &map, 1.5);
+        assert_eq!(events_of(&fall, "obstacle:pin:falling_rocks:#5"), 1);
+        assert!(fall.slow >= p.rock_pin_slow);
+        let (at, radius) = sim.visible_rocks()[0];
+        assert!((at.y - radius).abs() < 1e-4 && (at.x - 0.5).abs() <= BEAR_RADIUS + 1e-4);
+        // The bear waits: the rock breaks, and the seam is a little worse.
+        let wait = run(&mut sim, &bear, &map, p.rock_hold_s);
+        assert_eq!(events_of(&wait, "obstacle:free:falling_rocks:#5"), 1);
+        assert_eq!(wait.tears.len(), 1);
+        assert!((wait.tears[0].1 - p.rock_wait_damage).abs() < 1e-6);
+        assert_eq!(sim.rock(0), Rock::Idle);
+        assert_eq!(run(&mut sim, &bear, &map, 0.2).slow, 0.0);
+    }
+
+    #[test]
+    fn a_pinned_bear_that_pulls_loses_the_limb() {
+        let map = flat();
+        let p = SimParams::default();
+        let mut sim = ObstacleSim::new(vec![rocks()]);
+        let mut bear = bear_at(0.5, 0.0, 0.3);
+        let land = run(&mut sim, &bear, &map, p.rock_tell_s + 1.4);
+        assert_eq!(events_of(&land, "obstacle:pin"), 1);
+        assert!(land.tears.is_empty());
+        bear.stick_held = true;
+        let short = run(&mut sim, &bear, &map, p.rock_pull_s - 0.2);
+        assert!(short.tears.is_empty(), "a short pull does nothing");
+        let pull = run(&mut sim, &bear, &map, 0.4);
+        assert_eq!(pull.tears.len(), 1);
+        assert_eq!(pull.tears[0].1, 1.0);
+        assert_eq!(events_of(&pull, "obstacle:tear:falling_rocks:#5"), 1);
+        // The bear is free, and the rock lies there until it breaks.
+        assert_eq!(run(&mut sim, &bear, &map, 0.2).slow, 0.0);
+        assert_eq!(sim.visible_rocks().len(), 1);
+    }
+
+    #[test]
+    fn a_bear_that_moves_away_from_the_dust_escapes_the_rock() {
+        let map = flat();
+        let p = SimParams::default();
+        let mut sim = ObstacleSim::new(vec![rocks()]);
+        run(&mut sim, &bear_at(0.5, 0.0, 0.3), &map, 0.5);
+        let out = run(&mut sim, &bear_at(1.6, 0.0, 0.3), &map, p.rock_tell_s + 1.5);
+        assert_eq!(events_of(&out, "obstacle:escape:falling_rocks:#5"), 1);
+        assert_eq!(events_of(&out, "pin"), 0);
+        assert!(out.tears.is_empty());
+        assert_eq!(out.slow, 0.0);
+    }
+
+    #[test]
+    fn no_rock_falls_while_the_bear_is_far() {
+        let map = flat();
+        let mut sim = ObstacleSim::new(vec![rocks()]);
+        let out = run(&mut sim, &bear_at(50.0, 0.0, 0.0), &map, 12.0);
+        assert!(out.events.is_empty() && out.puffs.is_empty());
+        assert_eq!(sim.rock(0), Rock::Idle);
     }
 }

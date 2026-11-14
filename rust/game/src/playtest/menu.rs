@@ -40,6 +40,8 @@ pub enum Action {
     SetLimb(&'static str, bool),
     /// Give back all limbs.
     RestoreLimbs,
+    /// Put the bear at the next obstacle (the same as F6).
+    NextObstacle,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -53,6 +55,7 @@ enum Kind {
     Save,
     TestsPage,
     LimbsPage,
+    NextObstacle,
     Limb(usize),
     RestoreLimbs,
     Run(TestKind),
@@ -113,6 +116,7 @@ impl MenuState {
                 Kind::LimbsPage,
                 Kind::Save,
                 Kind::TestsPage,
+                Kind::NextObstacle,
             ],
             Page::Limbs => vec![
                 Kind::Limb(0),
@@ -159,6 +163,7 @@ impl MenuState {
             Kind::Fly => format!("Fly camera: {}", on(self.fly_camera)),
             Kind::Overlay => format!("Debug overlay: {}", on(self.overlay)),
             Kind::NewZone => "New zone (next seed)".into(),
+            Kind::NextObstacle => "Go to the next obstacle (each time: the next type)".into(),
             Kind::Seed => format!(
                 "Seed: {}   (left, right: change. A: make the zone)",
                 self.seed
@@ -246,6 +251,7 @@ impl MenuState {
             Kind::Fly => Action::ToggleFlyCamera,
             Kind::Overlay => Action::ToggleOverlay,
             Kind::NewZone => Action::NewZone,
+            Kind::NextObstacle => Action::NextObstacle,
             Kind::Seed => Action::MakeZone(self.seed),
             Kind::View => self.adjust(1),
             Kind::Save => Action::SavePlaytest,
@@ -308,6 +314,14 @@ mod tests {
         assert_eq!(m.lines().1, lines.len() - 1);
         m.down();
         assert_eq!(m.lines().1, 0);
+    }
+
+    #[test]
+    fn next_obstacle_is_the_last_main_item() {
+        let mut m = MenuState::default();
+        m.up();
+        assert_eq!(m.activate(), Action::NextObstacle);
+        assert_eq!(m.page, Page::Main);
     }
 
     #[test]

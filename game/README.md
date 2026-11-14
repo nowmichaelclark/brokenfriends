@@ -404,7 +404,7 @@ makes the zip of the crashed session.
 | Debug overlay | F3 | dev menu |
 | New zone | F4 | dev menu |
 | Save playtest | | dev menu |
-| Go to the next obstacle (dev) | F6 | |
+| Go to the next obstacle (dev) | F6 | dev menu (last item) |
 | Playtest mark | F9 | tap Back/Select |
 | Remove or give back a limb (debug) | 1, 2, 3, 4 | (dev menu, S-113) |
 | Give back all limbs (debug) | 0 | (dev menu, S-113) |
@@ -621,8 +621,6 @@ Mikey does not build on his laptop (decision R10).
 - **Obstacle numbers are first guesses** (wind speed, throw speed,
   shake time, rhythm). Nobody played them yet. Mikey tells Claude
   what feels unfair or dull.
-- **F6 is a keyboard key.** The gamepad dev menu does not have "next
-  obstacle" yet.
 - **Same world on all computers.** The generator uses its own `sin`,
   `cos` and `exp` (`detmath.rs`), not the functions of the operating
   system. A test on Windows did not run yet [unverified].

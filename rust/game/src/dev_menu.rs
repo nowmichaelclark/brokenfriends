@@ -6,6 +6,7 @@
 
 use crate::bear::BEAR_GROUP;
 use crate::fly_camera::FLY_CAMERA_GROUP;
+use crate::obstacles::OBSTACLES_GROUP;
 use crate::overlay::OVERLAY_GROUP;
 use crate::playtest::menu::{Action, MenuState, LIMB_NAMES};
 use crate::recorder::RECORDER_GROUP;
@@ -283,6 +284,13 @@ impl BfDevMenu {
                 if let Some(mut view) = self.node(VIEW_DISTANCE_GROUP) {
                     view.call("set_forced_distance", &[metres.unwrap_or(0.0).to_variant()]);
                 }
+            }
+            Action::NextObstacle => {
+                if let Some(mut obstacles) = self.node(OBSTACLES_GROUP) {
+                    obstacles.call("go_to_next", &[]);
+                }
+                // The bear moves at once; close the menu so Mikey sees it.
+                self.close();
             }
             Action::SavePlaytest => {
                 if let Some(mut recorder) = self.node(RECORDER_GROUP) {

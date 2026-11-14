@@ -89,6 +89,17 @@ impl Surface for RaySurface {
     }
 }
 
+/// What the player pushes now.
+#[derive(Clone, Copy, Default)]
+struct Controls {
+    /// The move direction on the ground (x, z), 1 long at most.
+    wish: Vector2,
+    jog: bool,
+    jump: bool,
+    /// The let-go button (R21).
+    let_go: bool,
+}
+
 /// The arms and the legs, in the order of `BfBear::limb_swing`.
 const LIMBS: [PartId; 4] = [
     PartId::LeftArm,
@@ -103,12 +114,16 @@ pub const BEAR_GROUP: &str = "bf_bear";
 /// The teddy bear. It is 0.40 m tall. It walks, jogs, jumps and climbs.
 ///
 /// Keys: W, A, S, D or the arrow keys to move, Shift to jog, Space to
-/// jump. Gamepad: left stick to move, the bottom button to jump, the
-/// right shoulder button to jog.
+/// jump, C to let go of a wall. Gamepad: left stick to move, A to jump,
+/// the right shoulder button to jog, B to let go.
+///
+/// A jog uses stamina (R20). A tired bear walks.
 ///
 /// The bear starts to climb when it pushes into a surface that is too
 /// steep to walk. On the wall, "into the wall" is up and "away from
-/// the wall" is down. Jump makes the bear jump off.
+/// the wall" is down. Jump makes a hop up the wall, and it uses
+/// stamina (R20). Jump with the stick away from the wall jumps off.
+/// The let-go button drops the bear (R21).
 #[derive(GodotClass)]
 #[class(base = CharacterBody3D, init)]
 pub struct BfBear {
@@ -222,6 +237,31 @@ pub struct BfBear {
     #[init(val = 1.8)]
     climb_jump_push: f32,
 
+    /// The height of a hop up the wall in metres (jump, with the stick not away from the wall).
+    #[export]
+    #[init(val = 0.35)]
+    climb_hop_height: f32,
+
+    /// The time of a hop up the wall in seconds.
+    #[export]
+    #[init(val = 0.25)]
+    climb_hop_time: f32,
+
+    /// The stamina that one hop uses (0 to 1). A climb of the same height uses about 0.017.
+    #[export]
+    #[init(val = 0.04)]
+    climb_hop_stamina: f32,
+
+    /// On a wall, a jump with the stick this far away from the wall jumps off (0 to 1).
+    #[export]
+    #[init(val = 0.5)]
+    jump_off_stick: f32,
+
+    /// How long the stamina lasts while the bear jogs on the ground, in seconds.
+    #[export]
+    #[init(val = 20.0)]
+    jog_stamina_seconds: f32,
+
     /// The time after a jump off or a slide off in which the bear cannot grab, in seconds.
     #[export]
     #[init(val = 0.4)]
@@ -279,6 +319,7 @@ pub struct BfBear {
 
     timers: JumpTimers,
     jump_was_down: bool,
+    let_go_was_down: bool,
     mode: Mode,
     /// The stamina, from 0 (empty) to 1 (full).
     #[init(val = 1.0)]
@@ -325,15 +366,22 @@ impl ICharacterBody3D for BfBear {
 
     fn physics_process(&mut self, delta: f64) {
         let delta = delta as f32;
-        let (wish, jog, jump_down) = self.read_input();
+        let Controls {
+            wish,
+            jog,
+            jump: jump_down,
+            let_go: let_go_down,
+        } = self.read_input();
         let jump_pressed = jump_down && !self.jump_was_down;
         self.jump_was_down = jump_down;
+        let let_go_pressed = let_go_down && !self.let_go_was_down;
+        self.let_go_was_down = let_go_down;
         self.last_wish = wish;
         self.regrab_left = (self.regrab_left - delta).max(0.0);
 
         match self.mode {
             Mode::Walk => self.walk(delta, wish, jog, jump_pressed),
-            Mode::Climb(climb) => self.climb(delta, climb, wish, jump_pressed),
+            Mode::Climb(climb) => self.climb(delta, climb, wish, jump_pressed, let_go_pressed),
             Mode::Mantle { from, to, time } => self.mantle(delta, from, to, time),
         }
         self.pose_body(delta);
@@ -489,8 +537,23 @@ impl BfBear {
 
         let mut velocity = self.base().get_velocity();
 
+        // A jog uses stamina. A tired bear walks.
+        let jogging = jog && wish != Vector2::ZERO && !self.exhausted && self.stamina > 0.0;
+        if jogging && on_floor {
+            self.stamina -= delta / self.jog_stamina_seconds.max(0.1);
+            if self.stamina <= 0.0 {
+                self.stamina = 0.0;
+                self.exhausted = true;
+                self.event("tired:jog");
+            }
+        }
+
         // Speed on the ground plane.
-        let speed = if jog { self.jog_speed } else { self.walk_speed };
+        let speed = if jogging {
+            self.jog_speed
+        } else {
+            self.walk_speed
+        };
         let target = (wish.x * speed, wish.y * speed);
         let rate = if wish == Vector2::ZERO {
             self.deceleration
@@ -552,8 +615,8 @@ impl BfBear {
             self.air_time += delta;
         }
 
-        // The stamina comes back on the ground.
-        if self.base().is_on_floor() {
+        // The stamina comes back on the ground, but not during a jog.
+        if self.base().is_on_floor() && !jogging {
             let gain = delta / self.stamina_recover_seconds.max(0.01);
             self.stamina = (self.stamina + gain).min(1.0);
             if self.stamina >= self.regrab_stamina_part.clamp(0.0, 1.0) {
@@ -600,19 +663,42 @@ impl BfBear {
     }
 
     /// One step on a wall.
-    fn climb(&mut self, delta: f32, mut climb: Climb, wish: Vector2, jump_pressed: bool) {
+    fn climb(
+        &mut self,
+        delta: f32,
+        mut climb: Climb,
+        wish: Vector2,
+        jump_pressed: bool,
+        let_go_pressed: bool,
+    ) {
         let p = self.climb_params();
         let Some(mut surface) = self.surface() else {
             self.event("let_go:no_physics");
             self.let_go(Vector3::ZERO);
             return;
         };
-        if jump_pressed {
-            let up = jump_speed(self.climb_jump_height, self.fall_acceleration);
-            let velocity = climb.normal * self.climb_jump_push + Vec3::Y * up;
-            self.event("let_go:jump_off");
-            self.let_go(to_godot(velocity));
+        // The let-go button (R21): the bear drops with a small push off the wall.
+        if let_go_pressed {
+            self.event("let_go:button");
+            self.let_go(to_godot(climb.normal * 0.3 + climb.slide_velocity()));
             return;
+        }
+        let input = wall_input(Vec2::new(wish.x, wish.y), climb.normal);
+        if jump_pressed {
+            if input.y < -self.jump_off_stick.clamp(0.0, 1.0) {
+                // The stick points away from the wall: jump off.
+                let up = jump_speed(self.climb_jump_height, self.fall_acceleration);
+                let velocity = climb.normal * self.climb_jump_push + Vec3::Y * up;
+                self.event("let_go:jump_off");
+                self.let_go(to_godot(velocity));
+                return;
+            }
+            // Otherwise: a hop up the wall (R20). It costs stamina.
+            if !climb.is_hopping() {
+                climb.hop(self.climb_hop_height, self.climb_hop_time);
+                self.stamina -= self.climb_hop_stamina.max(0.0);
+                self.event("hop");
+            }
         }
         let sliding_now = climb.slide_speed > 0.01;
         if sliding_now != self.was_sliding {
@@ -620,7 +706,6 @@ impl BfBear {
             self.event(if sliding_now { "slide" } else { "slide_stop" });
         }
 
-        let input = wall_input(Vec2::new(wish.x, wish.y), climb.normal);
         let moving = input.length() > 0.05;
         let sliding = climb.slide_speed > 0.01;
         self.stamina -= stamina_drain(climb.angle, moving, sliding, &p) * delta;
@@ -796,20 +881,18 @@ impl BfBear {
         }
     }
 
-    /// Reads the keys and the gamepad. Gives the move direction on the
-    /// ground (x, z) with a length of 1 at most, the jog state and the
-    /// jump state.
-    fn read_input(&self) -> (Vector2, bool, bool) {
+    /// Reads the keys and the gamepad.
+    fn read_input(&self) -> Controls {
         let tree = self.base().get_tree();
         let Some(camera) = tree.get_first_node_in_group(FOLLOW_CAMERA_GROUP) else {
-            return (Vector2::ZERO, false, false);
+            return Controls::default();
         };
         let Ok(camera) = camera.try_cast::<godot::classes::Camera3D>() else {
-            return (Vector2::ZERO, false, false);
+            return Controls::default();
         };
         // While a debug camera is active, the bear does not move.
         if !camera.is_current() {
-            return (Vector2::ZERO, false, false);
+            return Controls::default();
         }
 
         let input = Input::singleton();
@@ -843,7 +926,13 @@ impl BfBear {
 
         let jog = key(Key::SHIFT) || input.is_joy_button_pressed(0, JoyButton::RIGHT_SHOULDER);
         let jump = key(Key::SPACE) || input.is_joy_button_pressed(0, JoyButton::A);
-        (wish, jog, jump)
+        let let_go = key(Key::C) || input.is_joy_button_pressed(0, JoyButton::B);
+        Controls {
+            wish,
+            jog,
+            jump,
+            let_go,
+        }
     }
 
     /// If the bear is below the ground, puts it back on the ground.

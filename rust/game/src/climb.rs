@@ -218,6 +218,10 @@ pub struct Climb {
     /// The distance that the bear moved on the wall. The animation
     /// uses it.
     pub travel: f32,
+    /// The speed of a hop up the wall in m/s. It goes down to 0.
+    pub hop_speed: f32,
+    /// How fast the hop speed goes down, in m/s each second.
+    hop_decay: f32,
 }
 
 impl Climb {
@@ -235,7 +239,26 @@ impl Climb {
             grip,
             slide_speed: if grip >= p.firm_grip { 0.0 } else { down_speed },
             travel: 0.0,
+            hop_speed: 0.0,
+            hop_decay: 0.0,
         }
+    }
+
+    /// Tells if a hop up the wall is in progress.
+    pub fn is_hopping(&self) -> bool {
+        self.hop_speed > 0.0
+    }
+
+    /// Starts a hop up the wall. The bear goes `height` metres up in
+    /// `time` seconds. A hop in progress is not changed.
+    pub fn hop(&mut self, height: f32, time: f32) {
+        if self.is_hopping() {
+            return;
+        }
+        let time = time.max(0.05);
+        // The speed goes down in a straight line to 0.
+        self.hop_speed = 2.0 * height.max(0.0) / time;
+        self.hop_decay = self.hop_speed / time;
     }
 
     /// Gives the velocity of the slide, down the wall.
@@ -265,7 +288,9 @@ impl Climb {
             };
         }
 
-        let velocity = (right * input.x + up * input.y) * p.climb_speed - up * self.slide_speed;
+        let velocity = (right * input.x + up * input.y) * p.climb_speed - up * self.slide_speed
+            + up * self.hop_speed;
+        self.hop_speed = (self.hop_speed - self.hop_decay * dt).max(0.0);
         let moved = velocity * dt;
         let dist = moved.length();
         let dir = if dist > 1e-6 { moved / dist } else { -up };
@@ -635,6 +660,31 @@ mod tests {
         assert!((stamina_drain(wall, true, false, &p) - p.drain_per_second).abs() < 1e-6);
         assert!(stamina_drain(wall, false, true, &p) > 0.0);
         assert!(stamina_drain(slope, true, false, &p) < 0.5 * p.drain_per_second);
+    }
+
+    #[test]
+    fn a_hop_goes_up_the_wall_by_its_height_and_stops() {
+        let p = ClimbParams::default();
+        let mut ground = Ground::new(ramp(90.0 - 1e-3, 30.0), 1.0);
+        let mut climb = on_ramp(&mut ground, 1.0);
+        let start = climb.centre.y;
+        climb.hop(0.35, 0.25);
+        assert!(climb.is_hopping());
+        // A second hop in the air does not stack.
+        let speed = climb.hop_speed;
+        climb.hop(5.0, 0.25);
+        assert_eq!(climb.hop_speed, speed);
+        // The stick is neutral. Only the hop moves the bear.
+        for _ in 0..60 {
+            assert_eq!(climb.step(&mut ground, Vec2::ZERO, DT, &p), Step::Hold);
+        }
+        assert!(!climb.is_hopping());
+        let rise = climb.centre.y - start;
+        assert!((rise - 0.35).abs() < 0.03, "the hop rose {rise} m");
+        // After the hop, the bear holds still.
+        let end = climb.centre.y;
+        climb.step(&mut ground, Vec2::ZERO, DT, &p);
+        assert!((climb.centre.y - end).abs() < 1e-4);
     }
 
     #[test]

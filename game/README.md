@@ -39,8 +39,18 @@ what it assumes.
     Left and right move to the side.
   - **Stop.** The climb stops on ground flatter than 45 degrees. At
     the edge of a ledge, the bear moves onto the top in 0.2 s.
-  - **Jump off.** Jump pushes the bear away from the wall. For 0.4 s
-    after that, the bear cannot grab a wall.
+  - **Hop up (R20).** Jump makes a hop 0.35 m up the wall in 0.25 s.
+    One hop uses 4% of the stamina (a normal climb of 0.35 m uses
+    about 1.7%). A new hop starts only after the last hop ends.
+  - **Jump off.** Jump with the stick away from the wall pushes the
+    bear away from the wall. For 0.4 s after that, the bear cannot
+    grab a wall.
+  - **Let go (R21).** The let-go button drops the bear. It gets a
+    small push away from the wall.
+  - **Jog (R20).** A jog on the ground uses stamina: 20 s from full to
+    empty. The stamina does not come back during a jog. When it is
+    gone, the bear is tired and walks until 30% is back. The amount of
+    stamina did not change.
   - **Stamina.** A ring near the bear shows it (`BfStaminaRing`). The
     stamina goes down only while the bear moves or slides. A steep
     wall uses more. At zero, the bear lets go, and the ring is red
@@ -171,7 +181,9 @@ makes the zip of the crashed session.
 | Jump | Space | bottom button (A) |
 | Climb | move into a steep surface | move into a steep surface |
 | Climb up, down, left, right | W, S, A, D | left stick |
-| Jump off a wall | Space | bottom button (A) |
+| Hop up a wall (uses stamina) | Space | bottom button (A) |
+| Jump off a wall | Space with S (away from the wall) | A with the stick away from the wall |
+| Let go of a wall | C | B |
 | Turn the camera | mouse | right stick |
 | Release the mouse | Esc (click the window to hold it again) | |
 | Fly camera | F2 | |
@@ -311,8 +323,14 @@ Mikey does not build on his laptop (decision R10).
   [unverified on Mikey's laptop].
 - **The ears have no visible seam ring.** A ring around an ear base
   looks wrong, so the ear seam has only a position.
-- **Climbing has no button.** The bear climbs when it pushes into a
-  steep surface. To let go, jump. A "let go" button does not exist.
+- **Climbing has no grab button.** The bear climbs when it pushes
+  into a steep surface. The let-go button is C or B.
+- **Hop, jump off and jog costs** (S-117). Jump on a wall hops up. To
+  jump off, hold the stick away from the wall while you jump. A hop
+  costs 4% of the stamina, and a jog costs 5% each second. These
+  numbers are first guesses (`climb_hop_*`, `jog_stamina_seconds`).
+  The jog uses the same stamina as the climb, so a long jog leaves
+  less for a wall. Mikey: does this feel right?
 - **Climb values.** The climb speed is 0.7 m/s. The stamina lasts
   30 s on a vertical wall and about 100 s on a slope of 50 degrees.
   This is too little to climb a full mountain without a rest.

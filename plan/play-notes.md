@@ -3,6 +3,54 @@
 Mikey's notes from play sessions. The newest section is at the top.
 Claude sessions use these notes to change the default values.
 
+## 2026-11-14, S-125: playtest zip, build 32a0269 (30 min)
+
+Mikey sent the zip only: no marks and no notes. Claude read
+`report.md`. The facts below are from the report.
+
+**The computer is not the target.** This laptop has an NVIDIA GTX 1650
+(a discrete GPU), an i5-10300H and 7.6 GB RAM, at 144 Hz with vsync.
+The speed target is integrated graphics (R5). A playtest on Mikey's
+Vivobook (Intel integrated graphics) is still necessary (S-137).
+
+**Speed on the GTX 1650**
+- Average 139 fps (vsync at 144 Hz), median frame 7.1 ms. GPU render
+  time about 3 ms. Draw calls 130 on average, at most 175.
+- Benchmark: about 144 fps on seeds 1, 7 and 42.
+- Draw distance test (seed 7): 300 m: GPU 1.3 ms, 112k primitives;
+  768 m (smog): GPU 2.9 ms; 3000 m: GPU 3.1 ms. The smog cut helps a
+  little; 300 m helps much more [the look at 300 m is not tested].
+- "Script time, process" is 15.6 ms on average, higher than the
+  median frame. This number needs a check (S-136).
+
+**The main problem: long freezes**
+- In the first minute, at the start point of seed 1: frames of 5.0 s,
+  5.2 s, 3.0 s and 1.7 s, and 3 fps for 3 s. The bear stood still.
+- After that: a freeze of about 950 ms every few minutes (17 times in
+  30 min), on all seeds, also in the benchmark flights. Some are
+  marked "(loading)" but no zone was loading.
+- The Godot log has no errors.
+- S-136 finds and fixes the cause.
+
+**Obstacles (from the counts)**
+- Rolling stones: 100 tells, 0 hits. The start point of seed 1 is near
+  stone group #67, which tells every 13 s, but the stones never reach
+  the bear.
+- Launch vents: 4 launches, 3 missed the ledge, 1 reached it. Each
+  miss ended in a hard tumble (16 m/s) that tore off both legs.
+- Ash crust: 6 falls of 6. Gust: 4 pushes. Push vent: 6 hits.
+  Updraft: 6 rides. Stepping stones: 1 cross, 2 falls. Sinking sand:
+  5 sinks, 4 stuck, 4 escapes.
+
+**Tumbles and limbs**
+- 13 tumbles from hard landings, the fastest at 24.9 m/s. Getting up
+  takes 3.1 s on average, at most 6.0 s.
+- Legs come off often: left leg lost 7 times, right leg 6 times. Many
+  of these came from launch-vent misses.
+
+**Autoplay tour on this laptop:** pass. Seed 42 missed the climb task
+(no grab in 20 s) and the updraft task.
+
 ## 2026-11-14, S-116: climb, smog and the new bear (Linux build)
 
 **Climbing (for S-117)**

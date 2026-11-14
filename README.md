@@ -11,7 +11,7 @@ is demo 1: one biome where the bear walks, jumps and climbs (see
 
 | Folder | Contents |
 |---|---|
-| `plan/` | The plans. Start with `plan/STATE.md`. |
+| `plan/` | The plans. Start with `plan/STATE.md`. A new Brain session starts with `plan/HANDOFF.md`. Local setup for Claude Code: `plan/local-setup.md`. |
 | `rust/` | The code of the game: world generation and gameplay. |
 | `game/` | The Godot project. Read `game/README.md` to build and run it. |
 | `tools/` | Scripts that install the pinned Terrain3D addon. |

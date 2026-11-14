@@ -133,6 +133,12 @@ pub struct BfTerrain {
     /// The current zone.
     zone: Option<Zone>,
 
+    /// The time to make the current zone on the worker thread, in seconds.
+    generation_seconds: f32,
+
+    /// The time to give the current zone to Terrain3D, in milliseconds.
+    import_ms: f32,
+
     /// The worker thread sends the new zone here.
     pending: Option<Receiver<Generated>>,
 
@@ -257,6 +263,29 @@ impl BfTerrain {
         self.zone
             .as_ref()
             .map_or(0.0, |zone| zone.heights.sample_world(x, z))
+    }
+
+    /// Gives the name of the main ground type at a world position, for
+    /// example "rust rock" or "sand".
+    #[func]
+    pub fn ground_name_at(&self, x: f32, z: f32) -> GString {
+        let name = self
+            .zone
+            .as_ref()
+            .map_or("none", |zone| zone.ground_at(x, z).name());
+        GString::from(name)
+    }
+
+    /// Gives the time to make the current zone, in seconds.
+    #[func]
+    pub fn generation_seconds(&self) -> f32 {
+        self.generation_seconds
+    }
+
+    /// Gives the time to give the current zone to Terrain3D, in milliseconds.
+    #[func]
+    pub fn import_ms(&self) -> f32 {
+        self.import_ms
     }
 
     /// Gives the grip of the ground at a world position, from 0 (does
@@ -460,6 +489,8 @@ impl BfTerrain {
             zone.seed
         );
         self.zone = Some(zone);
+        self.generation_seconds = seconds;
+        self.import_ms = show_ms as f32;
         self.signals().zone_changed().emit();
     }
 }

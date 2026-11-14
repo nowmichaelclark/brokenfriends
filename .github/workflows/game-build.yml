@@ -127,6 +127,20 @@ jobs:
             exit 1
           fi
 
+      - name: Recorder test (the Linux build writes a playtest zip)
+        run: |
+          # --bf-record turns on the recorder without a window. The game
+          # quits by itself, so the recorder packs the zip next to the game.
+          timeout 120 build/linux/BrokenFriends.x86_64 --headless --quit-after 3000 -- --bf-record > recorder.log 2>&1 || true
+          cat recorder.log
+          ls -la build/linux/playtests || true
+          zip=$(ls build/linux/playtests/playtest-*.zip 2>/dev/null | head -1)
+          test -n "$zip" || { echo "The recorder wrote no playtest zip." >&2; exit 1; }
+          unzip -l "$zip"
+          unzip -l "$zip" | grep -q "report.md" || { echo "The zip has no report.md." >&2; exit 1; }
+          # The release zip must not hold this test playtest.
+          rm -rf build/linux/playtests
+
       - name: Make the zip files
         run: |
           sha=$(git rev-parse --short HEAD)

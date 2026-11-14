@@ -25,3 +25,6 @@ sorts them.
 - Bear: water, mud or goo in the world that sets the wet value of the parts that touch it; wet parts dry slowly.
 - Bear: a visible seam on the ears, if Mikey wants one (now only the neck, shoulders and hips have rings).
 - A general particle system that reacts to the world: wind, different materials (sand, ash, stuffing, smoke), not only the camera dust (Mikey, S-116).
+- Recorder: catch engine errors with `OS.add_logger` (Godot 4.5+) instead of reading the log file each second; it needs thread-safe code in godot-rust.
+- Recorder: a frame-time graph (PNG) in each zip, so a hitch pattern shows at a glance.
+- Recorder: a small "REC" dot on the screen, so Mikey knows that the recorder runs (only if he wants it).

@@ -1,6 +1,11 @@
 # Diagnostics: the playtest recorder (R22)
 
-Status: spec, 2026-11-14. Mikey's rule (R22): Claude must not ask Mikey
+Status: the recorder is built (S-123, `rust/game/src/recorder.rs`,
+`game/README.md`). Not built yet: the dev menu with "Save playtest"
+and the "Tests" page (S-113, it calls `save_playtest()` on the
+`bf_recorder` group), and replay (S-124). A hitch must also be 2 times
+longer than the average frame of the last second (see
+`research/playtest-recorder.md`). Spec from 2026-11-14. Mikey's rule (R22): Claude must not ask Mikey
 technical questions about a play session. The game records what
 Claude needs. If a new technical question comes up, a session adds a
 probe or a test to the recorder instead of asking Mikey.

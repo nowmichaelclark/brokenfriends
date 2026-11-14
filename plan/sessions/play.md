@@ -19,5 +19,9 @@ is necessary. The game records the technical data (R22,
 The next Build session writes the notes in `plan/play-notes.md` and
 updates `STATE.md`.
 
-Until S-123 is on `main`, the recorder does not exist. Then, write
-notes in your own words only.
+If the game crashed, start it one more time and quit. The game then
+makes the zip of the crashed session.
+
+The next Build session reads `report.md` in the zip first. It looks
+at the screenshots of the marks and the frames in `marks/`. It does
+not ask Mikey technical questions (R22).

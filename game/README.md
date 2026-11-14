@@ -93,8 +93,40 @@ what it assumes.
   300 dust particles move past the camera. There is no heat shimmer
   (R19). The node reads its values
   twice each second, so a change in the Remote Inspector shows soon.
+- **`BfRecorder`** is the playtest recorder (R22,
+  `plan/diagnostics.md`). It is always on when the game has a window.
+  - **Files.** It writes `session.json` (build, hardware, settings,
+    zones), `samples.jsonl` (one line each second), `events.jsonl`,
+    `frametimes.json` (all frame times in bins of 0.1 ms), `shots/`
+    (JPEG, 960 x 540) and `marks/`.
+  - **Each second:** fps, the average, P95 and max frame time, the CPU
+    and GPU render time, draw calls, primitives, objects, memory,
+    shader compiles, the bear (place, speed, state, slope, ground,
+    grip, stamina, limbs), the camera and the input.
+  - **Events:** hitch, low fps, stuck, climb loop, through the ground,
+    the bear's state changes (jump, grab, slide, let go and why,
+    mantle, long landing, restart), new zone, marks, and the errors
+    and warnings of the Godot log.
+  - **Screenshots:** one each 30 s, one at each mark, and one at a
+    hitch or "stuck" (at most one each 10 s, 60 in total).
+  - **Marks.** Tap Back on the gamepad or push F9. The recorder saves a
+    screenshot and the frames of the last 10 s. "Mark 3 saved." shows
+    on the screen.
+  - **The end.** When the game quits, the recorder writes `report.md`
+    and packs all files and the Godot log into one zip. If the game
+    stopped without a normal quit, the next start packs that session.
+    The folder keeps 200 MB of zips at most; the oldest go first.
+  - **Where.** In `playtests/` next to the game. If that folder cannot
+    be written, or in the editor, the files go to the Godot user
+    folder (`~/.local/share/godot/app_userdata/Broken Friends/`).
+  - **Cost.** About 0.07 ms in each frame in the cloud (the report
+    shows the real value). A screenshot reads the image back from the
+    GPU; the next frame can be slow. The report marks those hitches
+    as "after a recorder screenshot."
+  - **Without a window,** the recorder is off. `-- --bf-record` on the
+    command line turns it on (no screenshots then).
 - **`main.tscn`** is the start scene: atmosphere, terrain, bear,
-  cameras and overlay.
+  cameras, overlay and recorder.
 
 ## Play the latest build (Mikey)
 
@@ -117,6 +149,19 @@ If the game does not start, run it from a terminal and send the text
 that it prints to Claude. On Windows, run
 `BrokenFriends.console.exe` to see the text.
 
+## Send a playtest (Mikey)
+
+1. Play. When something looks or feels wrong, tap Back on the gamepad
+   (keyboard: F9). "Mark 1 saved." shows on the screen.
+2. Quit the game (close the window).
+3. Open the `playtests` folder next to the game. Attach the newest
+   zip to the chat or to the next Claude Code session.
+4. Optional: write notes about feel and taste. You can name marks,
+   for example "at mark 3 the bear looked strange."
+
+If the game crashed, start it one more time and quit. The game then
+makes the zip of the crashed session.
+
 ## Controls
 
 | Action | Keyboard and mouse | Gamepad |
@@ -132,6 +177,7 @@ that it prints to Claude. On Windows, run
 | Fly camera | F2 | |
 | Debug overlay | F3 | |
 | New zone | F4 | |
+| Playtest mark | F9 | tap Back/Select |
 
 All tuning values of the bear and the camera are in the Inspector
 (select `Bear` or `FollowCamera`). The grip of each ground type is on
@@ -210,6 +256,9 @@ Mikey does not build on his laptop (decision R10).
 
 - In `rust/`: `cargo fmt`, `cargo clippy --workspace --all-targets`
   and `cargo test`.
+- Recorder test without a window:
+  `godot --headless --path game --quit-after 1500 -- --bf-record`.
+  The zip goes to the Godot user folder (`playtests/`).
 - Load test without a window:
   `godot --headless --path game --quit-after 300`. On a new clone, run
   `godot --headless --path game --import` one time before this.
@@ -218,8 +267,9 @@ Mikey does not build on his laptop (decision R10).
 - The game build (`.github/workflows/game-build.yml`) builds the Rust
   library for Linux and Windows. Then Godot exports the game with
   `export_presets.cfg`. A smoke test starts the Linux build headless
-  and checks that it makes a zone. The zips go on the `game-latest`
-  release.
+  and checks that it makes a zone. A second run with `--bf-record`
+  checks that the recorder writes a zip with `report.md` next to the
+  game. The zips go on the `game-latest` release.
 - To export by hand: build with `cargo build --release`, copy
   `libbf_game.so` from `rust/target/release/` to `rust/target/debug/`,
   run `godot --headless --path game --import`, then
@@ -294,6 +344,21 @@ Mikey does not build on his laptop (decision R10).
   renderer yet [unverified]. Mikey tells Claude what he sees.
 - **One smog colour.** Godot 4 has one fog colour. The low smog has
   the same colour as the far smog and is only thicker.
+- **The recorder is always on.** It cannot be turned off from the
+  game (only with `enabled` on the `Recorder` node).
+- **A hitch is a spike.** A frame is a hitch if it takes more than
+  50 ms and more than 2 times the average frame of the last second.
+  On a slow computer, each frame is longer than 50 ms; the second
+  rule stops an event in each frame. "Low fps" events show the slow
+  parts.
+- **A tap of Back is shorter than 0.4 s.** A longer hold is free for
+  the dev menu (S-113).
+- **Hitches during a zone load do not count.** From the start until
+  1.5 s after a new zone shows, hitches are "loading." The report
+  counts them but does not list them as the worst hitches.
+- **Paths are removed.** In the copy of the Godot log in the zip, the
+  game folder, the user folder, the home folder and the user name
+  become `<game>`, `<user data>`, `~` and `<user>`.
 - **Frame cost.** The atmosphere has no measured cost. The parts that
   can cost time are the dust (300 particles, small) and
   the shadows (2 cascades, 100 m).

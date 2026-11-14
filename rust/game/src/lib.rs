@@ -14,6 +14,8 @@ mod fly_camera;
 mod follow_camera;
 mod motion;
 mod overlay;
+mod playtest;
+mod recorder;
 mod stamina;
 mod terrain;
 

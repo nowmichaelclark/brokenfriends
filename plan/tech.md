@@ -205,6 +205,7 @@ Cloud containers usually have no GPU, and some have no Vulkan.
 | Maths | `glam` for the vectors of the climb maths (`climb.rs`). `detmath.rs` has `sin`, `cos` and `exp` that give the same bits on all computers. |
 | SDF meshes: the bear now, caves later | `fast-surface-nets` (MIT or Apache-2.0) |
 | Preview images | `image` (dev dependency only) |
+| Playtest files (JSON) | `serde`, `serde_json` (MIT or Apache-2.0) |
 
 ## More to read
 

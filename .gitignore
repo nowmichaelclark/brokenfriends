@@ -12,6 +12,7 @@ export_presets.cfg.bak
 # Builds and scratch
 build/
 screenshots/
+playtests/
 __pycache__/
 *.pyc
 .DS_Store

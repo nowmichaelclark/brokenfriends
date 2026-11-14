@@ -291,6 +291,14 @@ pub struct BfBear {
     push_time: f32,
     /// The direction that the body looks at, as an angle around Y.
     yaw: f32,
+    /// The move direction of the last physics step (x, z).
+    last_wish: Vector2,
+    /// The time in the air since the bear left the ground, in seconds.
+    air_time: f32,
+    /// The bear slides on a wall now.
+    was_sliding: bool,
+    /// Events for the playtest recorder, since its last `take_events`.
+    events: Vec<String>,
     /// One ray query for all ray casts.
     ray_query: Option<Gd<PhysicsRayQueryParameters3D>>,
     /// The visible bear. It turns; the collision shape does not.
@@ -320,6 +328,7 @@ impl ICharacterBody3D for BfBear {
         let (wish, jog, jump_down) = self.read_input();
         let jump_pressed = jump_down && !self.jump_was_down;
         self.jump_was_down = jump_down;
+        self.last_wish = wish;
         self.regrab_left = (self.regrab_left - delta).max(0.0);
 
         match self.mode {
@@ -366,6 +375,7 @@ impl BfBear {
         self.mode = Mode::Walk;
         self.stamina = 1.0;
         self.exhausted = false;
+        self.event("restart");
     }
 
     /// Gives the stamina, from 0 (empty) to 1 (full).
@@ -402,6 +412,71 @@ impl BfBear {
             ),
         };
         GString::from(&text)
+    }
+
+    /// Gives the state of the bear for the playtest recorder.
+    #[func]
+    pub fn recorder_state(&self) -> VarDictionary {
+        let velocity = self.base().get_velocity();
+        let on_floor = self.base().is_on_floor();
+        let speed = velocity.length();
+        let (state, slope, grip) = match self.mode {
+            Mode::Climb(c) => (
+                if c.slide_speed > 0.01 {
+                    "slide"
+                } else {
+                    "climb"
+                },
+                slope_angle(c.normal).to_degrees(),
+                c.grip,
+            ),
+            Mode::Mantle { .. } => ("mantle", 0.0, -1.0),
+            Mode::Walk => {
+                let state = if !on_floor {
+                    if velocity.y > 0.0 {
+                        "jump"
+                    } else {
+                        "fall"
+                    }
+                } else if speed > (self.walk_speed + self.jog_speed) * 0.5 {
+                    "jog"
+                } else if speed > 0.05 {
+                    "walk"
+                } else {
+                    "idle"
+                };
+                let slope = if on_floor {
+                    self.base()
+                        .get_floor_normal()
+                        .angle_to(Vector3::UP)
+                        .to_degrees()
+                } else {
+                    0.0
+                };
+                (state, slope, -1.0)
+            }
+        };
+        let mut d = VarDictionary::new();
+        d.set("pos", self.base().get_global_position());
+        d.set("velocity", velocity);
+        d.set("speed", speed);
+        d.set("state", state);
+        d.set("slope_deg", slope);
+        // -1: the recorder asks the terrain for the grip below the bear.
+        d.set("grip", grip);
+        d.set("stamina", self.stamina);
+        d.set("exhausted", self.exhausted);
+        d.set("limbs", LIMBS.len() as i64);
+        d.set("stick_held", self.last_wish.length() > 0.01);
+        d
+    }
+
+    /// Gives the events since the last call and forgets them. Each event
+    /// is a short name, for example "jump", "grab" or "let_go:jump_off".
+    #[func]
+    pub fn take_events(&mut self) -> PackedStringArray {
+        let events = std::mem::take(&mut self.events);
+        events.iter().map(GString::from).collect()
     }
 }
 
@@ -452,6 +527,7 @@ impl BfBear {
             self.jump_buffer_time,
         ) {
             velocity.y = jump_speed(self.jump_height, self.fall_acceleration);
+            self.event("jump");
         }
 
         self.base_mut().set_velocity(velocity);
@@ -463,6 +539,17 @@ impl BfBear {
             let wanted = wish.x.atan2(wish.y);
             let step = self.turn_speed_degrees.to_radians() * delta;
             self.yaw += angle_difference(self.yaw, wanted).clamp(-step, step);
+        }
+
+        // A landing after a long time in the air is an event.
+        if self.base().is_on_floor() {
+            if self.air_time > 0.5 {
+                let fall = -velocity.y.min(0.0);
+                self.event(&format!("land:{:.1}s:{fall:.1}m/s", self.air_time));
+            }
+            self.air_time = 0.0;
+        } else {
+            self.air_time += delta;
         }
 
         // The stamina comes back on the ground.
@@ -508,20 +595,29 @@ impl BfBear {
         self.base_mut().set_velocity(Vector3::ZERO);
         self.set_centre(climb.centre);
         self.mode = Mode::Climb(climb);
+        self.was_sliding = false;
+        self.event("grab");
     }
 
     /// One step on a wall.
     fn climb(&mut self, delta: f32, mut climb: Climb, wish: Vector2, jump_pressed: bool) {
         let p = self.climb_params();
         let Some(mut surface) = self.surface() else {
+            self.event("let_go:no_physics");
             self.let_go(Vector3::ZERO);
             return;
         };
         if jump_pressed {
             let up = jump_speed(self.climb_jump_height, self.fall_acceleration);
             let velocity = climb.normal * self.climb_jump_push + Vec3::Y * up;
+            self.event("let_go:jump_off");
             self.let_go(to_godot(velocity));
             return;
+        }
+        let sliding_now = climb.slide_speed > 0.01;
+        if sliding_now != self.was_sliding {
+            self.was_sliding = sliding_now;
+            self.event(if sliding_now { "slide" } else { "slide_stop" });
         }
 
         let input = wall_input(Vec2::new(wish.x, wish.y), climb.normal);
@@ -531,6 +627,7 @@ impl BfBear {
         if self.stamina <= 0.0 {
             self.stamina = 0.0;
             self.exhausted = true;
+            self.event("let_go:no_stamina");
             self.let_go(to_godot(climb.slide_velocity()));
             return;
         }
@@ -543,13 +640,17 @@ impl BfBear {
             Step::Ground { feet } => {
                 // The upright bear looks at the wall that it came from.
                 self.yaw = (-climb.normal.x).atan2(-climb.normal.z);
+                self.event("mantle");
                 self.mode = Mode::Mantle {
                     from: self.base().get_global_position(),
                     to: to_godot(feet) + Vector3::new(0.0, 0.02, 0.0),
                     time: 0.0,
                 };
             }
-            Step::LetGo { velocity } => self.let_go(to_godot(velocity)),
+            Step::LetGo { velocity } => {
+                self.event("let_go:slide_or_edge");
+                self.let_go(to_godot(velocity));
+            }
         }
     }
 
@@ -581,6 +682,15 @@ impl BfBear {
         self.regrab_left = self.regrab_time;
         self.push_time = 0.0;
         self.base_mut().set_velocity(velocity);
+    }
+
+    /// Keeps an event for the playtest recorder. At most 64 events wait;
+    /// without a recorder, the oldest go.
+    fn event(&mut self, name: &str) {
+        if self.events.len() >= 64 {
+            self.events.remove(0);
+        }
+        self.events.push(name.to_string());
     }
 
     /// Puts the centre of the bear at a position.
@@ -751,6 +861,7 @@ impl BfBear {
             )
             .to::<f32>();
         if position.y < ground - 0.25 {
+            self.event(&format!("back_on_ground:{:.2}m", ground - position.y));
             position.y = ground + 0.05;
             self.base_mut().set_global_position(position);
             let mut velocity = self.base().get_velocity();

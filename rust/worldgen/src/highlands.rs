@@ -151,6 +151,24 @@ impl Ground {
         let ground = soil + (rock - soil) * self.rock;
         ground + (sand - ground) * self.sand
     }
+
+    /// Gives the name of the main ground type: "sand", "lake bed",
+    /// "ash rock", "rust rock" or "soil".
+    pub fn name(&self) -> &'static str {
+        if self.sand >= 0.5 {
+            "sand"
+        } else if self.lake >= 0.5 {
+            "lake bed"
+        } else if self.rock >= 0.5 {
+            if self.ash >= 0.5 {
+                "ash rock"
+            } else {
+                "rust rock"
+            }
+        } else {
+            "soil"
+        }
+    }
 }
 
 /// Ridged noise: the absolute value of noise, turned over. The zero
@@ -523,6 +541,22 @@ impl Zone {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn ground_names() {
+        let g = |rock, ash, lake, sand| Ground {
+            rock,
+            ash,
+            lake,
+            sand,
+        };
+        assert_eq!(g(0.0, 0.0, 0.0, 0.0).name(), "soil");
+        assert_eq!(g(1.0, 0.2, 0.0, 0.0).name(), "rust rock");
+        assert_eq!(g(1.0, 0.8, 0.0, 0.0).name(), "ash rock");
+        assert_eq!(g(1.0, 0.8, 0.0, 0.9).name(), "sand");
+        assert_eq!(g(0.0, 0.0, 1.0, 0.0).name(), "lake bed");
+    }
+
     use super::*;
 
     #[test]

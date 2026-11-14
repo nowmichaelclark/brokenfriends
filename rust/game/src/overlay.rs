@@ -106,7 +106,7 @@ impl BfDebugOverlay {
              video memory {video_mb:.0} MB\n\
              seed {seed}\n\
              bear: {bear}\n\
-             F2: fly camera   F3: hide   F4: new zone"
+             F2: fly camera   F3: hide   F4: new zone   F9: mark"
         )
     }
 }

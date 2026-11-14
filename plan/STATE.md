@@ -27,7 +27,7 @@ To start a session, Mikey opens the place in the "Where" column. He
 selects the model and effort, then types "Run S-NNN". At the end of a
 session, the session deletes its row. It changes the rows that it
 unblocks to **ready**. It adds follow-up rows at the bottom.
-Next number: S-127.
+Next number: S-130.
 
 | # | Session | Where | Model, effort | Status |
 |---|---|---|---|---|
@@ -40,6 +40,9 @@ Next number: S-127.
 | S-125 | **Play: the next playtest.** Download the newest zip (it has S-117, S-121 and the walk animation of S-120) and play for about 15 minutes. Walk slowly, walk, jog, jump, and go across slopes and sand. Tap Back when something is wrong. Send the zip from `playtests/`. Notes about feel and taste are optional. For the animation: is the walk too busy? Is the bear soft enough, or too wobbly? | Mikey's laptops | Mikey | **ready** |
 | S-108 | **Build: ground scatter.** Make rocks, pebbles and dead shrubs in Rust. Draw them with MultiMesh and visibility ranges. Stay inside the speed numbers from the S-125 playtest. For the shrubs, look at TanTan's `shrubbery` crate (space colonization, deterministic, MIT/Apache) [unverified: whether it works without Bevy]. | Claude Code | Sonnet 5.5, medium | waiting on S-125 |
 | S-126 | **Build: tune the walk animation from the playtest.** Read Mikey's notes and `anim_us` in `samples.jsonl` of the playtest. Change the defaults on `BfBearModel` (stride, bounce, waddle, springs) and keep `AnimParams::default()` in `anim.rs` the same. Fix what looks wrong at the marks. | Claude Code | Sonnet 5.5, medium | waiting on S-125 |
+| S-127 | **Build: obstacle framework and the first natural obstacles** (R23, `obstacles.md`). Obstacles as seeded data. Find places after the terrain is made. Build four obstacles: crumbling ash crust, rolling stones, gusts, and vents (push and launch). Each has a tell before it acts. Log each hit, launch and fall in the playtest recorder. | Claude Code | Opus 5.5, high | **ready** |
+| S-128 | **Build: obstacles that help, and sinking sand** (`obstacles.md`). Stepping stones that appear and vanish in a rhythm, updrafts, and sinking sand. | Claude Code | Sonnet 5.5, high | waiting on S-127 |
+| S-129 | **Build: limb-ripping obstacles** (`obstacles.md`). Thorn snags, rock teeth and falling rocks that pin a limb. They use the seam health and limb loss of S-114. | Claude Code | Opus 5.5, high | waiting on S-114 and S-127 |
 | S-109 | **Brain** with Mikey: play the full demo, decide what to fix, and plan demo 2 (caves). | Project chat | Opus 5.5, medium | waiting on S-114, S-115 and S-108 |
 
 ## Combined runs

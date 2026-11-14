@@ -35,3 +35,4 @@ sorts them.
 - Animation: a forward ray for the slope ahead, so the bear leans before it reaches a hill (`research/bear-animation.md`).
 - Animation: run the pose in the render frame with interpolation, if a screen with more than 60 Hz shows a stutter.
 - Animation: a debug view of the feet targets and the stride wheel in the F3 overlay or the dev menu.
+- Crumbling ground that drops the bear into a cave (R23), when the caves exist (demo 2).

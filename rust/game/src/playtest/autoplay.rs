@@ -127,7 +127,8 @@ pub enum BearState {
 impl BearState {
     pub fn from_name(name: &str) -> BearState {
         match name {
-            "jump" | "fall" => BearState::Air,
+            // A tumbling bear is not on its feet.
+            "jump" | "fall" | "tumble" => BearState::Air,
             "climb" | "slide" => BearState::Climb,
             "mantle" => BearState::Mantle,
             _ => BearState::Ground,

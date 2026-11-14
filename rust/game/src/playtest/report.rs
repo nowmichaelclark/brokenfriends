@@ -81,6 +81,7 @@ pub fn make_report(r: &ReportInput) -> String {
     hitch_section(&mut out, r.events);
     mark_section(&mut out, r.events);
     obstacle_section(&mut out, r.events);
+    tumble_section(&mut out, r.events);
     event_section(&mut out, r.events);
     out
 }
@@ -308,6 +309,73 @@ fn obstacle_section(out: &mut String, events: &[Event]) {
     out.push('\n');
 }
 
+/// The tumbles (R11) and the seams (R12): the causes and speeds of the
+/// tumbles, how long each one lasted, and what happened to the limbs.
+fn tumble_section(out: &mut String, events: &[Event]) {
+    out.push_str("\n## Tumbles and limbs\n\n");
+    let bear: Vec<&str> = events
+        .iter()
+        .filter(|e| e.kind == "bear")
+        .map(|e| e.info.as_str())
+        .collect();
+    // (cause, count, fastest speed)
+    let mut causes: Vec<(&str, usize, f32)> = Vec::new();
+    let mut times: Vec<f32> = Vec::new();
+    let mut limbs: Vec<(&str, &str, usize)> = Vec::new();
+    for info in &bear {
+        let parts: Vec<&str> = info.split(':').collect();
+        match parts.as_slice() {
+            ["tumble", cause, speed] => {
+                let v = speed.trim_end_matches("m/s").parse::<f32>().unwrap_or(0.0);
+                match causes.iter_mut().find(|c| c.0 == *cause) {
+                    Some(c) => {
+                        c.1 += 1;
+                        c.2 = c.2.max(v);
+                    }
+                    None => causes.push((cause, 1, v)),
+                }
+            }
+            ["get_up", time] => {
+                times.push(time.trim_end_matches('s').parse::<f32>().unwrap_or(0.0));
+            }
+            ["seam", limb, stage] => count(&mut limbs, limb, stage),
+            ["limb_lost", limb] => count(&mut limbs, limb, "lost"),
+            ["limb_sewn", limb] => count(&mut limbs, limb, "sewn"),
+            _ => {}
+        }
+    }
+    if causes.is_empty() && limbs.is_empty() {
+        out.push_str("- no tumble and no torn seam\n");
+        return;
+    }
+    out.push_str(
+        "Causes: `land` (a hard landing), `wall` (a wall in the air), `slide` (a fast slide off a \
+         wall), `dev`, `dev_hard` (the dev menu or keys 5 and 6).\n\n",
+    );
+    for (cause, n, fastest) in &causes {
+        let _ = writeln!(out, "- tumble {cause}: {n}, fastest {fastest:.1} m/s");
+    }
+    if !times.is_empty() {
+        let mean = times.iter().sum::<f32>() / times.len() as f32;
+        let longest = times.iter().copied().fold(0.0, f32::max);
+        let _ = writeln!(
+            out,
+            "- time on the ground: mean {mean:.1} s, longest {longest:.1} s"
+        );
+    }
+    limbs.sort();
+    for (limb, what, n) in &limbs {
+        let _ = writeln!(out, "- {limb}: {what} {n}");
+    }
+}
+
+fn count<'a>(list: &mut Vec<(&'a str, &'a str, usize)>, limb: &'a str, what: &'a str) {
+    match list.iter_mut().find(|c| c.0 == limb && c.1 == what) {
+        Some(c) => c.2 += 1,
+        None => list.push((limb, what, 1)),
+    }
+}
+
 fn event_section(out: &mut String, events: &[Event]) {
     out.push_str("\n## All events\n\n");
     let mut counts: Vec<(&str, usize)> = Vec::new();
@@ -432,6 +500,38 @@ mod tests {
         append_tests(&mut report, &["### Test: A\n".into(), "### Test: B".into()]);
         assert!(report.contains("## Tests"));
         assert!(report.find("### Test: A").unwrap() < report.find("### Test: B").unwrap());
+    }
+
+    #[test]
+    fn report_counts_the_tumbles_and_the_torn_seams() {
+        let bear = |info: &str| Event {
+            kind: "bear".into(),
+            info: info.into(),
+            ..Default::default()
+        };
+        let events = vec![
+            bear("tumble:land:9.5m/s"),
+            bear("seam:LeftLeg:torn"),
+            bear("get_up:1.5s"),
+            bear("tumble:land:14.0m/s"),
+            bear("seam:LeftLeg:detached"),
+            bear("limb_lost:LeftLeg"),
+            bear("get_up:2.5s"),
+            bear("limb_sewn:LeftLeg"),
+            bear("tumble:dev:5.2m/s"),
+        ];
+        let mut out = String::new();
+        tumble_section(&mut out, &events);
+        assert!(out.contains("- tumble land: 2, fastest 14.0 m/s"), "{out}");
+        assert!(out.contains("- tumble dev: 1, fastest 5.2 m/s"), "{out}");
+        assert!(out.contains("mean 2.0 s, longest 2.5 s"), "{out}");
+        assert!(out.contains("- LeftLeg: torn 1"), "{out}");
+        assert!(out.contains("- LeftLeg: lost 1"), "{out}");
+        assert!(out.contains("- LeftLeg: sewn 1"), "{out}");
+
+        let mut out = String::new();
+        tumble_section(&mut out, &[bear("jump")]);
+        assert!(out.contains("no tumble"));
     }
 
     #[test]

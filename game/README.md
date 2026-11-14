@@ -154,11 +154,50 @@ what it assumes.
     arm x1.6, one leg x1.15, no legs x1.3 (the factors multiply). A
     bear without arms lets go of a wall.
   - **Debug keys.** 1 to 4 remove or give back the left arm, the right
-    arm, the left leg and the right leg. 0 gives back all limbs. A lost
-    limb is hidden. Code calls `set_limb("LeftArm", false)` and
+    arm, the left leg and the right leg. 0 gives back all limbs. A
+    removed limb falls into the world. Code calls `set_limb("LeftArm", false)` and
     `restore_limbs()` on `Bear`.
   - **Recorder.** Each sample has the number of limbs and the gait.
     Each change is an event (`limb_off:LeftArm`, `gait:hop`).
+- **Tumbles and torn seams** (R11, R12, `tumble.rs`, `ragdoll.rs`,
+  `tear.rs`, `verlet.rs`, `lost_limb.rs`).
+  - **Tumble.** A hit at 7 m/s or more makes the bear tumble. This is a
+    landing after a fall of about 1.3 m, or a wall in the air. A slide
+    off a wall at 3 m/s or more also makes a tumble. The bear becomes a
+    ragdoll: 6 Jolt rigid bodies (the body, the head and four limbs)
+    with cone-twist joints. The ears stay on the head. The ragdoll
+    starts with the speed of the bear and turns over its motion.
+  - **Get up.** When the body is at rest for 0.4 s (0.8 s at least, 6 s
+    at most), the bear stands up where the body lies. It looks along
+    its belly. In 0.35 s, the parts move from the ragdoll pose back to
+    the animation.
+  - **Seams.** Each limb has a seam health from 0 to 1. In a tumble, a
+    hit on a limb faster than 7 m/s takes 0.09 for each m/s more. A
+    fall of 6 m tears the legs. A frayed or torn seam droops, and its
+    ragdoll joint is looser. Each new stage puffs out stuffing (white
+    flecks). Below 0.1, the limb dangles on a thread (Verlet points)
+    and counts as missing for the gait. The thread wears while the
+    bear moves, and the limb falls off after 8 m at most.
+  - **Lost limbs.** At 0, the limb falls off. It is a Jolt body that
+    rolls a little. At rest, it freezes and becomes static, so it
+    costs almost nothing. At most 12 lost limbs stay in the world.
+  - **Sew a limb on.** Stand still on a lost limb for 1 s. The seam is
+    new again. A restart (a death or a new zone) gives back all limbs
+    and removes the lost limbs.
+  - **Dev tools.** Key 5 (or the dev menu, Limbs page) throws the bear a
+    little. Key 6 throws it hard into the ground, and this can tear
+    limbs. Code calls `damage_seam("LeftArm", 0.5)` and
+    `seam_health("LeftArm")`.
+  - **Recorder.** The events are `tumble:<cause>:<speed>`, `get_up`,
+    `seam:<limb>:<stage>`, `limb_lost` and `limb_sewn`. A ragdoll that
+    falls 1 m through the ground gives `back_on_ground` and gets up.
+    The report has a section "Tumbles and limbs". Each sample has
+    `seam_min`, the lowest seam health.
+  - **Cost.** The ragdoll exists only during a tumble: 6 bodies, 5
+    joints and the same 8 meshes as the bear. The bear and the rays do
+    not collide with the parts (physics layer 5). A frozen lost limb is
+    one static body and one draw call. A dangling thread is one line
+    mesh.
 - **`BfSmokeEdge`** is the wall of smoke around the zone (R14, R16,
   `rust/game/src/smoke_edge.rs`). The seed and the time set its shape
   (`bf-worldgen`, `smoke.rs`).
@@ -468,6 +507,8 @@ makes the zip of the crashed session.
 | Release the mouse | Esc (click the window to hold it again) | |
 | Dev menu | F10 | hold Back/Select for 0.6 s |
 | Remove or give back a limb | 1 to 4, 0 | dev menu, Limbs page |
+| Tumble: a small throw, a hard throw (dev) | 5, 6 | dev menu, Limbs page |
+| Sew on a lost limb | stand still on it for 1 s | stand still on it for 1 s |
 | Fly camera | F2 | dev menu, then the sticks and triggers |
 | Debug overlay | F3 | dev menu |
 | New zone | F4 | dev menu |
@@ -475,8 +516,6 @@ makes the zip of the crashed session.
 | Go to the next obstacle (dev) | F6 | dev menu (last item) |
 | Playtest mark | F9 | tap Back/Select |
 | Stop the autoplay bot | Esc | Start |
-| Remove or give back a limb (debug) | 1, 2, 3, 4 | (dev menu, S-113) |
-| Give back all limbs (debug) | 0 | (dev menu, S-113) |
 
 All tuning values of the bear and the camera are in the Inspector
 (select `Bear` or `FollowCamera`). The values of the animation are on
@@ -627,8 +666,23 @@ Mikey does not build on his laptop (decision R10).
 - **The animation runs in the physics step** (60 times each second),
   as the movement does. A screen with more than 60 Hz shows no extra
   steps.
-- **Lost limbs are hidden** (S-122). A lost limb does not stay in the
-  world yet. S-114 makes it a separate object.
+- **The tumble numbers are first guesses** (S-114): a tumble at 7 m/s
+  (a fall of about 1.3 m, three times the height of the bear), seam
+  damage above 7 m/s, and a thread that breaks after 8 m at most. Mikey:
+  is a tumble too easy or too rare? Is a lost limb too easy or too
+  hard?
+- **Sewing is easy.** Stand still on your own lost limb for 1 s, and it
+  is on again. There is no sewing animation and no new thread colour
+  yet. Mikey: should it cost more (a button, an item, a friend)?
+- **A restart gives back the limbs.** A death or a new zone makes a new
+  bear with all limbs and new seams. The lost limbs go.
+- **Only a tumble tears seams.** A fall that is too slow for a tumble
+  does no damage. The head and the ears do not tear.
+- **The ragdoll parts do not collide with each other.** Only the joints
+  hold them together, so a limb can go through the body for a moment.
+- **A lost limb ignores the bear.** The bear walks through it.
+- **Stones do not make a tumble.** A rolling stone throws the bear, but
+  only the landing can make a tumble.
 - **A bear that lies keeps its tall collision capsule.** Only the
   visible bear lies down. The capsule stays 0.40 m tall, so a bear
   without legs cannot crawl under low things.
@@ -716,8 +770,9 @@ Mikey does not build on his laptop (decision R10).
 - **Sand does not pull from below.** The bear stands on a lid that goes
   down. The bear does not sink into the real ground. At the full sink,
   the bear stays at the bottom of the pit (0.55 m deep).
-- **Nothing hurts the bear yet.** A hit only throws the bear. Limb
-  loss comes with S-114 and S-129.
+- **Obstacles do not tear seams yet.** A hit only throws the bear. A
+  hard landing after a throw can make a tumble. S-129 adds obstacles
+  that tear limbs.
 - **Stones are not physics bodies.** They follow the slope of the
   heightmap and go through each other. A hit is a distance test.
 - **Obstacle numbers are first guesses** (wind speed, throw speed,

@@ -777,6 +777,7 @@ impl BfRecorder {
             gait: d.get("gait").map(|v| v.to_string()).unwrap_or_default(),
             smoke_m,
             smoke_s,
+            seam_min: get_f("seam_min"),
         }
     }
 

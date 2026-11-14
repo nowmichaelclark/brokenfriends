@@ -3,12 +3,16 @@
 
 use crate::anim::{AnimInput, AnimParams, BearAnim, Ground, Pose, Rig, LIMBS};
 use crate::bear_shape::{self, PartId, Recipe, Seam};
-use crate::limbs::LimbSet;
+use crate::lost_limb::PartLook;
+use crate::ragdoll::RagdollPart;
+use crate::tumble::{self, BodyDef};
+use crate::verlet::{Thread, ThreadParams, LIMB_JOINT};
+use godot::classes::base_material_3d::{Flags, ShadingMode};
 use godot::classes::image::Format;
 use godot::classes::mesh::{ArrayType, PrimitiveType};
 use godot::classes::{
-    ArrayMesh, INode3D, Image, ImageTexture, Material, MeshInstance3D, Node3D, Shader,
-    ShaderMaterial,
+    ArrayMesh, INode3D, Image, ImageTexture, ImmediateMesh, Material, MeshInstance3D, Node3D,
+    Shader, ShaderMaterial, StandardMaterial3D,
 };
 use godot::prelude::*;
 
@@ -449,7 +453,37 @@ pub struct BfBearModel {
     #[init(val = 3.0)]
     hang_roll: f32,
 
+    /// How far a torn limb droops toward the ground, in degrees (at a seam that is almost gone).
+    #[export]
+    #[init(val = 40.0)]
+    droop_degrees: f32,
+
+    /// The length of the thread of a dangling limb, in metres.
+    #[export]
+    #[init(val = 0.035)]
+    thread_length_m: f32,
+
+    /// The part of its speed that a dangling limb keeps in each step (0 to 1).
+    #[export]
+    #[init(val = 0.97)]
+    thread_keep: f32,
+
+    /// The time from the pose of the ragdoll back to the animation when the bear gets up, in seconds.
+    #[export]
+    #[init(val = 0.35)]
+    get_up_time: f32,
+
     parts: Vec<(PartId, Gd<MeshInstance3D>, Gd<ShaderMaterial>)>,
+    /// The bodies of the ragdoll, from the meshes (`tumble.rs`).
+    bodies: Vec<BodyDef>,
+    /// The look of each limb, in the order of `LIMBS`.
+    limb_looks: [LimbLook; 4],
+    /// The thread of each dangling limb.
+    threads: [Option<Thread>; 4],
+    /// The lines of the threads. Rust makes it when a limb dangles.
+    thread_mesh: Option<Gd<ImmediateMesh>>,
+    /// The move from the ragdoll back to the animation.
+    blend: Option<Blend>,
     /// The fixed points that the animation needs.
     rig: Option<Rig>,
     anim: BearAnim,
@@ -550,36 +584,262 @@ impl BfBearModel {
         self.anim_us += (us - self.anim_us) * 0.05;
     }
 
-    /// Gives the pose to the nodes of the parts.
+    /// Gives the pose to the nodes of the parts. While the bear gets up,
+    /// the pose is a mix of the ragdoll pose and the animation.
     fn apply_pose(&mut self, pose: &Pose) {
-        for (id, node, material) in &mut self.parts {
+        let blend = self.blend;
+        let mix = |i: usize, to: glam::Affine3A| -> Transform3D {
+            match blend.and_then(|b| b.from[i].map(|from| (from, b.weight()))) {
+                Some((from, k)) => to_transform(&mix_affine(&from, &to, k)),
+                None => to_transform(&to),
+            }
+        };
+        for (n, (id, node, material)) in self.parts.iter_mut().enumerate() {
+            let i = PartId::ALL.iter().position(|p| p == id).unwrap_or(n);
             match *id {
                 PartId::Body => {
-                    node.set_transform(to_transform(&pose.body));
+                    node.set_transform(mix(i, pose.body));
                     let hump = to_vector(pose.hump);
                     if hump.distance_to(self.hump) > 1e-5 {
                         self.hump = hump;
                         material.set_shader_parameter("wobble_offset", &hump.to_variant());
                     }
                 }
-                PartId::Head => node.set_basis(to_basis(pose.head)),
+                PartId::Head => {
+                    let at = to_glam(node.get_position());
+                    let t = mix(i, glam::Affine3A::from_rotation_translation(pose.head, at));
+                    node.set_basis(t.basis);
+                }
                 PartId::LeftEar => node.set_basis(to_basis(pose.ears[0])),
                 PartId::RightEar => node.set_basis(to_basis(pose.ears[1])),
                 limb => {
-                    if let Some(i) = LIMBS.iter().position(|&l| l == limb) {
-                        node.set_transform(to_transform(&pose.limbs[i]));
+                    if let Some(l) = LIMBS.iter().position(|&x| x == limb) {
+                        node.set_transform(mix(i, pose.limbs[l]));
                     }
                 }
             }
         }
     }
 
-    /// Shows only the limbs that the bear has. A lost limb is hidden
-    /// (S-114 makes it a separate object in the world).
-    pub fn show_limbs(&mut self, limbs: LimbSet) {
-        for (id, node, _) in &mut self.parts {
-            node.set_visible(limbs.has_part(*id));
+    /// Starts the animation again from the rest pose (after a tumble).
+    pub fn reset_anim(&mut self) {
+        self.anim.reset();
+    }
+
+    /// Sets the look of each limb: on the body (with its looseness),
+    /// on a thread, or gone.
+    pub fn set_limb_looks(&mut self, looks: [LimbLook; 4]) {
+        self.limb_looks = looks;
+        for (i, look) in looks.iter().enumerate() {
+            if *look != LimbLook::Dangling {
+                self.threads[i] = None;
+            }
+            if let Some(mut node) = self.part(LIMBS[i]) {
+                node.set_visible(*look != LimbLook::Gone);
+            }
         }
+    }
+
+    /// The work after the pose: torn limbs droop, dangling limbs hang on
+    /// their threads, and the move back from the ragdoll goes on.
+    /// `floor_y` is the height of the ground below the bear.
+    pub fn after_pose(&mut self, dt: f32, floor_y: f32) {
+        if let Some(blend) = &mut self.blend {
+            blend.left -= dt;
+            if blend.left <= 0.0 {
+                self.blend = None;
+            }
+        }
+        let (Some(rig), Some(body)) = (self.rig, self.part(PartId::Body)) else {
+            return;
+        };
+        let body_global = body.get_global_transform();
+        let params = self.thread_params();
+        let mut any_thread = false;
+        for (i, &id) in LIMBS.iter().enumerate() {
+            let Some(mut node) = self.part(id) else {
+                continue;
+            };
+            let tip = to_vector(rig.limb_tip[i]);
+            match self.limb_looks[i] {
+                LimbLook::On { loose } if loose > 0.01 && self.animate => {
+                    // A torn limb droops toward the ground.
+                    let local = node.get_transform();
+                    let dir = (local.basis * tip).normalized_or_zero();
+                    let down = (body_global.basis.inverse() * Vector3::DOWN).normalized_or_zero();
+                    let axis = dir.cross(down);
+                    if axis.length() > 1e-3 {
+                        let angle =
+                            (self.droop_degrees.to_radians() * loose).min(dir.angle_to(down));
+                        let turn = Basis::from_quaternion(Quaternion::from_axis_angle(
+                            axis.normalized(),
+                            angle,
+                        ));
+                        node.set_basis(turn * local.basis);
+                    }
+                }
+                LimbLook::Dangling => {
+                    any_thread = true;
+                    let socket = to_glam(body_global * to_vector(rig.limb_joint[i]));
+                    let thread = self.threads[i].get_or_insert_with(|| {
+                        let global = node.get_global_transform();
+                        let dir = to_glam(global.basis * tip);
+                        Thread::new(socket, dir, rig.limb_tip[i].length(), &params)
+                    });
+                    thread.step(dt, socket, floor_y, &params);
+                    let (at, dir) = thread.limb();
+                    let turn =
+                        glam::Quat::from_rotation_arc(rig.limb_tip[i].normalize_or_zero(), dir);
+                    let global = Transform3D::new(to_basis(turn), to_vector(at));
+                    node.set_transform(body_global.affine_inverse() * global);
+                }
+                _ => {}
+            }
+        }
+        self.draw_threads(any_thread);
+    }
+
+    /// The tip velocity of a dangling limb, in m/s.
+    pub fn thread_velocity(&self, limb: usize, dt: f32) -> Option<Vector3> {
+        let thread = self.threads.get(limb)?.as_ref()?;
+        Some(to_vector(thread.tip_velocity(dt)))
+    }
+
+    fn thread_params(&self) -> ThreadParams {
+        ThreadParams {
+            length: self.thread_length_m.clamp(0.005, 0.2),
+            keep: self.thread_keep.clamp(0.5, 1.0),
+            ..ThreadParams::default()
+        }
+    }
+
+    /// Draws each thread as a line from the socket to the limb.
+    fn draw_threads(&mut self, any: bool) {
+        if !any && self.thread_mesh.is_none() {
+            return;
+        }
+        let mut mesh = match self.thread_mesh.clone() {
+            Some(mesh) => mesh,
+            None => {
+                let mesh = ImmediateMesh::new_gd();
+                let mut node = MeshInstance3D::new_alloc();
+                node.set_name("Threads");
+                node.set_as_top_level(true);
+                node.set_mesh(&mesh);
+                let mut material = StandardMaterial3D::new_gd();
+                material.set_shading_mode(ShadingMode::UNSHADED);
+                material.set_flag(Flags::DISABLE_FOG, false);
+                let c = self.thread_colour;
+                material.set_albedo(Color::from_rgb(c.r * 2.0, c.g * 2.0, c.b * 2.0));
+                node.set_material_override(&material.upcast::<Material>());
+                self.base_mut().add_child(&node);
+                node.set_global_transform(Transform3D::IDENTITY);
+                self.thread_mesh = Some(mesh.clone());
+                mesh
+            }
+        };
+        mesh.clear_surfaces();
+        for thread in self.threads.iter().flatten() {
+            mesh.surface_begin(godot::classes::mesh::PrimitiveType::LINE_STRIP);
+            for p in &thread.points[..=LIMB_JOINT] {
+                mesh.surface_add_vertex(to_vector(*p));
+            }
+            mesh.surface_end();
+        }
+    }
+
+    /// Starts the move from the ragdoll back to the animation. The
+    /// transforms are of the meshes in the world. Call it after the bear
+    /// and this model are at their new place.
+    pub fn blend_from_world(&mut self, world: &[(PartId, Transform3D)]) {
+        let find = |id: PartId| world.iter().find(|w| w.0 == id).map(|w| w.1);
+        let Some(body) = find(PartId::Body) else {
+            self.blend = None;
+            return;
+        };
+        let model = self.base().get_global_transform();
+        let mut from = [None; 8];
+        for (i, id) in PartId::ALL.iter().enumerate() {
+            let local = match *id {
+                PartId::Body => Some(model.affine_inverse() * body),
+                PartId::LeftEar | PartId::RightEar => None,
+                other => find(other).map(|t| body.affine_inverse() * t),
+            };
+            from[i] = local.map(|t| to_affine(&t));
+        }
+        let time = self.get_up_time.max(0.01);
+        self.blend = Some(Blend {
+            from,
+            left: time,
+            total: time,
+        });
+        self.threads = [None; 4];
+    }
+
+    /// The parts for a ragdoll: the body, the head (with the ears) and
+    /// each limb that is on the body. `looseness` is of each seam.
+    pub fn ragdoll_parts(&self, looseness: [f32; 4]) -> Vec<RagdollPart> {
+        let mut out = Vec::new();
+        let body_global = self.part(PartId::Body).map(|b| b.get_global_transform());
+        for def in &self.bodies {
+            let limb = LIMBS.iter().position(|&l| l == def.id);
+            if let Some(i) = limb {
+                if self.limb_looks[i] == LimbLook::Gone {
+                    continue;
+                }
+            }
+            let Some(look) = self.part_look(def.id) else {
+                continue;
+            };
+            let Some(node) = self.part(def.id) else {
+                continue;
+            };
+            let mut looks = vec![look];
+            if def.id == PartId::Head {
+                for ear in [PartId::LeftEar, PartId::RightEar] {
+                    if let (Some(mut l), Some(e)) = (self.part_look(ear), self.part(ear)) {
+                        l.local = e.get_transform();
+                        looks.push(l);
+                    }
+                }
+            }
+            let dangling_socket = match (limb, self.rig, body_global) {
+                (Some(i), Some(rig), Some(b)) if self.limb_looks[i] == LimbLook::Dangling => {
+                    Some(b * to_vector(rig.limb_joint[i]))
+                }
+                _ => None,
+            };
+            out.push(RagdollPart {
+                id: def.id,
+                def: *def,
+                global: node.get_global_transform(),
+                looks,
+                looseness: limb.map_or(0.0, |i| looseness[i]),
+                dangling_socket,
+            });
+        }
+        out
+    }
+
+    /// The body and the look of one limb, and its transform in the
+    /// world, for a lost limb.
+    pub fn limb_part(&self, limb: usize) -> Option<(BodyDef, PartLook, Transform3D)> {
+        let id = *LIMBS.get(limb)?;
+        let def = *self.bodies.iter().find(|b| b.id == id)?;
+        let mut look = self.part_look(id)?;
+        let global = self.part(id)?.get_global_transform();
+        let basis = global.basis.orthonormalized();
+        look.local = Transform3D::new(basis.inverse() * global.basis, Vector3::ZERO);
+        Some((def, look, Transform3D::new(basis, global.origin)))
+    }
+
+    fn part_look(&self, id: PartId) -> Option<PartLook> {
+        let (_, node, material) = self.parts.iter().find(|p| p.0 == id)?;
+        Some(PartLook {
+            mesh: node.get_mesh()?,
+            material: material.clone().upcast::<Material>(),
+            local: Transform3D::IDENTITY,
+        })
     }
 
     /// Gives the tuning values of the animation from the exported fields.
@@ -687,6 +947,7 @@ impl BfBearModel {
             self.seams.push((part.id, part.seam));
         }
         self.rig = Rig::from_points(parts.iter().map(|p| (p.id, p.joint, p.tip)));
+        self.bodies = tumble::bodies(&parts);
         if let (Some(rig), Some((_, _, body))) = (
             self.rig,
             self.parts.iter_mut().find(|p| p.0 == PartId::Body),
@@ -731,6 +992,66 @@ impl BfBearModel {
 
 fn to_vector(v: glam::Vec3) -> Vector3 {
     Vector3::new(v.x, v.y, v.z)
+}
+
+fn to_glam(v: Vector3) -> glam::Vec3 {
+    glam::Vec3::new(v.x, v.y, v.z)
+}
+
+fn to_affine(t: &Transform3D) -> glam::Affine3A {
+    let b = t.basis;
+    glam::Affine3A::from_cols(
+        to_glam(b.col_a()).into(),
+        to_glam(b.col_b()).into(),
+        to_glam(b.col_c()).into(),
+        to_glam(t.origin).into(),
+    )
+}
+
+/// Mixes two transforms: `k` 0 gives `a`, 1 gives `b`.
+fn mix_affine(a: &glam::Affine3A, b: &glam::Affine3A, k: f32) -> glam::Affine3A {
+    let (sa, ra, ta) = a.to_scale_rotation_translation();
+    let (sb, rb, tb) = b.to_scale_rotation_translation();
+    glam::Affine3A::from_scale_rotation_translation(
+        sa.lerp(sb, k),
+        ra.normalize().slerp(rb.normalize(), k),
+        ta.lerp(tb, k),
+    )
+}
+
+/// The look of a limb.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum LimbLook {
+    /// On the body. `loose` is 0 for a new seam and near 1 for a torn one.
+    On { loose: f32 },
+    /// On a thread.
+    Dangling,
+    /// Not on the bear.
+    Gone,
+}
+
+impl Default for LimbLook {
+    fn default() -> LimbLook {
+        LimbLook::On { loose: 0.0 }
+    }
+}
+
+/// The move from the pose of the ragdoll back to the animation.
+#[derive(Clone, Copy, Debug)]
+struct Blend {
+    /// The ragdoll pose of each part, in the space of its parent, in the
+    /// order of `PartId::ALL`.
+    from: [Option<glam::Affine3A>; 8],
+    left: f32,
+    total: f32,
+}
+
+impl Blend {
+    /// The part of the animation in the mix (0 to 1), with an ease.
+    fn weight(&self) -> f32 {
+        let t = (1.0 - self.left / self.total.max(1e-4)).clamp(0.0, 1.0);
+        t * t * (3.0 - 2.0 * t)
+    }
 }
 
 fn to_basis(q: glam::Quat) -> Basis {

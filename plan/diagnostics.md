@@ -32,7 +32,8 @@ feel and taste. Those are the only questions for him.
 - the bear: position, speed, state (walk, jog, jump, climb, slide,
   tumble), slope, ground type, grip, stamina, limbs, the time of
   one animation step in microseconds (`anim_us`), and the smoke at the
-  zone edge (`smoke_m`: depth in metres, `smoke_s`: seconds that count)
+  zone edge (`smoke_m`: depth in metres, `smoke_s`: seconds that count),
+  and the lowest seam health of the limbs (`seam_min`)
 - the camera: position and direction
 - the input: stick directions and buttons held
 

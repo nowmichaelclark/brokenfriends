@@ -83,4 +83,5 @@ methods are not published.
    (`rust/game/src/anim.rs`, `spring.rs`).
 3. S-122 (done): animation part 2, climbing hands and limb sets
    (`anim.rs`, `limbs.rs`).
-4. S-114: tumbling, tearing and lost limbs.
+4. S-114 (done): tumbling (a Jolt ragdoll), seams that tear, dangling
+   limbs on a thread, lost limbs that stay in the world, and sewing.

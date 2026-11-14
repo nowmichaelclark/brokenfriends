@@ -639,6 +639,11 @@ fn hop_lift(phase: f32, duty: f32) -> f32 {
 }
 
 impl BearAnim {
+    /// Starts again at the next update: the feet plant below the hips.
+    pub fn reset(&mut self) {
+        self.started = false;
+    }
+
     /// Makes the pose for one physics step.
     pub fn update(
         &mut self,

@@ -67,3 +67,8 @@ sorts them.
 - Autoplay: a coverage map of the places that wander visited, as a PNG in the nightly report.
 - Autoplay: in wander, more climbs: walk into the nearest steep face for some of the segments.
 - Autoplay: compare the tour numbers of each night (stuck, climb loops, tasks reached) and show a change in the release notes.
+- Tumble: a rolling stone that hits the bear hard could start a tumble at once (now only the landing can).
+- Seams: a slow stuffing leak from a torn seam, and a part that gets thinner with less stuffing (re-mesh on a worker thread).
+- Sewing: a short stitch animation, and new thread in another colour (bear-animation.md, "Tearing").
+- Tumble: the bear could get up with a "pull at the chest" (Rain World) instead of a blend.
+- Tumble: recovery and seam damage could use the wetness (a wet bear is heavier).

@@ -316,6 +316,12 @@ impl BfDevMenu {
                 }
                 self.read_game_state();
             }
+            Action::Tumble(hard) => {
+                if let Some(mut bear) = self.node(BEAR_GROUP) {
+                    bear.call("tumble_now", &[hard.to_variant()]);
+                }
+                self.close();
+            }
             Action::RestoreLimbs => {
                 if let Some(mut bear) = self.node(BEAR_GROUP) {
                     bear.call("restore_limbs", &[]);

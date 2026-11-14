@@ -44,6 +44,9 @@ pub enum Action {
     RestoreLimbs,
     /// Put the bear at the next obstacle (the same as F6).
     NextObstacle,
+    /// Throw the bear, so it tumbles. `true` is a hard throw that can
+    /// tear limbs.
+    Tumble(bool),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -60,6 +63,7 @@ enum Kind {
     NextObstacle,
     Limb(usize),
     RestoreLimbs,
+    Tumble(bool),
     Run(TestKind),
     Autoplay,
     Stop,
@@ -127,6 +131,8 @@ impl MenuState {
                 Kind::Limb(2),
                 Kind::Limb(3),
                 Kind::RestoreLimbs,
+                Kind::Tumble(false),
+                Kind::Tumble(true),
                 Kind::Back,
             ],
             Page::Tests => {
@@ -187,6 +193,8 @@ impl MenuState {
                 format!("{name}: {}", if self.limbs[i] { "there" } else { "gone" })
             }
             Kind::RestoreLimbs => "Give back all limbs".into(),
+            Kind::Tumble(false) => "Tumble: a small throw (key 5)".into(),
+            Kind::Tumble(true) => "Tumble: a hard throw that can tear limbs (key 6)".into(),
             Kind::Run(TestKind::Benchmark) => {
                 if self.test_running {
                     "Benchmark (a test is running)".into()
@@ -284,6 +292,7 @@ impl MenuState {
                 self.limbs = [true; 4];
                 Action::RestoreLimbs
             }
+            Kind::Tumble(hard) => Action::Tumble(hard),
             Kind::Run(kind) => {
                 if self.test_running {
                     Action::None
@@ -392,6 +401,10 @@ mod tests {
         m.down();
         assert_eq!(m.activate(), Action::RestoreLimbs);
         assert_eq!(m.limbs, [true; 4]);
+        m.down();
+        assert_eq!(m.activate(), Action::Tumble(false));
+        m.down();
+        assert_eq!(m.activate(), Action::Tumble(true));
         m.down();
         assert_eq!(m.activate(), Action::None);
         assert_eq!(m.page, Page::Main);

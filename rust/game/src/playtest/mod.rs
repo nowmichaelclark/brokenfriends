@@ -47,6 +47,9 @@ pub struct BearSample {
     /// The seconds in the smoke that count now. At the limit, the bear dies.
     #[serde(default)]
     pub smoke_s: f32,
+    /// The lowest seam health of the limbs, 0 to 1 (1: all seams are new).
+    #[serde(default)]
+    pub seam_min: f32,
 }
 
 /// The camera in one sample.

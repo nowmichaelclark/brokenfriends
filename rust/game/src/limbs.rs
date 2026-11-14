@@ -7,9 +7,6 @@
 //! limits. The movement code (`bear.rs`) and the animation (`anim.rs`)
 //! both read the profile.
 
-use crate::anim::LIMBS;
-use crate::bear_shape::PartId;
-
 /// The arms and the legs that the bear has. Bit `i` is the limb
 /// `LIMBS[i]`: left arm, right arm, left leg, right leg.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -40,15 +37,6 @@ impl LimbSet {
         } else {
             LimbSet(self.0 & !(1 << i))
         }
-    }
-
-    /// Tells if the bear has a part. The head, the ears and the body
-    /// are always there.
-    pub fn has_part(self, id: PartId) -> bool {
-        LIMBS
-            .iter()
-            .position(|&l| l == id)
-            .is_none_or(|i| self.has(i))
     }
 
     /// The number of arms (0 to 2).
@@ -268,7 +256,6 @@ mod tests {
         let s = LimbSet::ALL.with(1, false).with(3, false);
         assert!(s.has(0) && !s.has(1) && s.has(2) && !s.has(3));
         assert_eq!((s.arms(), s.legs(), s.count()), (1, 1, 2));
-        assert!(!s.has_part(PartId::RightArm) && s.has_part(PartId::Head));
         assert_eq!(s.label(), "LA -- LL --");
         assert_eq!(s.with(1, true).with(3, true), LimbSet::ALL);
         assert_eq!(s.with(7, false), s);

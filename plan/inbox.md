@@ -72,3 +72,4 @@ sorts them.
 - Sewing: a short stitch animation, and new thread in another colour (bear-animation.md, "Tearing").
 - Tumble: the bear could get up with a "pull at the chest" (Rain World) instead of a blend.
 - Tumble: recovery and seam damage could use the wetness (a wet bear is heavier).
+- Autoplay: in the fast headless tour (release library, `--fixed-fps 60`), Jolt printed once "job system exceeded the maximum number of jobs". Check if it repeats in the nightly log.

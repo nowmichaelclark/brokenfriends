@@ -40,8 +40,14 @@ pub const AUTOPLAY_GROUP: &str = "bf_autoplay";
 
 /// What the bot does now.
 enum Phase {
-    /// Wait until the zone of the seed shows.
-    Zone { requested: bool, waited: f32 },
+    /// Wait until the zone of the seed shows. `waited` is game time.
+    /// `started` is real time: with `--fixed-fps`, a headless run makes
+    /// game time much faster than the zone generation.
+    Zone {
+        requested: bool,
+        waited: f32,
+        started: std::time::Instant,
+    },
     /// The zone shows. Wait, so the collision and the load hitches pass.
     Settle { left: f32 },
     /// Run the tasks of the seed.
@@ -91,7 +97,7 @@ pub struct BfAutoplay {
     #[init(val = 2.0)]
     teleport_grace_seconds: f32,
 
-    /// The longest wait for a zone, in seconds of game time.
+    /// The longest wait for a zone, in seconds of real time.
     #[export]
     #[init(val = 120.0)]
     zone_timeout_seconds: f32,
@@ -309,6 +315,7 @@ impl BfAutoplay {
             phase: Phase::Zone {
                 requested: false,
                 waited: 0.0,
+                started: std::time::Instant::now(),
             },
             tasks: Vec::new(),
             task_index: 0,
@@ -350,6 +357,7 @@ impl BfAutoplay {
         a.phase = Phase::Zone {
             requested: false,
             waited: 0.0,
+            started: std::time::Instant::now(),
         };
     }
 
@@ -380,14 +388,18 @@ impl BfAutoplay {
             let title = a.mode.title();
             let of = format!("seed {} ({}/{})", seed, a.seed_index + 1, a.seeds.len());
             match &mut a.phase {
-                Phase::Zone { requested, waited } => {
+                Phase::Zone {
+                    requested,
+                    waited,
+                    started,
+                } => {
                     *waited += dt;
                     if !generating && current_seed == seed && (*requested || *waited > 0.2) {
                         a.phase = Phase::Settle { left: settle };
                     } else if !generating && !*requested {
                         *requested = true;
                         next = Next::MakeZone(seed);
-                    } else if *waited > zone_timeout {
+                    } else if started.elapsed().as_secs_f32() > zone_timeout {
                         godot_warn!("BfAutoplay: the zone of seed {seed} did not load in time.");
                         next = Next::SeedDone;
                     }

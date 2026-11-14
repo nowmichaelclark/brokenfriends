@@ -6,8 +6,9 @@
 #   tools/check.sh          all checks
 #   tools/check.sh --quick  only cargo fmt, clippy and test
 #
-# It exits with an error if a check fails or if the game prints an
-# error when it loads.
+# It also runs a short autoplay tour on seed 7 (S-133). It exits with
+# an error if a check fails, if the bear falls through the ground or if
+# the game prints an error.
 set -euo pipefail
 
 GODOT_VERSION="4.7.1"
@@ -80,6 +81,26 @@ if [[ ${code} -ne 0 ]]; then
 fi
 if grep -E "^(ERROR|SCRIPT ERROR)" "${log}"; then
   echo "The game printed errors when it loaded. Full log: ${log}" >&2
+  exit 1
+fi
+rm -f "${log}"
+
+step "Autoplay tour (seed 7, about 2.5 min of game time)"
+# The bot plays the bear through virtual gamepad input (S-133). It
+# quits with exit code 1 if the bear fell through the ground.
+log="$(mktemp)"
+set +e
+timeout 300 "${godot_bin}" --headless --path "${root}/game" --fixed-fps 60 -- \
+  --bf-autoplay=tour --bf-autoplay-seeds=7 >"${log}" 2>&1
+code=$?
+set -e
+grep -E "BfAutoplay: (seed .* done|result|failure)" "${log}" || true
+if [[ ${code} -ne 0 ]]; then
+  echo "The autoplay tour failed (exit code ${code}). Full log: ${log}" >&2
+  exit 1
+fi
+if grep -E "^(ERROR|SCRIPT ERROR|USER ERROR)" "${log}"; then
+  echo "The game printed errors during the autoplay tour. Full log: ${log}" >&2
   exit 1
 fi
 rm -f "${log}"

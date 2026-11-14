@@ -35,6 +35,8 @@ pub enum Action {
     SetViewDistance(Option<f32>),
     SavePlaytest,
     StartTest(TestKind),
+    /// Start the autoplay tour (S-133).
+    StartAutoplay,
     StopTest,
     /// Take a limb away or give it back (the name is in `LIMB_NAMES`).
     SetLimb(&'static str, bool),
@@ -59,6 +61,7 @@ enum Kind {
     Limb(usize),
     RestoreLimbs,
     Run(TestKind),
+    Autoplay,
     Stop,
     Back,
 }
@@ -130,6 +133,7 @@ impl MenuState {
                 let mut v = vec![
                     Kind::Run(TestKind::Benchmark),
                     Kind::Run(TestKind::DrawDistance),
+                    Kind::Autoplay,
                 ];
                 if self.test_running {
                     v.push(Kind::Stop);
@@ -195,6 +199,13 @@ impl MenuState {
                     "Draw distance test (a test is running)".into()
                 } else {
                     "Draw distance test: 300, 800, 3000 m and the smog".into()
+                }
+            }
+            Kind::Autoplay => {
+                if self.test_running {
+                    "Autoplay tour (a test is running)".into()
+                } else {
+                    "Autoplay tour: the bot plays seeds 1, 7 and 42 (about 9 min)".into()
                 }
             }
             Kind::Stop => "Stop the test".into(),
@@ -278,6 +289,13 @@ impl MenuState {
                     Action::None
                 } else {
                     Action::StartTest(kind)
+                }
+            }
+            Kind::Autoplay => {
+                if self.test_running {
+                    Action::None
+                } else {
+                    Action::StartAutoplay
                 }
             }
             Kind::Stop => Action::StopTest,
@@ -380,6 +398,20 @@ mod tests {
     }
 
     #[test]
+    fn tests_page_has_the_autoplay() {
+        let mut m = MenuState {
+            page: Page::Tests,
+            ..Default::default()
+        };
+        m.down();
+        m.down();
+        assert_eq!(m.activate(), Action::StartAutoplay);
+        m.test_running = true;
+        assert_eq!(m.activate(), Action::None);
+        assert!(m.lines().0[2].contains("a test is running"));
+    }
+
+    #[test]
     fn the_seed_does_not_go_below_zero() {
         let mut m = MenuState::default();
         for _ in 0..4 {
@@ -432,15 +464,16 @@ mod tests {
             page: Page::Tests,
             ..MenuState::default()
         };
-        assert_eq!(m.lines().0.len(), 3);
+        assert_eq!(m.lines().0.len(), 4);
         m.test_running = true;
         let (lines, _) = m.lines();
-        assert_eq!(lines.len(), 4);
+        assert_eq!(lines.len(), 5);
         assert_eq!(m.activate(), Action::None);
         m.down();
         m.down();
+        m.down();
         assert_eq!(m.activate(), Action::StopTest);
-        assert!(lines[2].contains("Stop"));
+        assert!(lines[3].contains("Stop"));
     }
 
     #[test]

@@ -447,6 +447,9 @@ pub struct BfBear {
     was_sliding: bool,
     /// Events for the playtest recorder, since its last `take_events`.
     events: Vec<String>,
+    /// A second copy of the events for the autoplay bot (S-133), or
+    /// `None` while no bot listens.
+    tap: Option<Vec<String>>,
     /// One ray query for all ray casts.
     ray_query: Option<Gd<PhysicsRayQueryParameters3D>>,
     /// The visible bear. It turns; the collision shape does not.
@@ -768,6 +771,18 @@ impl BfBear {
         d
     }
 
+    /// Starts or stops a second copy of the events for the autoplay bot
+    /// (S-133). The recorder keeps its own copy.
+    #[func]
+    pub fn set_event_tap(&mut self, on: bool) {
+        self.tap = on.then(Vec::new);
+    }
+
+    /// Gives the events of the second copy since the last call.
+    pub fn take_tap_events(&mut self) -> Vec<String> {
+        self.tap.as_mut().map(std::mem::take).unwrap_or_default()
+    }
+
     /// Gives the events since the last call and forgets them. Each event
     /// is a short name, for example "jump", "grab" or "let_go:jump_off".
     #[func]
@@ -1075,6 +1090,11 @@ impl BfBear {
             self.events.remove(0);
         }
         self.events.push(name.to_string());
+        if let Some(tap) = &mut self.tap {
+            if tap.len() < 256 {
+                tap.push(name.to_string());
+            }
+        }
     }
 
     /// Puts the centre of the bear at a position.

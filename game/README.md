@@ -226,6 +226,47 @@ what it assumes.
     `-- --bf-test=draw-distance` starts the test when the first zone
     shows and quits the game at the end. Add `--bf-record` for a
     recording without a window.
+- **`BfAutoplay`** is the autoplay bot (S-133, `plan/diagnostics.md`,
+  `rust/game/src/autoplay.rs`). It plays the bear through virtual
+  gamepad input: it sends joypad events to Godot (left stick, A, B and
+  the right shoulder button), as a real gamepad does. Thus it tests the
+  real controls. Only the teleport at the start of a task and the limb
+  changes use the dev tools (`go_to`, `set_limb`).
+  - **Tour.** On each seed, 13 tasks in about 2.5 minutes of game time:
+    a jog to a point 70 m away, a climb of the nearest steep face (more
+    than 58 degrees), a jump off the nearest ledge (a drop of 1.2 m or
+    more), one obstacle of each of the 8 types (`go_to_next`, as F6;
+    the bot crosses the stepping stones and jumps in the updraft), the smoke
+    edge (in, out, in again, then stand until death), and the limb sets
+    one leg, no legs and one arm.
+  - **Wander.** Seeded random input: a new stick direction each 0.6 to
+    3 s, jog, jumps and let-go. Each 40 s, the bear goes to a new random
+    place, sometimes with one limb less.
+  - **What it counts.** A bear below the ground (`through_ground`, more
+    than 0.3 m below the heightmap, not on a wall), a bear that the
+    game put back on the ground from 0.5 m or more below it, small
+    put-backs (less than 0.5 m), stuck, climb loops, grabs, jumps,
+    deaths and the obstacle events. For 2 s after a teleport or a
+    restart, a bear below the ground counts only as "after teleport":
+    Terrain3D makes the collision near the camera only.
+  - **The report.** One row for each seed and one line for each task:
+    did it reach what it expected (for example a "grab" in the climb)?
+    A missed task does not fail the run. The text goes into
+    `report.md` ("Tests") and the data into `tests/*.json`.
+  - **Dev menu.** "Tests", then "Autoplay tour" plays seeds 1, 7 and 42
+    (about 9 minutes with a window). Esc or the Start button stops it.
+    B does not stop it, because B is a button of the bot.
+  - **The recorder** records the run like a normal playtest, with
+    screenshots and the events `autoplay:<task>`.
+  - **From the command line:** `-- --bf-autoplay=tour` (or `wander`),
+    `--bf-autoplay-seeds=1,7,42`, `--bf-autoplay-minutes=3` (wander,
+    for each seed) and `--bf-autoplay-out=<file.md>` (also writes a
+    `.json`). The game quits at the end. The exit code is 1 if the
+    bear fell through the ground or a zone did not load. Add
+    `--fixed-fps 60` to a headless run: the game then runs faster than
+    real time. In the cloud container, the tour of 3 seeds takes 43 s.
+  - **Cost.** Nothing when it does not run. The search for a face or a
+    ledge reads the Rust heightmap once for each task.
 - **`BfViewDistance`** ties the draw distance to the smog (S-118,
   `rust/game/src/view_distance.rs`). Godot makes the smog of an object
   at distance `d` as `1 - exp(-d * density)`. The game stops to draw
@@ -433,6 +474,7 @@ makes the zip of the crashed session.
 | Save playtest | | dev menu |
 | Go to the next obstacle (dev) | F6 | dev menu (last item) |
 | Playtest mark | F9 | tap Back/Select |
+| Stop the autoplay bot | Esc | Start |
 | Remove or give back a limb (debug) | 1, 2, 3, 4 | (dev menu, S-113) |
 | Give back all limbs (debug) | 0 | (dev menu, S-113) |
 
@@ -521,6 +563,9 @@ Mikey does not build on his laptop (decision R10).
 - Load test without a window:
   `godot --headless --path game --quit-after 300`. On a new clone, run
   `godot --headless --path game --import` one time before this.
+- Autoplay tour without a window (about 15 s for one seed):
+  `godot --headless --path game --fixed-fps 60 -- --bf-autoplay=tour --bf-autoplay-seeds=7`.
+  `tools/check.sh` runs it too.
 - CI (`.github/workflows/ci.yml`) runs `fmt`, `clippy` and `test` on
   each push. CI does not start Godot.
 - The game build (`.github/workflows/game-build.yml`) builds the Rust
@@ -528,7 +573,14 @@ Mikey does not build on his laptop (decision R10).
   `export_presets.cfg`. A smoke test starts the Linux build headless
   and checks that it makes a zone. A second run with `--bf-record`
   checks that the recorder writes a zip with `report.md` next to the
-  game. The zips go on the `game-latest` release.
+  game. Then the autoplay bot plays the tour on seeds 1, 7 and 42,
+  headless. The build fails if the game crashes, prints an error, or
+  if the bear falls through the ground. The stuck and climb loop counts
+  show as notes on the run. The zips go on the `game-latest` release.
+- Each night (`.github/workflows/nightly-autoplay.yml`), the bot
+  wanders for 4 minutes on each of 8 seeds with the latest Linux zip.
+  The report goes on the `game-latest` release as
+  `autoplay-nightly.md`.
 - To export by hand: build with `cargo build --release`, copy
   `libbf_game.so` from `rust/target/release/` to `rust/target/debug/`,
   run `godot --headless --path game --import`, then
@@ -621,6 +673,18 @@ Mikey does not build on his laptop (decision R10).
 - **A jump off only lets go.** A jump up the wall that uses stamina
   (as in Breath of the Wild) does not exist yet.
 - **The camera does not change for the climb.**
+- **What fails the autoplay build** (S-133). Only a crash, an error in
+  the log, a bear below the ground, or a zone that does not load. A
+  stuck bear or a climb loop is only counted: on steep ground, a stuck
+  bear can be correct. A put-back from less than 0.5 m below the
+  ground is only counted too. On seed 7, the game puts the bear back
+  by 0.26 m at the stepping stones near (-256, 201). There, the
+  collision of Terrain3D and the Rust heightmap do not agree
+  [unverified: the cause].
+- **The autoplay tour uses seeds 1, 7 and 42**, the seeds of the
+  benchmark. The smoke wall moves with the time since the zone loaded,
+  so two runs of one seed are not exactly the same [unverified: other
+  causes].
 - **One file has the MPL-2.0 licence.** `erosion_filter.rs` is a port
   of the erosion filter by Rune Skovbo Johansen, as `plan/tech.md`
   says. His code has the MPL-2.0 licence, thus the port keeps it. All

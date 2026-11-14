@@ -2,8 +2,8 @@
 
 Status: the recorder is built (S-123, `rust/game/src/recorder.rs`,
 `game/README.md`). The dev menu with "Save playtest" and the "Tests"
-page is built too (S-113, `dev_menu.rs`, `test_runner.rs`). Not built
-yet: replay (S-124). A hitch must also be 2 times
+page is built too (S-113, `dev_menu.rs`, `test_runner.rs`). Autoplay
+is built (S-133, `autoplay.rs`). Not built yet: replay (S-124). A hitch must also be 2 times
 longer than the average frame of the last second (see
 `research/playtest-recorder.md`). Spec from 2026-11-14. Mikey's rule (R22): Claude must not ask Mikey
 technical questions about a play session. The game records what

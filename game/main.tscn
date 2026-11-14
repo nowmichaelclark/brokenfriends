@@ -33,4 +33,6 @@ mouse_filter = 2
 
 [node name="TestRunner" type="BfTestRunner" parent="."]
 
+[node name="Autoplay" type="BfAutoplay" parent="."]
+
 [node name="DevMenu" type="BfDevMenu" parent="."]

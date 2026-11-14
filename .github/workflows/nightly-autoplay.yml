@@ -1,0 +1,73 @@
+# Each night, the autoplay bot plays the latest Linux build for a
+# longer time (S-133, plan/diagnostics.md, "Autoplay"). It uses seeded
+# random input ("wander") on more seeds. The report goes on the
+# "game-latest" release as autoplay-nightly.md:
+# https://github.com/nowmichaelclark/brokenfriends/releases/tag/game-latest
+name: Nightly autoplay
+
+on:
+  schedule:
+    - cron: "23 4 * * *" # 04:23 UTC each day
+  workflow_dispatch:
+
+concurrency:
+  group: nightly-autoplay
+  cancel-in-progress: true
+
+jobs:
+  wander:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SEEDS: "1,2,3,5,7,11,42,99"
+      MINUTES: "4"
+    steps:
+      - name: Download the latest Linux build
+        run: |
+          gh release download game-latest --repo "$GITHUB_REPOSITORY" -p broken-friends-linux.zip
+          unzip -q broken-friends-linux.zip
+          cat broken-friends-linux/BUILD.txt
+
+      - name: Wander (seeded random input on each seed)
+        id: wander
+        run: |
+          set +e
+          timeout 3600 stdbuf -oL -eL broken-friends-linux/BrokenFriends.x86_64 --headless --fixed-fps 60 -- \
+            --bf-autoplay=wander --bf-autoplay-seeds="$SEEDS" --bf-autoplay-minutes="$MINUTES" \
+            --bf-autoplay-out="$PWD/wander.md" > wander.log 2>&1
+          code=$?
+          set -e
+          cat wander.log
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          errors=$(grep -cE "^(ERROR|SCRIPT ERROR|USER ERROR)" wander.log || true)
+          echo "errors=$errors" >> "$GITHUB_OUTPUT"
+
+      - name: Put the report on the release
+        if: always()
+        run: |
+          build=$(cat broken-friends-linux/BUILD.txt 2>/dev/null || echo unknown)
+          {
+            echo "# Nightly autoplay"
+            echo
+            echo "Date: $(date -u +%Y-%m-%d), build ${build}, seeds ${SEEDS}, ${MINUTES} min each."
+            echo "Exit code: ${{ steps.wander.outputs.code }}. Error lines in the log: ${{ steps.wander.outputs.errors }}."
+            echo
+            if [ -f wander.md ]; then cat wander.md; else echo "The run wrote no report (crash or timeout)."; fi
+            echo
+            echo "## Errors and warnings in the log (at most 40 lines)"
+            echo
+            echo '```'
+            grep -E "^(ERROR|SCRIPT ERROR|USER ERROR|WARNING|USER WARNING)" wander.log | head -40 || true
+            echo '```'
+          } > autoplay-nightly.md
+          cat autoplay-nightly.md >> "$GITHUB_STEP_SUMMARY"
+          gh release upload game-latest autoplay-nightly.md --clobber --repo "$GITHUB_REPOSITORY"
+
+      - name: Fail on a crash, a fall through the ground or errors
+        run: |
+          code="${{ steps.wander.outputs.code }}"
+          errors="${{ steps.wander.outputs.errors }}"
+          if [ "$code" != "0" ]; then echo "The wander run failed (exit code $code)." >&2; exit 1; fi
+          if [ "$errors" != "0" ]; then echo "The game printed $errors error lines." >&2; exit 1; fi

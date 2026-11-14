@@ -141,6 +141,33 @@ jobs:
           # The release zip must not hold this test playtest.
           rm -rf build/linux/playtests
 
+      - name: Autoplay tour (the bot plays seeds 1, 7 and 42)
+        run: |
+          # The bot plays the bear through virtual gamepad input (S-133).
+          # --fixed-fps 60: each frame is 1/60 s of game time, so the
+          # headless run goes faster than real time. The game quits with
+          # exit code 1 if the bear fell through the ground or a zone did
+          # not load. A crash or the timeout also fails this step.
+          set +e
+          timeout 900 stdbuf -oL -eL build/linux/BrokenFriends.x86_64 --headless --fixed-fps 60 -- \
+            --bf-autoplay=tour --bf-autoplay-seeds=1,7,42 --bf-autoplay-out="$PWD/autoplay-tour.md" > autoplay.log 2>&1
+          code=$?
+          set -e
+          cat autoplay.log
+          if [ -f autoplay-tour.md ]; then cat autoplay-tour.md >> "$GITHUB_STEP_SUMMARY"; fi
+          # The stuck and climb loop counts of each seed, as notes on the run.
+          grep -E "BfAutoplay: seed .* done" autoplay.log | sed 's/^/::notice title=Autoplay::/' || true
+          rm -rf build/linux/playtests
+          if [ "$code" -ne 0 ]; then
+            echo "The autoplay tour failed or crashed (exit code $code)." >&2
+            exit 1
+          fi
+          grep -q "BfAutoplay: result pass" autoplay.log || { echo "The autoplay tour gave no result." >&2; exit 1; }
+          if grep -E "^(ERROR|SCRIPT ERROR|USER ERROR)" autoplay.log; then
+            echo "The game printed errors during the autoplay tour." >&2
+            exit 1
+          fi
+
       - name: Make the zip files
         run: |
           sha=$(git rev-parse --short HEAD)
@@ -155,7 +182,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           sha=$(git rev-parse --short HEAD)
-          notes="The latest build of Broken Friends, from commit ${sha} on main. Download the zip for your system, unzip it, and run BrokenFriends.x86_64 (Linux) or BrokenFriends.exe (Windows)."
+          notes="The latest build of Broken Friends, from commit ${sha} on main. Download the zip for your system, unzip it, and run BrokenFriends.x86_64 (Linux) or BrokenFriends.exe (Windows). autoplay-nightly.md is the report of the last nightly autoplay run."
           if ! gh release view game-latest >/dev/null 2>&1; then
             gh release create game-latest --prerelease --title "Broken Friends (latest build)" --notes "$notes"
           fi

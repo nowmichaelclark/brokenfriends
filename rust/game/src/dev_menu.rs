@@ -4,6 +4,7 @@
 //! before: fly camera, overlay, new zone, seed. It also has "Save
 //! playtest" and the "Tests" page.
 
+use crate::autoplay::AUTOPLAY_GROUP;
 use crate::bear::BEAR_GROUP;
 use crate::fly_camera::FLY_CAMERA_GROUP;
 use crate::obstacles::OBSTACLES_GROUP;
@@ -234,9 +235,7 @@ impl BfDevMenu {
                 .set_view_distance((forced > 0.0).then_some(forced));
             self.state.smog_distance_m = view.call("smog_distance_m", &[]).to::<f32>();
         }
-        if let Some(mut runner) = self.node(TEST_RUNNER_GROUP) {
-            self.state.test_running = runner.call("is_running", &[]).booleanize();
-        }
+        self.state.test_running = self.any_test_running();
         if let Some(mut bear) = self.node(BEAR_GROUP) {
             for (i, name) in LIMB_NAMES.iter().enumerate() {
                 self.state.limbs[i] = bear.call("has_limb", &[name.to_variant()]).booleanize();
@@ -323,21 +322,41 @@ impl BfDevMenu {
                 }
                 self.read_game_state();
             }
+            Action::StartAutoplay => {
+                if let Some(mut autoplay) = self.node(AUTOPLAY_GROUP) {
+                    let started = autoplay
+                        .call("start_autoplay", &["tour".to_variant()])
+                        .booleanize();
+                    if started {
+                        self.close();
+                    }
+                }
+                self.read_game_state();
+            }
             Action::StopTest => {
                 if let Some(mut runner) = self.node(TEST_RUNNER_GROUP) {
                     runner.call("stop_test", &[]);
+                }
+                if let Some(mut autoplay) = self.node(AUTOPLAY_GROUP) {
+                    autoplay.call("stop_autoplay", &[]);
                 }
                 self.read_game_state();
             }
         }
     }
 
+    /// Tells if a test of the runner or the autoplay bot runs now.
+    fn any_test_running(&self) -> bool {
+        [TEST_RUNNER_GROUP, AUTOPLAY_GROUP].iter().any(|group| {
+            self.node(group)
+                .map(|mut n| n.call("is_running", &[]).booleanize())
+                .unwrap_or(false)
+        })
+    }
+
     /// Shows the page.
     fn refresh(&mut self) {
-        self.state.test_running = self
-            .node(TEST_RUNNER_GROUP)
-            .map(|mut r| r.call("is_running", &[]).booleanize())
-            .unwrap_or(false);
+        self.state.test_running = self.any_test_running();
         let (lines, cursor) = self.state.lines();
         let mut text = String::new();
         for (i, line) in lines.iter().enumerate() {

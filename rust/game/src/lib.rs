@@ -7,6 +7,7 @@ use godot::prelude::*;
 
 mod anim;
 mod atmosphere;
+mod autoplay;
 mod bear;
 mod bear_model;
 mod bear_shape;

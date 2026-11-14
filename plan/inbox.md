@@ -62,3 +62,8 @@ sorts them.
 - Obstacles: a sound and a rising ripple on sinking sand when the bear stands on it. The ripple texture does not move yet.
 - Obstacles: stepping stones that follow a wave (one after the other) as a harder type. The checkerboard rhythm is the easy one.
 - Obstacles: the F6 dev key needs a "last obstacle" key too, to go back.
+- Autoplay: make the smoke wall clock start at the same frame for each zone, so two autoplay runs of one seed are the same.
+- Autoplay: a "shake" detector (the bear's position or the body turns back and forth fast while it stands), as `diagnostics.md` names it for wander.
+- Autoplay: a coverage map of the places that wander visited, as a PNG in the nightly report.
+- Autoplay: in wander, more climbs: walk into the nearest steep face for some of the segments.
+- Autoplay: compare the tour numbers of each night (stuck, climb loops, tasks reached) and show a change in the release notes.

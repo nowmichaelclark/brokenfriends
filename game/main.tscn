@@ -22,5 +22,7 @@ current = true
 
 [node name="Recorder" type="BfRecorder" parent="."]
 
+[node name="DevMenu" type="BfDevMenu" parent="."]
+
 [node name="StaminaRing" type="BfStaminaRing" parent="."]
 mouse_filter = 2

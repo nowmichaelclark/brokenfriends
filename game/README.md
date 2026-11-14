@@ -169,8 +169,33 @@ what it assumes.
     as "after a recorder screenshot."
   - **Without a window,** the recorder is off. `-- --bf-record` on the
     command line turns it on (no screenshots then).
+- **`BfDevMenu`** is the dev menu for the gamepad (R13,
+  `rust/game/src/devmenu.rs`). The game stops while it is open.
+  - **Open.** Hold Back (Select) for 0.6 s. A tap of Back is still the
+    playtest mark. Keyboard: F10.
+  - **Use.** The d-pad moves, A chooses and B goes back. On the
+    "Seed" entry, left and right change the number, and A makes that
+    zone. The keyboard uses the arrow keys, Enter and Backspace.
+  - **Main page.** Fly camera, debug overlay, new zone, seed, "Save
+    playtest" (it calls `save_playtest()` on the recorder), Tests and
+    Close.
+  - **Fly camera on the gamepad.** The left stick moves and the right
+    stick looks. The right trigger goes up and the left trigger goes
+    down. The right shoulder button is fast.
+  - **Tests page.** A test flies the fly camera one circle (350 m
+    radius, 40 m above the ground) in 4 legs of 8 s. The Benchmark
+    does this on seeds 1, 7 and 42. The Draw distance test does it on
+    seed 1 with the far plane at 300, 800 and 3000 m. Push B to stop a
+    test. After a test, the old zone comes back.
+  - **Results.** Each flight writes a "test" event into the report and
+    the numbers into `session.json` (`tests`): for each leg, fps, the
+    average, P95 and max frame time, draw calls and primitives.
+  - **A test without a window.** `godot --headless --path game
+    -- --bf-record --bf-run-test=benchmark --bf-test-fast` runs a
+    test with short legs and quits. A headless run has no real frame
+    times and no draw calls.
 - **`main.tscn`** is the start scene: atmosphere, terrain, bear,
-  cameras, overlay and recorder.
+  cameras, overlay, recorder and dev menu.
 
 ## Play the latest build (Mikey)
 
@@ -220,9 +245,10 @@ makes the zip of the crashed session.
 | Let go of a wall | C | B |
 | Turn the camera | mouse | right stick |
 | Release the mouse | Esc (click the window to hold it again) | |
-| Fly camera | F2 | |
-| Debug overlay | F3 | |
-| New zone | F4 | |
+| Fly camera | F2 | dev menu (hold Back) |
+| Debug overlay | F3 | dev menu |
+| New zone | F4 | dev menu |
+| Dev menu | F10 | hold Back/Select |
 | Playtest mark | F9 | tap Back/Select |
 
 All tuning values of the bear and the camera are in the Inspector
@@ -337,6 +363,16 @@ Mikey does not build on his laptop (decision R10).
 - **Physics engine: Jolt.** It is the default for new 3D projects in
   Godot 4.7 [unverified].
 - **The window starts maximized** at a base size of 1920 × 1080.
+- **The dev menu opens after a 0.6 s hold of Back** (S-113). The
+  recorder takes a tap of 0.4 s or less as a mark, so a hold between
+  0.4 s and 0.6 s does nothing. Nobody tried a real gamepad
+  [unverified]. A tap of Back while the menu is open is a mark if it is
+  short.
+- **The tests fly the fly camera** (S-113). The path is a circle of
+  350 m radius and 40 m height around the centre of the zone. It is not
+  the path of a real player. The draw distance test changes the far
+  plane of the camera only. The Terrain3D draw range and the visibility
+  ranges stay as they are (S-118).
 - **All keys are fixed in code.** They are not in the Input Map, thus
   the player cannot change them.
 - **Jog.** The bear walks at 1.4 m/s. It jogs at 3.2 m/s while Shift

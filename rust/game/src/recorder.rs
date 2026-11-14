@@ -321,6 +321,27 @@ impl BfRecorder {
             .unwrap_or_default()
     }
 
+    /// Writes the result of one dev-menu test run. `info` is a short
+    /// text for people. `data` is a JSON text with the numbers. The
+    /// event has the kind "test", and `session.json` keeps the data.
+    #[func]
+    pub fn test_result(&mut self, name: GString, info: GString, data: GString) {
+        if !self.active {
+            return;
+        }
+        let mut event = self.event_here("test", format!("{name}: {info}"));
+        event.shot = None;
+        self.write_event(event);
+        let parsed: Value = serde_json::from_str(&data.to_string()).unwrap_or(Value::Null);
+        let entry = json!({"t": self.now(), "name": name.to_string(), "data": parsed});
+        if let Some(tests) = self.session["tests"].as_array_mut() {
+            tests.push(entry);
+        } else {
+            self.session["tests"] = json!([entry]);
+        }
+        self.write_session();
+    }
+
     /// Gives the name of the session folder, or "" if the recorder is off.
     #[func]
     pub fn session_name(&self) -> GString {

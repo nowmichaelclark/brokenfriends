@@ -11,6 +11,7 @@ mod bear;
 mod bear_model;
 mod bear_shape;
 mod climb;
+mod devmenu;
 mod fly_camera;
 mod follow_camera;
 mod motion;

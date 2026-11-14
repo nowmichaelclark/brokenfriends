@@ -244,6 +244,18 @@ impl BfTerrain {
         }
     }
 
+    /// Makes a zone with this seed (the dev menu). Does nothing while
+    /// another zone is in work. Gives true if the work started.
+    #[func]
+    pub fn make_zone(&mut self, seed: i64) -> bool {
+        if self.pending.is_some() {
+            return false;
+        }
+        self.seed = seed;
+        self.regenerate();
+        true
+    }
+
     /// Gives the seed of the current zone.
     #[func]
     pub fn current_seed(&self) -> i64 {

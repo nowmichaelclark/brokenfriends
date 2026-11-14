@@ -10,6 +10,7 @@ pub mod erosion_filter;
 pub mod heightmap;
 pub mod highlands;
 pub mod noise;
+pub mod smoke;
 
 pub use heightmap::HeightMap;
 pub use highlands::{Ground, HighlandsParams, Zone};

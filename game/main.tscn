@@ -6,6 +6,8 @@
 
 [node name="Terrain" type="BfTerrain" parent="."]
 
+[node name="SmokeEdge" type="BfSmokeEdge" parent="."]
+
 [node name="FlyCamera" type="BfFlyCamera" parent="."]
 transform = Transform3D(0.707, -0.24, 0.665, 0, 0.94, 0.34, -0.707, -0.24, 0.665, 800, 420, 800)
 far = 3000.0

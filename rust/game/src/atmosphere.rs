@@ -17,6 +17,9 @@ use godot::classes::{
 };
 use godot::prelude::*;
 
+/// The group that holds the `BfAtmosphere` node. Other nodes find it there.
+pub const ATMOSPHERE_GROUP: &str = "bf_atmosphere";
+
 /// The shader for one dust particle: a soft, round, faint dot.
 const DUST_SHADER: &str = "
 shader_type spatial;
@@ -68,6 +71,18 @@ pub struct BfAtmosphere {
     #[export]
     #[init(val = 0.25)]
     fog_sun_scatter: f32,
+
+    /// The colour of the fog inside the smoke at the edge of the zone
+    /// (R14). It is dark brown.
+    #[export]
+    #[init(val = Color::from_rgb(0.10, 0.075, 0.055))]
+    smoke_fog_color: Color,
+
+    /// The fog density that the smoke adds when the bear is deep in the
+    /// smoke. At 0.05, an object 40 m away is nearly hidden.
+    #[export]
+    #[init(val = 0.05)]
+    smoke_fog_density: f32,
 
     /// The colour of the sky at the top.
     #[export]
@@ -165,12 +180,15 @@ pub struct BfAtmosphere {
     dust_process: Option<Gd<ParticleProcessMaterial>>,
     dust_mesh: Option<Gd<QuadMesh>>,
     time_to_refresh: f64,
+    /// How much of the smoke at the edge the bear is in, 0 to 1.
+    smoke_amount: f32,
     base: Base<Node3D>,
 }
 
 #[godot_api]
 impl INode3D for BfAtmosphere {
     fn ready(&mut self) {
+        self.base_mut().add_to_group(ATMOSPHERE_GROUP);
         self.make_environment();
         self.make_sun();
         self.make_dust();
@@ -195,6 +213,20 @@ impl BfAtmosphere {
         self.apply_environment();
         self.apply_sun();
         self.apply_dust();
+    }
+
+    /// Sets how thick the smoke of the zone edge is around the bear, from
+    /// 0 (none) to 1 (the most). The fog gets darker and thicker.
+    #[func]
+    pub fn set_smoke_amount(&mut self, amount: f32) {
+        let amount = amount.clamp(0.0, 1.0);
+        let changed = (amount - self.smoke_amount).abs() >= 0.002
+            || (amount == 0.0 && self.smoke_amount != 0.0);
+        if !changed {
+            return;
+        }
+        self.smoke_amount = amount;
+        self.apply_fog();
     }
 }
 
@@ -260,12 +292,27 @@ impl BfAtmosphere {
         self.dust_mesh = Some(mesh);
     }
 
-    fn apply_environment(&mut self) {
+    /// Gives the fog colour and density to the environment. The smoke
+    /// of the zone edge changes both.
+    fn apply_fog(&mut self) {
         let Some(env) = &mut self.environment else {
             return;
         };
-        env.set_fog_light_color(self.fog_color);
-        env.set_fog_density(self.fog_density);
+        let amount = self.smoke_amount;
+        let colour = Color::from_rgb(
+            self.fog_color.r + (self.smoke_fog_color.r - self.fog_color.r) * amount,
+            self.fog_color.g + (self.smoke_fog_color.g - self.fog_color.g) * amount,
+            self.fog_color.b + (self.smoke_fog_color.b - self.fog_color.b) * amount,
+        );
+        env.set_fog_light_color(colour);
+        env.set_fog_density(self.fog_density + self.smoke_fog_density * amount);
+    }
+
+    fn apply_environment(&mut self) {
+        self.apply_fog();
+        let Some(env) = &mut self.environment else {
+            return;
+        };
         env.set_fog_height(self.smog_height);
         env.set_fog_height_density(self.smog_height_density);
         env.set_fog_sky_affect(self.fog_sky_affect);

@@ -1,6 +1,7 @@
 //! The F3 debug overlay.
 
 use crate::bear::BEAR_GROUP;
+use crate::smoke_edge::SMOKE_GROUP;
 use crate::terrain::TERRAIN_GROUP;
 use godot::classes::performance::Monitor;
 use godot::classes::{CanvasLayer, ICanvasLayer, InputEvent, InputEventKey, Label, Performance};
@@ -87,10 +88,14 @@ impl BfDebugOverlay {
 
         let mut seed = String::from("no terrain");
         let mut bear = String::from("no bear");
+        let mut smoke = String::from("no smoke edge");
         if self.base().is_inside_tree() {
             let tree = self.base().get_tree();
             if let Some(mut node) = tree.get_first_node_in_group(BEAR_GROUP) {
                 bear = node.call("debug_text", &[]).to_string();
+            }
+            if let Some(mut node) = tree.get_first_node_in_group(SMOKE_GROUP) {
+                smoke = node.call("debug_text", &[]).to_string();
             }
             if let Some(mut terrain) = tree.get_first_node_in_group(TERRAIN_GROUP) {
                 seed = terrain.call("current_seed", &[]).to_string();
@@ -106,6 +111,7 @@ impl BfDebugOverlay {
              video memory {video_mb:.0} MB\n\
              seed {seed}\n\
              bear: {bear}\n\
+             smoke: {smoke}\n\
              F2: fly camera   F3: hide   F4: new zone   F9: mark"
         )
     }

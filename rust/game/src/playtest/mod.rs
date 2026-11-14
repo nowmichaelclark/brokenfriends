@@ -38,6 +38,12 @@ pub struct BearSample {
     /// wriggle.
     #[serde(default)]
     pub gait: String,
+    /// How far the bear is in the smoke at the zone edge, in metres (0: not in it).
+    #[serde(default)]
+    pub smoke_m: f32,
+    /// The seconds in the smoke that count now. At the limit, the bear dies.
+    #[serde(default)]
+    pub smoke_s: f32,
 }
 
 /// The camera in one sample.

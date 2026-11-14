@@ -567,6 +567,22 @@ impl BfBear {
         GString::from(self.gait_profile().gait.name())
     }
 
+    /// Kills the bear and starts it again at the start point (R16).
+    /// `cause` is a short name for the playtest recorder, for example
+    /// "smoke:time". There is no other penalty.
+    #[func]
+    pub fn die(&mut self, cause: GString) {
+        self.event(&format!("death:{cause}"));
+        self.go_to_start();
+    }
+
+    /// Keeps an event for the playtest recorder. Other nodes use it,
+    /// for example the smoke edge ("smoke_enter").
+    #[func]
+    pub fn report_event(&mut self, name: GString) {
+        self.event(&name.to_string());
+    }
+
     /// Gives the stamina, from 0 (empty) to 1 (full).
     #[func]
     pub fn stamina_part(&self) -> f32 {

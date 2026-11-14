@@ -18,6 +18,8 @@ mod motion;
 mod overlay;
 mod playtest;
 mod recorder;
+mod smoke_dose;
+mod smoke_edge;
 mod spring;
 mod stamina;
 mod terrain;

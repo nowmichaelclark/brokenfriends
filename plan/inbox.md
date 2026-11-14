@@ -40,3 +40,7 @@ sorts them.
 - Climb: at a mantle, put the paws on the top of the ledge and pull the body up over them.
 - Limbs: a lower collision capsule for a bear that lies (no legs), so it can crawl under low things.
 - Limbs: a "pull, rest" rhythm in the speed of the one-arm drag, not only in the look.
+- Smoke edge: the bear sees nothing in the smoke, so it cannot find the way out. Idea: a lighter patch (the sun) or a wind sound on the side of the zone centre.
+- Smoke edge: the terrain stops at the border behind the wall. A bear that survives or flies over the wall can see the border. Idea: a ring of cliffs, or a slope into the smog.
+- Smoke edge: sectors of goo and lava instead of smoke, that the seed selects (R14). The `SmokeEdge` shape and `SmokeDose` rule can stay; only the look and the cause change.
+- Smoke edge: let the wall move faster in a storm (a time of day or a zone value), so the player must watch it.

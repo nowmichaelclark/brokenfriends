@@ -159,6 +159,36 @@ what it assumes.
     `restore_limbs()` on `Bear`.
   - **Recorder.** Each sample has the number of limbs and the gait.
     Each change is an event (`limb_off:LeftArm`, `gait:hop`).
+- **`BfSmokeEdge`** is the wall of smoke around the zone (R14, R16,
+  `rust/game/src/smoke_edge.rs`). The seed and the time set its shape
+  (`bf-worldgen`, `smoke.rs`).
+  - **Shape.** Waves around the circle set the front of the wall (760 m
+    from the centre, plus or minus 170 m), its height (60 to 320 m),
+    the width of its band (80 to 260 m) and how thick it is. The front
+    moves in and out slowly: each wave moves it at 0.35 m/s at most. A
+    new zone (F4) makes a new wall.
+  - **The rule** (`smoke_dose.rs`). A timer counts the seconds that the
+    bear is in the smoke. At 12 s, or at a depth of 45 m, the bear dies
+    and starts again at the start point. Outside the smoke, the timer
+    goes down twice as fast. A bear that stands higher than the top of
+    the wall is not in the smoke. The start area is always clear.
+  - **The fog.** In the smoke, the fog gets darker and thicker. It
+    follows the danger, so the screen warns the player before the
+    death. `BfAtmosphere` makes the fog (`set_smoke_amount`).
+  - **The picture.** Two sheets and 96 billboard cards. The cards are
+    big soft puffs that face the camera. A small noise image (made in
+    Rust) gives the wisps. Rust sends the shape to the GPU as a float
+    texture, 20 times each second. The wall is not hidden by the fog of
+    the environment, so it shows from far away. It fades to the smog
+    colour with its own density.
+  - **Debug.** The F3 overlay shows the distance to the wall, or the
+    time in the smoke. The recorder writes `smoke_m` and `smoke_s` each
+    second, and the events `smoke_enter`, `smoke_leave` and
+    `death:smoke:time` or `death:smoke:depth`. `kills` and `show_wall`
+    on the node turn off the rule or the picture.
+  - **Cost.** 3 draw calls. The cost is overdraw (transparent layers).
+    Nobody measured it on the laptops [unverified]. `card_count` and
+    `card_size_m` are the first values to cut.
 - **`BfFollowCamera`** is the third-person camera. The mouse or the
   right stick turns it around the bear. It reads the heightmap and
   comes nearer when the ground is in the way.
@@ -172,7 +202,8 @@ what it assumes.
 - **`BfAtmosphere`** makes the air. In code, it makes the sky, the
   sun, the smog and the colour grading. Depth fog and low height fog
   use one yellow-brown colour. The sky has a big pale sun disc. About
-  300 dust particles move past the camera. There is no heat shimmer
+  300 dust particles move past the camera. In the smoke at the edge of the
+  zone, the fog gets dark and thick. There is no heat shimmer
   (R19). The node reads its values
   twice each second, so a change in the Remote Inspector shows soon.
 - **`BfRecorder`** is the playtest recorder (R22,
@@ -484,6 +515,27 @@ Mikey does not build on his laptop (decision R10).
 - **Paths are removed.** In the copy of the Godot log in the zip, the
   game folder, the user folder, the home folder and the user name
   become `<game>`, `<user data>`, `~` and `<user>`.
+- **The smoke kills after 12 s or at 45 m** (S-115). These are first
+  guesses (`max_seconds`, `max_depth_m` on `SmokeEdge`). A jogging bear
+  (3.2 m/s) reaches 45 m in 14 s, so the time kills first. Mikey: is
+  12 s too short or too long?
+- **A square zone has a round wall.** The front is a radius from the
+  centre, not a distance from the border. The wall is 40 m or more
+  inside the border at all places. The corners of the zone are far
+  behind the wall.
+- **The wall is made for the zone size and seed only.** It does not
+  know the terrain, except for the ground height that it reads once for
+  each angle when a zone shows. A tall peak in the path of the front
+  can poke out of the wall.
+- **The wall time is the play time.** The wall starts at time 0 when the
+  game starts. A new zone (F4) does not reset the time. The shape is
+  the same for the same seed and the same time.
+- **The wall has no sound and no particles of its own yet.** The cards
+  are the only motion, except for the wisps in the texture.
+- **The look of the smoke is a guess.** The pictures came from the
+  Compatibility renderer with a software GL driver, not from the Mobile
+  renderer on a laptop [unverified]. The wall is dark brown and fades
+  to the smog colour from 300 m. Mikey tells Claude what he sees.
 - **Frame cost.** The atmosphere has no measured cost. The parts that
   can cost time are the dust (300 particles, small) and
   the shadows (2 cascades, 100 m).

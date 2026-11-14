@@ -30,8 +30,9 @@ feel and taste. Those are the only questions for him.
   viewport render-time measurement, if available)
 - draw calls, primitives, objects, video memory, static memory
 - the bear: position, speed, state (walk, jog, jump, climb, slide,
-  tumble), slope, ground type, grip, stamina, limbs, and the time of
-  one animation step in microseconds (`anim_us`)
+  tumble), slope, ground type, grip, stamina, limbs, the time of
+  one animation step in microseconds (`anim_us`), and the smoke at the
+  zone edge (`smoke_m`: depth in metres, `smoke_s`: seconds that count)
 - the camera: position and direction
 - the input: stick directions and buttons held
 
@@ -43,8 +44,9 @@ feel and taste. Those are the only questions for him.
 - **climb loop:** grab and let go more than 4 times in 10 s at the
   same place
 - **through the ground:** the bear is below the terrain height
-- **state changes:** climb start and stop, jump, slide, tumble, death,
-  restart
+- **state changes:** climb start and stop, jump, slide, tumble, death
+  (`death:smoke:time`, `death:smoke:depth`), restart, `smoke_enter`,
+  `smoke_leave`
 - **new zone (F4):** the seed and the time to make it
 - **errors and warnings** from the Godot log
 

@@ -24,6 +24,7 @@ use crate::playtest::{
     files_to_delete, log_problems, parse_lines, scrub, session_name, BearSample, CameraSample,
     Event, FrameRecord, InputSample, Sample,
 };
+use crate::smoke_edge::SMOKE_GROUP;
 use crate::terrain::TERRAIN_GROUP;
 use godot::classes::image::Interpolation;
 use godot::classes::performance::Monitor;
@@ -703,6 +704,11 @@ impl BfRecorder {
             .and_then(|v| v.try_to::<Vector3>().ok())
             .unwrap_or_default();
         let mut grip = get_f("grip");
+        let (mut smoke_m, mut smoke_s) = (0.0, 0.0);
+        if let Some(mut smoke) = self.smoke() {
+            smoke_m = smoke.call("depth_m", &[]).to::<f32>();
+            smoke_s = smoke.call("smoke_seconds", &[]).to::<f32>();
+        }
         let mut ground = String::from("none");
         if let Some(mut terrain) = self.terrain() {
             let at = [pos.x.to_variant(), pos.z.to_variant()];
@@ -725,6 +731,8 @@ impl BfRecorder {
                 .unwrap_or(0) as u32,
             anim_us: get_f("anim_us"),
             gait: d.get("gait").map(|v| v.to_string()).unwrap_or_default(),
+            smoke_m,
+            smoke_s,
         }
     }
 
@@ -947,6 +955,13 @@ impl BfRecorder {
         self.base()
             .get_tree()
             .get_first_node_in_group(TERRAIN_GROUP)
+    }
+
+    fn smoke(&self) -> Option<Gd<Node>> {
+        if !self.base().is_inside_tree() {
+            return None;
+        }
+        self.base().get_tree().get_first_node_in_group(SMOKE_GROUP)
     }
 
     fn bear_state(&self) -> Option<VarDictionary> {

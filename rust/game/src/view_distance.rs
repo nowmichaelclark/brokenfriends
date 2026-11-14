@@ -2,12 +2,18 @@
 //!
 //! The smog hides all objects that are far away. Thus, the game does
 //! not need to draw them. `BfViewDistance` finds the distance at which
-//! the smog is almost solid and gives it to the cameras and to the
-//! terrain. The dev menu can force a different distance (for the tests).
+//! the smog is almost solid and gives it to three places:
+//!
+//! - the far plane of each camera (group `bf_view_cameras`),
+//! - the number of mesh rings of Terrain3D (`BfTerrain::set_draw_distance`),
+//! - the end of the visibility range of each prop (group `bf_view_ranged`).
+//!
+//! The dev menu can force a different distance (for the tests).
 
 use crate::atmosphere::ATMOSPHERE_GROUP;
+use crate::smoke_edge::SMOKE_GROUP;
 use crate::terrain::TERRAIN_GROUP;
-use godot::classes::{Camera3D, INode, Node};
+use godot::classes::{Camera3D, GeometryInstance3D, INode, Node};
 use godot::prelude::*;
 
 /// The group that holds the `BfViewDistance` node.
@@ -16,6 +22,11 @@ pub const VIEW_DISTANCE_GROUP: &str = "bf_view_distance";
 /// The group of the cameras that get the far plane. Each camera of
 /// the game joins it.
 pub const VIEW_CAMERA_GROUP: &str = "bf_view_cameras";
+
+/// The group of the props (`GeometryInstance3D`) that get a visibility
+/// range. The range ends at the view distance. A prop is not drawn
+/// beyond it. Scatter (rocks, shrubs) joins this group.
+pub const VIEW_RANGED_GROUP: &str = "bf_view_ranged";
 
 /// Gives the distance at which the exponential smog has this part of
 /// its full strength, in metres. Godot makes the smog of an object at
@@ -28,6 +39,13 @@ pub fn smog_distance(density: f32, cutoff: f32, min_m: f32, max_m: f32) -> f32 {
         max_m
     };
     d.clamp(min_m, max_m.max(min_m))
+}
+
+/// Gives the distance that a camera at (x, z) needs to see the far side
+/// of the smoke wall: the distance from the camera to the centre of the
+/// zone plus the half size of the zone.
+pub fn wall_far(x: f32, z: f32, half_size_m: f32) -> f32 {
+    (x * x + z * z).sqrt() + half_size_m
 }
 
 /// Gives the number of Terrain3D mesh LODs that reach this distance.
@@ -52,8 +70,16 @@ pub struct BfViewDistance {
     /// If this is on, the view distance follows the smog. If it is off,
     /// the view distance is the longest one (the camera draws all).
     #[export]
-    #[init(val = false)]
+    #[init(val = true)]
     follow_smog: bool,
+
+    /// If this is on, the far plane of a camera also reaches the smoke
+    /// wall at the border of the zone (S-115). The wall must show from
+    /// far away. Terrain and props still end at the view distance.
+    /// A forced distance (the tests) ignores this value.
+    #[export]
+    #[init(val = true)]
+    keep_smoke_wall: bool,
 
     /// The part of the smog (0.5 to 0.9999) at which the game stops to
     /// draw. At 0.99 the smog hides 99% of an object. The object is
@@ -164,15 +190,38 @@ impl BfViewDistance {
         self.current_m = distance;
         let far = (distance * self.far_margin.max(1.0)).max(1.0);
         let tree = self.base().get_tree();
+        // The smoke wall: its far side is at most this far from the centre.
+        let wall_reach = if self.keep_smoke_wall
+            && self.forced_distance_m <= 0.0
+            && tree.get_first_node_in_group(SMOKE_GROUP).is_some()
+        {
+            tree.get_first_node_in_group(TERRAIN_GROUP)
+                .and_then(|t| t.get("zone_size_m").try_to::<f32>().ok())
+                .map(|size| size * 0.5)
+        } else {
+            None
+        };
         for node in tree.get_nodes_in_group(VIEW_CAMERA_GROUP).iter_shared() {
             if let Ok(mut camera) = node.try_cast::<Camera3D>() {
-                if (camera.get_far() - far).abs() > 0.5 {
-                    camera.set_far(far);
+                let mut camera_far = far;
+                if let Some(half) = wall_reach {
+                    let p = camera.get_global_position();
+                    camera_far = camera_far.max(wall_far(p.x, p.z, half));
+                }
+                if (camera.get_far() - camera_far).abs() > 0.5 {
+                    camera.set_far(camera_far);
                 }
             }
         }
         if let Some(mut terrain) = tree.get_first_node_in_group(TERRAIN_GROUP) {
-            terrain.call("set_draw_distance", &[far.to_variant()]);
+            terrain.call("set_draw_distance", &[distance.to_variant()]);
+        }
+        for node in tree.get_nodes_in_group(VIEW_RANGED_GROUP).iter_shared() {
+            if let Ok(mut prop) = node.try_cast::<GeometryInstance3D>() {
+                if (prop.get_visibility_range_end() - distance).abs() > 0.5 {
+                    prop.set_visibility_range_end(distance);
+                }
+            }
         }
     }
 }
@@ -228,6 +277,12 @@ mod tests {
         assert_eq!(terrain_lods(800.0, 48, 1.0, 7), 5);
         assert_eq!(terrain_lods(3000.0, 48, 1.0, 7), 6);
         assert_eq!(terrain_lods(100000.0, 48, 1.0, 7), 7);
+    }
+
+    #[test]
+    fn the_wall_far_plane() {
+        assert!((wall_far(0.0, 0.0, 1024.0) - 1024.0).abs() < 0.01);
+        assert!((wall_far(300.0, 400.0, 1024.0) - 1524.0).abs() < 0.01);
     }
 
     #[test]

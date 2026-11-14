@@ -189,7 +189,7 @@ impl MenuState {
                 if self.test_running {
                     "Draw distance test (a test is running)".into()
                 } else {
-                    "Draw distance test: 300, 800 and 3000 m".into()
+                    "Draw distance test: 300, 800, 3000 m and the smog".into()
                 }
             }
             Kind::Stop => "Stop the test".into(),

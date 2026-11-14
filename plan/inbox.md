@@ -55,3 +55,5 @@ sorts them.
 - Obstacles: the follow camera can go below a crust lid, because it reads the heightmap only.
 - Obstacles: a map image of all obstacle places in the preview tool, to check the spread.
 - Obstacles: stones as Jolt bodies that bounce, when the ragdoll (S-114) is in.
+- Draw distance: Terrain3D makes 4 rings of 12 tiles at 767 m (about 55 000 triangles for each ring). Try `mesh_size` 32 and check the look and the primitive count, if the S-125 numbers say the terrain is too slow.
+- Draw distance: the cloud test measures the rings with software OpenGL. Add the terrain time (render gpu) for each ring count to the report after S-125, to see which ring count costs most.

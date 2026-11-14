@@ -16,7 +16,8 @@ use std::fmt::Write;
 pub enum TestKind {
     /// The camera flies the path over seeds 1, 7 and 42.
     Benchmark,
-    /// The camera flies the path over seed 7 at three view distances.
+    /// The camera flies the path over seed 7 at three view distances
+    /// and at the distance of the smog (the normal game).
     DrawDistance,
 }
 
@@ -66,11 +67,11 @@ pub fn plan(kind: TestKind) -> Vec<RunSpec> {
                 view_distance_m: None,
             })
             .collect(),
-        TestKind::DrawDistance => [300.0, 800.0, 3000.0]
+        TestKind::DrawDistance => [Some(300.0), Some(800.0), Some(3000.0), None]
             .into_iter()
             .map(|d| RunSpec {
                 seed: 7,
-                view_distance_m: Some(d),
+                view_distance_m: d,
             })
             .collect(),
     }
@@ -428,7 +429,7 @@ mod tests {
         let d = plan(TestKind::DrawDistance);
         assert_eq!(
             d.iter().map(|r| r.view_distance_m).collect::<Vec<_>>(),
-            [Some(300.0), Some(800.0), Some(3000.0)]
+            [Some(300.0), Some(800.0), Some(3000.0), None]
         );
         assert!(d.iter().all(|r| r.seed == 7));
     }

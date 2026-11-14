@@ -216,7 +216,8 @@ what it assumes.
   and into `tests/*.json` in the zip.
   - **Benchmark:** the path over seeds 1, 7 and 42.
   - **Draw distance test:** the path over seed 7 at the view distances
-    300, 800 and 3000 m.
+    300, 800 and 3000 m, and at the distance of the smog (the normal
+    game).
   - **Stop.** B or Esc stops a test. The result so far is saved. After
     a test, the camera, the seed and the view distance go back.
   - **While a test runs,** the recorder takes no screenshots and marks
@@ -225,10 +226,37 @@ what it assumes.
     `-- --bf-test=draw-distance` starts the test when the first zone
     shows and quits the game at the end. Add `--bf-record` for a
     recording without a window.
-- **`BfViewDistance`** gives the view distance to the cameras (far
-  plane) and to Terrain3D (the number of mesh rings). The dev menu and
-  the tests can force a distance. By default the distance is 3000 m
-  and does not follow the smog yet (S-118).
+- **`BfViewDistance`** ties the draw distance to the smog (S-118,
+  `rust/game/src/view_distance.rs`). Godot makes the smog of an object
+  at distance `d` as `1 - exp(-d * density)`. The game stops to draw
+  at the distance where the smog is 99% (`smog_cutoff`). With the
+  density 0.006, this is 767 m. The node reads the density twice each
+  second and gives the distance to three places:
+  - **Cameras.** Each camera of the game (group `bf_view_cameras`) gets
+    the far plane: the distance times 1.05.
+  - **Terrain3D.** `BfTerrain::set_draw_distance()` sets the number of
+    mesh rings (`mesh_lods`). Each ring reaches twice as far as the
+    one before it [unverified: the formula in `terrain_lods()`]. At
+    767 m, Terrain3D makes 4 rings instead of 7.
+  - **Props.** Each `GeometryInstance3D` in the group `bf_view_ranged`
+    gets a visibility range that ends at the distance. Scatter (S-108)
+    joins this group.
+  - **The smoke wall** (S-115) is the exception. The far plane of a
+    camera also reaches the far side of the wall, so the wall shows
+    from far away (`keep_smoke_wall`). A forced distance (the tests)
+    ignores this.
+  - **Measured in the cloud** (software OpenGL at 4 fps, so the times
+    are not valid for the speed). One camera 60 m above the start
+    point: 4 rings, 216 000 primitives and 82 draw calls, against 6
+    rings, 257 000 primitives and 96 draw calls without the smog link
+    (-16% and -15%). In the draw distance test (8 parts, seed 7),
+    the mean primitives for each frame were 313 000 at 300 m
+    (3 rings), 372 000 at 800 m (5 rings) and 421 000 at 3000 m (7
+    rings). The shot at 767 m shows no edge at the end of the view.
+    The real numbers come from Mikey's laptops (S-125).
+  - **Forced distance.** The dev menu and the tests set a distance
+    (`set_forced_distance()`). `follow_smog` off makes the distance
+    3000 m, as before S-118.
 - **`BfFollowCamera`** is the third-person camera. The mouse or the
   right stick turns it around the bear. It reads the heightmap and
   comes nearer when the ground is in the way.
@@ -598,6 +626,10 @@ Mikey does not build on his laptop (decision R10).
 - **Same world on all computers.** The generator uses its own `sin`,
   `cos` and `exp` (`detmath.rs`), not the functions of the operating
   system. A test on Windows did not run yet [unverified].
+- **The view distance is the 99% point of the smog** (S-118). Objects
+  beyond it are 1% visible at most, so nobody sees them go. The low
+  smog (below 90 m) makes more fog, so this value is safe. Mikey tells
+  Claude if he sees a pop at the end of the view.
 - **Smog.** The first values (fog density 0.006, low smog under 90 m,
   saturation 0.8) are guesses. Nobody saw them in the Mobile
   renderer yet [unverified]. Mikey tells Claude what he sees.

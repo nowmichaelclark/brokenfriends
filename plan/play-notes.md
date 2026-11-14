@@ -30,7 +30,9 @@ Vivobook (Intel integrated graphics) is still necessary (S-137).
   30 min), on all seeds, also in the benchmark flights. Some are
   marked "(loading)" but no zone was loading.
 - The Godot log has no errors.
-- S-136 finds and fixes the cause.
+- S-136 found the cause (2026-11-15): the desktop compositor (KWin)
+  stops, and the game waits for it. The game code is not the cause
+  (`research/freezes.md`). "Script time, process" was a wrong label.
 
 **Obstacles (from the counts)**
 - Rolling stones: 100 tells, 0 hits. The start point of seed 1 is near

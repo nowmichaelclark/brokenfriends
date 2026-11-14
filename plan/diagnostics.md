@@ -28,6 +28,9 @@ feel and taste. Those are the only questions for him.
 **Each second** (`samples.jsonl`, one line for each second):
 - fps; frame time average, p95 and max; CPU and GPU frame time (Godot
   viewport render-time measurement, if available)
+- the parts of an average frame (`parts`, S-136): draw and present,
+  idle, physics, script, other. A long "draw and present" means that
+  the game waits for the driver or the desktop
 - draw calls, primitives, objects, video memory, static memory
 - the bear: position, speed, state (walk, jog, jump, climb, slide,
   tumble), slope, ground type, grip, stamina, limbs, the time of
@@ -38,7 +41,7 @@ feel and taste. Those are the only questions for him.
 - the input: stick directions and buttons held
 
 **Events** (`events.jsonl`), with the time and the place:
-- **hitch:** a frame longer than 50 ms
+- **hitch:** a frame longer than 50 ms, with the parts of that frame
 - **low fps:** below 55 fps for more than 2 s
 - **stuck:** the stick is held, but the bear moves less than 5 cm in
   2 s

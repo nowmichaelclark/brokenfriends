@@ -18,6 +18,7 @@
 
 use crate::bear::BEAR_GROUP;
 use crate::playtest::detect::{Detectors, Found, FrameInput};
+use crate::playtest::frame_parts::{FrameMarks, FrameParts};
 use crate::playtest::report::{append_tests, make_report, ReportInput};
 use crate::playtest::stats::{FrameHistogram, SecondStats};
 use crate::playtest::{
@@ -204,6 +205,11 @@ pub struct BfRecorder {
     log_offset: u64,
     log_events: usize,
     hitch_events: usize,
+    /// The clock at the points of this frame (S-136), and the sum of
+    /// the frame parts in this second.
+    frame_marks: FrameMarks,
+    parts_sum: FrameParts,
+    parts_frames: u32,
     /// The time of the recorder in this second, in microseconds, and the frames.
     own_usec: u64,
     own_frames: u32,
@@ -367,6 +373,33 @@ impl BfRecorder {
         GString::from(&self.name)
     }
 
+    /// `RenderingServer.frame_pre_draw`: the draw of this frame starts.
+    #[func]
+    fn on_pre_draw(&mut self) {
+        self.frame_marks.pre_draw = Time::singleton().get_ticks_usec();
+    }
+
+    /// `RenderingServer.frame_post_draw`: the draw and the present are done.
+    #[func]
+    fn on_post_draw(&mut self) {
+        self.frame_marks.post_draw = Time::singleton().get_ticks_usec();
+        self.frame_marks.physics = 0;
+    }
+
+    /// `SceneTree.physics_frame`: a physics step starts. The first one after the draw counts.
+    #[func]
+    fn on_physics_frame(&mut self) {
+        if self.frame_marks.physics == 0 {
+            self.frame_marks.physics = Time::singleton().get_ticks_usec();
+        }
+    }
+
+    /// `SceneTree.process_frame`: the `_process` functions start.
+    #[func]
+    fn on_process_frame(&mut self) {
+        self.frame_marks.process = Time::singleton().get_ticks_usec();
+    }
+
     /// Called when the terrain shows a new zone.
     #[func]
     fn on_zone_changed(&mut self) {
@@ -464,6 +497,13 @@ impl BfRecorder {
             let callable = self.base().callable("on_zone_changed");
             terrain.connect("zone_changed", &callable);
         }
+        // The points of each frame, to see where a long frame went (S-136).
+        let mut rs = RenderingServer::singleton();
+        rs.connect("frame_pre_draw", &self.base().callable("on_pre_draw"));
+        rs.connect("frame_post_draw", &self.base().callable("on_post_draw"));
+        let mut tree = self.base().get_tree();
+        tree.connect("physics_frame", &self.base().callable("on_physics_frame"));
+        tree.connect("process_frame", &self.base().callable("on_process_frame"));
         self.make_note_label();
         let info = if self.headless {
             "recording started (headless: no screenshots)"
@@ -479,6 +519,13 @@ impl BfRecorder {
     fn frame(&mut self) {
         let usec = Time::singleton().get_ticks_usec();
         let ms = usec.saturating_sub(self.last_usec) as f32 / 1000.0;
+        self.frame_marks.start = self.last_usec;
+        self.frame_marks.end = usec;
+        let parts = self.frame_marks.parts();
+        if let Some(p) = &parts {
+            self.parts_sum.add(p);
+            self.parts_frames += 1;
+        }
         self.last_usec = usec;
         let t = self.now();
         self.histogram.add(ms);
@@ -528,7 +575,7 @@ impl BfRecorder {
         });
         let own = std::mem::take(&mut self.shot_frame);
         for f in found {
-            self.found(f, t, loading, own, compiled);
+            self.found(f, t, loading, own, compiled, parts);
         }
         self.bear_events(t);
 
@@ -588,7 +635,15 @@ impl BfRecorder {
     }
 
     /// Writes an event for a find of a detector.
-    fn found(&mut self, f: Found, t: f64, loading: bool, own: bool, compiled: bool) {
+    fn found(
+        &mut self,
+        f: Found,
+        t: f64,
+        loading: bool,
+        own: bool,
+        compiled: bool,
+        parts: Option<FrameParts>,
+    ) {
         if matches!(f, Found::Hitch { .. }) {
             if self.hitch_events >= MAX_HITCH_EVENTS {
                 return;
@@ -603,6 +658,9 @@ impl BfRecorder {
                 }
                 if own {
                     info.push_str(", after a recorder screenshot");
+                }
+                if let Some(p) = &parts {
+                    info.push_str(&format!(" ({})", p.text()));
                 }
                 ("hitch", info, Some(ms as f64), Some("hitch"))
             }
@@ -644,6 +702,9 @@ impl BfRecorder {
         event.value = value;
         event.loading = loading;
         event.own = own;
+        if kind == "hitch" {
+            event.parts = parts;
+        }
         // Screenshots of hitches and "stuck", not too many.
         let shot_ok = !loading
             && !own
@@ -673,7 +734,7 @@ impl BfRecorder {
                 if let Some(pos) = event.pos {
                     if let Some(found) = self.detectors.grab(t, pos) {
                         let loading = t < self.loading_until;
-                        self.found(found, t, loading, false, false);
+                        self.found(found, t, loading, false, false, None);
                     }
                 }
             }
@@ -688,6 +749,8 @@ impl BfRecorder {
         self.second_start = t;
         let own_usec = std::mem::take(&mut self.own_usec);
         let own_frames = std::mem::take(&mut self.own_frames);
+        let parts_sum = std::mem::take(&mut self.parts_sum);
+        let parts_frames = std::mem::take(&mut self.parts_frames);
         let perf = Performance::singleton();
         let monitor = |m: Monitor| perf.get_monitor(m);
         let (cpu_ms, gpu_ms) = match self.base().get_viewport() {
@@ -725,6 +788,7 @@ impl BfRecorder {
             objects: monitor(Monitor::RENDER_TOTAL_OBJECTS_IN_FRAME) as u32,
             video_mb: (monitor(Monitor::RENDER_VIDEO_MEM_USED) / 1048576.0) as f32,
             static_mb: (monitor(Monitor::MEMORY_STATIC) / 1048576.0) as f32,
+            parts: (parts_frames > 0).then(|| parts_sum.divided(parts_frames)),
             pipeline_compiles: self.pipeline_compiles,
             recorder_ms: own_usec as f32 / 1000.0 / own_frames.max(1) as f32,
             bear: bear.map(|d| self.bear_sample(&d)),
@@ -1307,6 +1371,9 @@ fn session_info(started: &str, headless: bool) -> Value {
         "os": format!("{} {} {}", os.get_name(), os.get_distribution_name(), os.get_version()),
         "screen": format!("{} x {} at {:.0} Hz", screen.x, screen.y, ds.screen_get_refresh_rate()),
         "window": format!("{} x {}", window.x, window.y),
+        // x11 on a Wayland desktop means XWayland. A freeze in the present can depend on this.
+        "display_server": ds.get_name().to_string(),
+        "desktop_session": os.get_environment("XDG_SESSION_TYPE").to_string(),
     });
     if headless {
         hardware["note"] = json!("headless run: no GPU data");

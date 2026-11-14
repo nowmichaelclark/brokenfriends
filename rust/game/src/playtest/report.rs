@@ -1,5 +1,6 @@
 //! `report.md`: the short summary of a playtest for Claude.
 
+use super::frame_parts::FrameParts;
 use super::stats::FrameHistogram;
 use super::{Event, Sample};
 use serde_json::Value;
@@ -167,10 +168,24 @@ fn speed_section(out: &mut String, r: &ReportInput) {
     );
     let _ = writeln!(
         out,
-        "- script time each frame: process {:.2} ms, physics {:.2} ms (averages)",
+        "- slowest step of each second (Godot monitors, average): process with draw and present \
+         {:.2} ms, physics {:.2} ms. These are not script times.",
         avg(&|x| x.process_ms),
         avg(&|x| x.physics_ms)
     );
+    let mut sum = FrameParts::default();
+    let mut count = 0;
+    for p in r.samples.iter().filter_map(|x| x.parts.as_ref()) {
+        sum.add(p);
+        count += 1;
+    }
+    if count > 0 {
+        let _ = writeln!(
+            out,
+            "- parts of an average frame: {}",
+            sum.divided(count).text()
+        );
+    }
     let _ = writeln!(
         out,
         "- the recorder itself: {:.3} ms each frame (average, without screenshots)",
@@ -229,6 +244,19 @@ fn hitch_section(out: &mut String, events: &[Event]) {
     hitches.sort_by(|a, b| b.value.unwrap_or(0.0).total_cmp(&a.value.unwrap_or(0.0)));
     if hitches.is_empty() {
         return;
+    }
+    // Where the long frames went: the game code, or the driver and the compositor.
+    let with_parts: Vec<&FrameParts> = hitches.iter().filter_map(|e| e.parts.as_ref()).collect();
+    if !with_parts.is_empty() {
+        let outside = with_parts.iter().filter(|p| p.outside_game()).count();
+        let _ = writeln!(
+            out,
+            "{outside} of {} hitches were outside the game code (most of the frame was in the \
+             draw, the present or the idle part: the driver, the compositor or the operating \
+             system). {} were in the game code (physics, scripts).\n",
+            with_parts.len(),
+            with_parts.len() - outside
+        );
     }
     out.push_str("| time | frame ms | place | info | shot |\n|---|---|---|---|---|\n");
     for e in hitches.into_iter().take(10) {
@@ -432,6 +460,7 @@ mod tests {
             shot: None,
             loading,
             own: false,
+            parts: None,
         }
     }
 

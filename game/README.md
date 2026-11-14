@@ -364,6 +364,18 @@ what it assumes.
     and GPU render time, draw calls, primitives, objects, memory,
     shader compiles, the bear (place, speed, state, slope, ground,
     grip, stamina, limbs), the camera and the input.
+  - **Frame parts** (S-136). The recorder reads the clock at five
+    points of each frame. `parts` in a sample has the averages:
+    `draw_ms` (the draw and the present, which waits for the driver
+    and the desktop), `idle_ms` (window events, fps limit),
+    `physics_ms`, `script_ms` (all `_process` functions) and
+    `other_ms` (the recorder, screenshots). Each hitch event has the
+    parts of its frame. The report counts the hitches that were
+    outside the game code.
+  - **`process_ms` and `physics_ms`** in a sample are Godot's
+    monitors. They give the slowest step of the last second, and
+    `process_ms` includes the draw and the present. They are not
+    script times.
   - **Events:** hitch, low fps, stuck, climb loop, through the ground,
     the bear's state changes (jump, grab, slide, let go and why,
     mantle, long landing, restart), new zone, marks, and the errors
@@ -807,6 +819,10 @@ Mikey does not build on his laptop (decision R10).
   along the path. The look is 12 degrees below the horizon along the
   path. Each run takes about 50 s plus the time to make the zone. The
   draw distance test uses only seed 7, to keep it short.
+- **A hitch is "outside the game code"** if the draw, the present and
+  the idle part together are longer than the physics, the scripts and
+  the rest. Then the cause is the driver, the desktop or the operating
+  system (`plan/research/freezes.md`).
 - **Hitches during a zone load do not count.** From the start until
   1.5 s after a new zone shows, hitches are "loading." The report
   counts them but does not list them as the worst hitches.

@@ -68,7 +68,10 @@ What is built (all on `main`, all tested by the GitHub build):
 
 The top problem is **long freezes**: 5 s freezes in the first minute
 at the start of seed 1, and a freeze of about 950 ms every few
-minutes (`play-notes.md`, S-125). S-136 fixes them.
+minutes (`play-notes.md`, S-125). S-136 found the cause: the desktop
+of the laptop, not the game (`research/freezes.md`). The new top
+problem is speed on Intel graphics: 12 fps on the Intel GPU of the
+playtest laptop (S-139).
 
 Recommended order:
 1. **S-138**, a combined run on Fable 5.2 (Mikey, 2026-11-14): S-136

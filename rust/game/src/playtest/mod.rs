@@ -8,6 +8,7 @@
 pub mod autoplay;
 pub mod bench;
 pub mod detect;
+pub mod frame_parts;
 pub mod menu;
 pub mod report;
 pub mod stats;
@@ -84,9 +85,16 @@ pub struct Sample {
     pub cpu_ms: f32,
     /// The GPU time for one frame, in milliseconds (0 if not measured).
     pub gpu_ms: f32,
-    /// The time of `_process` and `_physics_process`, in milliseconds.
+    /// Godot's `TIME_PROCESS` monitor, in milliseconds. This is the
+    /// slowest process step of the last second, and it includes the
+    /// draw and the present. It is not the script time: see `parts`.
     pub process_ms: f32,
+    /// Godot's `TIME_PHYSICS_PROCESS` monitor: the slowest physics
+    /// step of the last second, in milliseconds.
     pub physics_ms: f32,
+    /// Where the frame time went, as averages over the second.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parts: Option<frame_parts::FrameParts>,
     pub draw_calls: u32,
     pub primitives: u32,
     pub objects: u32,
@@ -131,6 +139,9 @@ pub struct Event {
     /// screenshot).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub own: bool,
+    /// Where the time of a hitch frame went.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parts: Option<frame_parts::FrameParts>,
 }
 
 /// One frame in the 10 s buffer that a mark saves.

@@ -28,7 +28,7 @@ To start a session, Mikey opens the place in the "Where" column. He
 selects the model and effort, then types "Run S-NNN". At the end of a
 session, the session deletes its row. It changes the rows that it
 unblocks to **ready**. It adds follow-up rows at the bottom.
-Next number: S-133.
+Next number: S-134.
 
 | # | Session | Where | Model, effort | Status |
 |---|---|---|---|---|
@@ -42,6 +42,7 @@ Next number: S-133.
 | S-130 | **Build: tune the climbing hands and the gaits from the playtest** (R18). Read Mikey's notes and the `limb_off`, `gait` and `grab` events. Change the defaults of the holds (`hold_step_m`, `hand_reach`, `hang_*`) and of the gaits (hop, lie, crawl, the speed scales on `Bear`). Keep `AnimParams::default()` and `GaitTuning::default()` the same as the exported defaults. | Claude Code | Sonnet 5.5, medium | waiting on S-125 |
 | S-131 | **Build: tune the smoke edge from the playtest** (R14, `demo-1.md`). Read Mikey's notes, `smoke_m` and `smoke_s` in `samples.jsonl`, and the events `smoke_enter`, `smoke_leave` and `death:smoke:*` with their shots. Change the defaults on `BfSmokeEdge` (limits, wall speed, opacity, haze, card count). Check the frame time near the wall (overdraw) and cut cards if it is high. | Claude Code | Sonnet 5.5, medium | waiting on S-125 |
 | S-132 | **Build: tune the obstacles from the playtest.** Read Mikey's notes and "Obstacles" in `report.md` (hits, falls, escapes and launch results by type). Change the defaults on `Obstacles` and `Terrain`, and `SimParams::default()` with them. Check that the dust and steam show in the Mobile renderer (marks and `shots/`). | Claude Code | Sonnet 5.5, medium | waiting on S-125 |
+| S-133 | **Build: autoplay** (`diagnostics.md`, "Autoplay"). A bot drives the bear through virtual gamepad input, in two modes: tour (fixed tasks for each seed: far walks, climbs, ledge jumps, one obstacle of each type, the smoke edge, each limb set) and wander (seeded random input). Add "Autoplay tour" to the Tests page. Run a 2-minute tour on 3 seeds in the GitHub game build, and fail the build on a crash, an error or a fall through the ground. Add a nightly GitHub run with a longer wander. | Claude Code | Opus 5.5, high | **ready** |
 | S-109 | **Brain** with Mikey: play the full demo, decide what to fix, and plan demo 2 (caves). | Project chat | Opus 5.5, medium | waiting on S-114 and S-108 |
 
 ## Combined runs

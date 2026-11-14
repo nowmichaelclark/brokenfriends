@@ -107,6 +107,37 @@ writes its results into the report. Mikey only starts it and waits.
 - More tests come later. When a session has a question, it adds a test
   here and a row to the agenda.
 
+## Autoplay: the game plays itself
+
+A bot plays the bear through the same input as the gamepad (virtual
+stick and buttons). It does not move the bear directly, so it tests
+the real controls. The recorder records an autoplay run like a normal
+playtest.
+
+**Modes**
+- **Tour:** a fixed list of tasks for each seed. Walk to points far
+  away, climb the nearest steep faces, jump at ledges, visit one
+  obstacle of each type, go into the smoke edge, and try each limb
+  set (two legs, one leg, no legs, one arm).
+- **Wander:** random but seeded stick and button input for some
+  minutes. It finds places where the bear gets stuck, falls through
+  the ground, or shakes.
+
+**Where it runs**
+- **GitHub, after each push:** a short tour (about 2 minutes) on 3
+  seeds, headless. The build fails if the game crashes, prints errors,
+  or if the bear falls through the ground. "Stuck" and "climb loop"
+  counts go into the build log.
+- **GitHub, each night:** a longer wander on more seeds. The result
+  goes into a short report on the release page.
+- **Mikey's laptop (dev menu, "Tests"):** the same tour, with the
+  real GPU. This gives speed numbers during real movement: climbing,
+  obstacles, the smoke edge. Mikey only starts it and waits.
+
+**What a bot cannot do:** it cannot say if something is fun, looks
+good, or feels right. Mikey's notes stay the source for feel and
+taste.
+
 ## Later: replay
 
 The game can record the input of each physics tick. With the seed, a

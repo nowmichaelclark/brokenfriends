@@ -702,10 +702,12 @@ fn seam_ring(
         let dir = basis.x_axis * cos + basis.y_axis * sin;
         let on = surface_along(distance, centre, dir);
         mean += (on - centre).length();
-        points.push(on + dir * (radius * 0.4));
-        // The stitches: light and dark thread one after the other.
-        let dark = if i % 2 == 0 { 0.45 } else { 0.7 };
-        looks.push(Look::new(0.0, 0.0, dark, 0.1));
+        // The ring sits in the fur, not on top of it.
+        points.push(on - dir * (radius * 0.3));
+        // The stitches have the colour of the fur, with a small shade
+        // change between them. A dark ring looked like a line.
+        let dark = if i % 2 == 0 { 0.10 } else { 0.18 };
+        looks.push(Look::new(1.0, 0.0, dark, 0.0));
     }
     let tube = Tube {
         points,

@@ -1,6 +1,6 @@
 # State
 
-Updated: 2026-11-14 (S-117: wall hop, jog cost, let-go button)
+Updated: 2026-11-14 (S-117 and S-121: climb additions, bear look fixes)
 
 Write this file again each time. Do not add to the end. Keep it under
 90 lines.
@@ -35,10 +35,9 @@ Next number: S-126.
 | S-120 | **Build: procedural animation, part 1: body and walk** (R18, `bear.md`, `research/bear-animation.md`). Pose each part from Rust with no skeleton. A `SecondOrder` spring type with tests. Overgrowth-style layers: turn toward the motion, idle pose, tilt from acceleration, bounce, a stride wheel with pass and reach poses. Foot probes, planted feet, a swing arc, aim IK on the legs. Slope lean, sinking on sand, slipping from grip. Arm swing, ear and hump springs, squash on landing. (Build order steps 1 to 7.) | Claude Code | Opus 5.5, high (or Fable 5.2, medium) | **ready** |
 | S-122 | **Build: procedural animation, part 2: climbing hands and limb sets** (R18). Hand placement on the wall with a fan of rays, hands that move in turn, the body hangs from them. A `LimbSet` and the gait table: walk, hop, arm-crawl, one-arm drag, wriggle. Climb limits from the limbs. Debug keys that remove limbs. (Build order steps 8 to 10.) | Claude Code | Opus 5.5, high | waiting on S-120 |
 | S-124 | **Build: playtest replay** (`diagnostics.md`, "Later: replay"). Record the input of each physics tick in the playtest. A headless command replays a playtest with its seed and compares the bear's path with the recorded positions. | Claude Code | Opus 5.5, high | **ready** |
-| S-125 | **Play: the next playtest.** After S-117 and S-121 are on `main`, download the newest zip and play for about 15 minutes. Tap Back when something is wrong. Send the zip from `playtests/`. Notes about feel and taste are optional. | Mikey's laptops | Mikey | waiting on S-121 |
+| S-125 | **Play: the next playtest.** After S-117 and S-121 are on `main`, download the newest zip and play for about 15 minutes. Tap Back when something is wrong. Send the zip from `playtests/`. Notes about feel and taste are optional. | Mikey's laptops | Mikey | **ready** |
 | S-108 | **Build: ground scatter.** Make rocks, pebbles and dead shrubs in Rust. Draw them with MultiMesh and visibility ranges. Stay inside the speed numbers from the S-125 playtest. For the shrubs, look at TanTan's `shrubbery` crate (space colonization, deterministic, MIT/Apache) [unverified: whether it works without Bevy]. | Claude Code | Sonnet 5.5, medium | waiting on S-125 |
 | S-109 | **Brain** with Mikey: play the full demo, decide what to fix, and plan demo 2 (caves). | Project chat | Opus 5.5, medium | waiting on S-114, S-115 and S-108 |
-| S-121 | **Build: bear look fixes** (S-116 notes). Remove or soften the strange lines around the limbs and the neck (the seam rings). Make the bear less bright, so it looks like a normal, fluffy teddy bear. No shape changes before S-120. | Claude Code | Sonnet 5.5, medium | **ready** |
 
 ## Combined runs
 

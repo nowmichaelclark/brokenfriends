@@ -76,7 +76,8 @@ what it assumes.
     pads. The body has a hump at the back. The arms reach past the
     hips.
   - **Seams.** The neck, the shoulders and the hips have a ring of
-    stitches. The ears have a seam position but no visible ring. S-114
+    stitches. The stitches have the colour of the fur and sit in it,
+    so they do not look like dark lines. The ears have a seam position but no visible ring. S-114
     uses the seams for tearing.
   - **Fur.** One shader for all parts. Rust makes a small fur texture
     (short fibres, tufts, worn places). The shader also has a soft

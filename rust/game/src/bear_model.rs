@@ -18,15 +18,15 @@ const FUR_SHADER: &str = r#"
 shader_type spatial;
 render_mode diffuse_lambert_wrap, specular_schlick_ggx;
 
-uniform vec3 fur_colour : source_color = vec3(0.60, 0.46, 0.30);
-uniform vec3 pale_colour : source_color = vec3(0.83, 0.74, 0.58);
+uniform vec3 fur_colour : source_color = vec3(0.45, 0.32, 0.19);
+uniform vec3 pale_colour : source_color = vec3(0.66, 0.57, 0.42);
 uniform vec3 dark_colour : source_color = vec3(0.06, 0.045, 0.035);
-uniform vec3 worn_colour : source_color = vec3(0.70, 0.61, 0.47);
+uniform vec3 worn_colour : source_color = vec3(0.54, 0.44, 0.32);
 uniform sampler2D fur_texture : hint_default_white, filter_linear_mipmap, repeat_enable;
 uniform float tiles_per_metre = 26.0;
 uniform float fibre_contrast = 0.75;
-uniform float worn = 0.5;
-uniform float rim = 0.5;
+uniform float worn = 0.35;
+uniform float rim = 0.2;
 uniform float fuzz = 0.0015;
 uniform float wet : hint_range(0.0, 1.0) = 0.0;
 
@@ -95,12 +95,12 @@ const FUR_TEXTURE_SIZE: usize = 128;
 pub struct BfBearModel {
     /// The colour of the mohair fur.
     #[export]
-    #[init(val = Color::from_rgb(0.60, 0.46, 0.30))]
+    #[init(val = Color::from_rgb(0.45, 0.32, 0.19))]
     fur_colour: Color,
 
     /// The colour of the felt pads on the paws and the feet.
     #[export]
-    #[init(val = Color::from_rgb(0.83, 0.74, 0.58))]
+    #[init(val = Color::from_rgb(0.66, 0.57, 0.42))]
     pad_colour: Color,
 
     /// The colour of the thread of the nose and the mouth.
@@ -110,12 +110,12 @@ pub struct BfBearModel {
 
     /// The colour of the backing cloth where the fur is worn away.
     #[export]
-    #[init(val = Color::from_rgb(0.70, 0.61, 0.47))]
+    #[init(val = Color::from_rgb(0.54, 0.44, 0.32))]
     worn_colour: Color,
 
     /// How much of the fur is worn away (0 to 1).
     #[export]
-    #[init(val = 0.5)]
+    #[init(val = 0.35)]
     worn_amount: f32,
 
     /// The contrast between light and dark fibres (0 to 1).
@@ -130,7 +130,7 @@ pub struct BfBearModel {
 
     /// The strength of the soft rim light on the edges of the fur (0 to 1).
     #[export]
-    #[init(val = 0.5)]
+    #[init(val = 0.2)]
     rim_strength: f32,
 
     /// How far the fur moves the outline out, in metres. This makes it fuzzy.

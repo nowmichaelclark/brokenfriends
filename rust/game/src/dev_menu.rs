@@ -11,6 +11,7 @@ use crate::obstacles::OBSTACLES_GROUP;
 use crate::overlay::OVERLAY_GROUP;
 use crate::playtest::menu::{Action, MenuState, LIMB_NAMES};
 use crate::recorder::RECORDER_GROUP;
+use crate::scatter::SCATTER_GROUP;
 use crate::terrain::TERRAIN_GROUP;
 use crate::test_runner::TEST_RUNNER_GROUP;
 use crate::view_distance::VIEW_DISTANCE_GROUP;
@@ -229,6 +230,9 @@ impl BfDevMenu {
         if let Some(mut overlay) = self.node(OVERLAY_GROUP) {
             self.state.overlay = overlay.call("is_shown", &[]).booleanize();
         }
+        if let Some(mut scatter) = self.node(SCATTER_GROUP) {
+            self.state.scatter = scatter.call("is_scatter_enabled", &[]).booleanize();
+        }
         if let Some(mut view) = self.node(VIEW_DISTANCE_GROUP) {
             let forced = view.call("get_forced_distance", &[]).to::<f32>();
             self.state
@@ -290,6 +294,13 @@ impl BfDevMenu {
                 }
                 // The bear moves at once; close the menu so Mikey sees it.
                 self.close();
+            }
+            Action::ToggleScatter => {
+                if let Some(mut scatter) = self.node(SCATTER_GROUP) {
+                    let on = scatter.call("is_scatter_enabled", &[]).booleanize();
+                    scatter.call("set_scatter_enabled", &[(!on).to_variant()]);
+                }
+                self.read_game_state();
             }
             Action::SavePlaytest => {
                 if let Some(mut recorder) = self.node(RECORDER_GROUP) {

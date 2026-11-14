@@ -11,6 +11,8 @@ pub mod heightmap;
 pub mod highlands;
 pub mod noise;
 pub mod obstacles;
+pub mod props;
+pub mod scatter;
 pub mod smoke;
 
 pub use heightmap::HeightMap;

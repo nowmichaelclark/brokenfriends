@@ -22,6 +22,9 @@ pub enum TestKind {
     /// The camera stops at fixed views of the water over seeds 1, 7 and
     /// 42 (S-160, `demo-2.md`, "Speed tests").
     WaterView,
+    /// The camera flies into the widest cave mouth, around a chamber and
+    /// back, over seeds 1, 7 and 42 (S-164, `cave_tour.rs`).
+    CaveTour,
 }
 
 /// The views of the Water view test: the name for `BfWater::test_view`
@@ -52,6 +55,7 @@ impl TestKind {
             TestKind::Benchmark => "benchmark",
             TestKind::DrawDistance => "draw-distance",
             TestKind::WaterView => "water-view",
+            TestKind::CaveTour => "cave-tour",
         }
     }
 
@@ -61,6 +65,7 @@ impl TestKind {
             TestKind::Benchmark => "Benchmark",
             TestKind::DrawDistance => "Draw distance test",
             TestKind::WaterView => "Water view",
+            TestKind::CaveTour => "Cave tour",
         }
     }
 
@@ -70,6 +75,7 @@ impl TestKind {
             "benchmark" | "bench" => Some(TestKind::Benchmark),
             "draw-distance" | "draw" => Some(TestKind::DrawDistance),
             "water-view" | "water" => Some(TestKind::WaterView),
+            "cave-tour" | "caves" => Some(TestKind::CaveTour),
             _ => None,
         }
     }
@@ -87,7 +93,7 @@ pub struct RunSpec {
 /// Gives the runs of a test, in order.
 pub fn plan(kind: TestKind) -> Vec<RunSpec> {
     match kind {
-        TestKind::Benchmark | TestKind::WaterView => [1, 7, 42]
+        TestKind::Benchmark | TestKind::WaterView | TestKind::CaveTour => [1, 7, 42]
             .into_iter()
             .map(|seed| RunSpec {
                 seed,
@@ -370,6 +376,9 @@ pub fn make_markdown(t: &TestReport) -> String {
             VIEW_SECONDS,
             VIEW_WARM_SECONDS
         );
+    } else if t.kind == TestKind::CaveTour {
+        out.push_str(super::cave_tour::INTRO);
+        out.push('\n');
     } else {
         let _ = writeln!(
             out,
@@ -518,6 +527,7 @@ mod tests {
             TestKind::Benchmark,
             TestKind::DrawDistance,
             TestKind::WaterView,
+            TestKind::CaveTour,
         ] {
             assert_eq!(TestKind::from_name(k.name()), Some(k));
         }

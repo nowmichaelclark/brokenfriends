@@ -18,13 +18,14 @@
 
 use crate::atmosphere::ATMOSPHERE_GROUP;
 use crate::bear::BEAR_GROUP;
+use crate::caves::CAVES_GROUP;
 use crate::playtest::detect::{Detectors, Found, FrameInput};
 use crate::playtest::frame_parts::{FrameMarks, FrameParts};
 use crate::playtest::report::{append_tests, make_report, ReportInput};
 use crate::playtest::stats::{FrameHistogram, SecondStats};
 use crate::playtest::{
     files_to_delete, log_problems, parse_lines, scrub, session_name, BearSample, CameraSample,
-    Event, FrameRecord, InputSample, Sample, WaterSample,
+    CaveSample, Event, FrameRecord, InputSample, Sample, WaterSample,
 };
 use crate::smoke_edge::SMOKE_GROUP;
 use crate::terrain::TERRAIN_GROUP;
@@ -368,6 +369,22 @@ impl BfRecorder {
         ok
     }
 
+    /// Saves a screenshot for a test (the Cave tour, S-164) and writes a
+    /// `test_shot` event. Gives the file name, or "" if there is no
+    /// screenshot (no window).
+    #[func]
+    pub fn test_screenshot(&mut self, tag: GString) -> GString {
+        if !self.active {
+            return GString::new();
+        }
+        let tag = tag.to_string();
+        let shot = self.screenshot(&tag);
+        let mut event = self.event_here("test_shot", tag);
+        event.shot = shot.clone();
+        self.write_event(event);
+        GString::from(shot.as_deref().unwrap_or(""))
+    }
+
     /// Gives the name of the session folder, or "" if the recorder is off.
     #[func]
     pub fn session_name(&self) -> GString {
@@ -587,8 +604,12 @@ impl BfRecorder {
             .unwrap_or(false);
         let ground = match (pos, loading || on_wall) {
             (Some(p), false) => self.terrain().map(|mut terrain| {
+                // The cave floor in a cave (S-164).
                 terrain
-                    .call("height_at", &[p.x.to_variant(), p.z.to_variant()])
+                    .call(
+                        "floor_at",
+                        &[p.x.to_variant(), p.y.to_variant(), p.z.to_variant()],
+                    )
                     .to::<f32>()
             }),
             _ => None,
@@ -612,6 +633,7 @@ impl BfRecorder {
             self.found(f, t, loading, own, compiled, parts);
         }
         self.bear_events(t);
+        self.cave_events(t);
 
         // The frames for the marks.
         let input = Input::singleton();
@@ -777,6 +799,46 @@ impl BfRecorder {
         }
     }
 
+    /// Writes the events of the caves (S-164): `cave_enter`,
+    /// `cave_leave` and `cave_no_collision`.
+    fn cave_events(&mut self, t: f64) {
+        let Some(mut caves) = self.caves() else {
+            return;
+        };
+        let names = caves.call("take_events", &[]).to::<PackedStringArray>();
+        for name in names.as_slice() {
+            let mut event = self.event_here("cave", name.to_string());
+            event.t = t;
+            self.write_event(event);
+        }
+    }
+
+    /// Gives the cave data of the bear for a sample (S-164), or `None`
+    /// if the bear is not in a cave.
+    fn cave_sample(&self, bear: Option<&VarDictionary>) -> Option<CaveSample> {
+        let pos = bear?.get("pos")?.try_to::<Vector3>().ok()?;
+        let d = self
+            .caves()?
+            .call("recorder_state", &[pos.to_variant()])
+            .to::<VarDictionary>();
+        let get_f = |k: &str| d.get(k).and_then(|v| v.try_to::<f32>().ok());
+        let get_u = |k: &str| d.get(k).and_then(|v| v.try_to::<i64>().ok()).unwrap_or(0) as u32;
+        Some(CaveSample {
+            sky: get_f("sky")?,
+            meshes: get_u("meshes"),
+            bodies: get_u("bodies"),
+            queue: get_u("queue"),
+            upload_ms: get_f("upload_ms").unwrap_or(0.0),
+        })
+    }
+
+    fn caves(&self) -> Option<Gd<Node>> {
+        if !self.base().is_inside_tree() {
+            return None;
+        }
+        self.base().get_tree().get_first_node_in_group(CAVES_GROUP)
+    }
+
     /// Writes one line of `samples.jsonl`.
     fn write_sample(&mut self, t: f64, bear: Option<VarDictionary>) {
         let frames = self.second.take((t - self.second_start) as f32);
@@ -825,6 +887,7 @@ impl BfRecorder {
             parts: (parts_frames > 0).then(|| parts_sum.divided(parts_frames)),
             pipeline_compiles: self.pipeline_compiles,
             recorder_ms: own_usec as f32 / 1000.0 / own_frames.max(1) as f32,
+            cave: self.cave_sample(bear.as_ref()),
             bear: bear.map(|d| self.bear_sample(&d)),
             camera: self.camera_sample(),
             input: InputSample {

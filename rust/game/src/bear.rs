@@ -1666,16 +1666,21 @@ impl BfBear {
         }
     }
 
-    /// The height of the terrain below a point, if there is a terrain.
+    /// The floor below a point, if there is a terrain: the ground, or
+    /// the cave floor in a cave (S-164, `BfTerrain::floor_at`).
     fn ground_height(&self, at: Vector3) -> Option<f32> {
         let mut terrain = self
             .base()
             .get_tree()
             .get_first_node_in_group(TERRAIN_GROUP)?;
         terrain
-            .call("height_at", &[at.x.to_variant(), at.z.to_variant()])
+            .call(
+                "floor_at",
+                &[at.x.to_variant(), at.y.to_variant(), at.z.to_variant()],
+            )
             .try_to::<f32>()
             .ok()
+            .filter(|h| h.is_finite())
     }
 
     /// Sets the health of a seam (a dev key, the dev menu, a restart).
@@ -2144,20 +2149,14 @@ impl BfBear {
         }
     }
 
-    /// If the bear is below the ground, puts it back on the ground.
-    /// This can occur before Terrain3D makes the collision of an area.
+    /// If the bear is below the ground (or below a cave floor), puts it
+    /// back on it. This can occur before Terrain3D or the caves make the
+    /// collision of an area.
     fn stay_above_ground(&mut self) {
-        let tree = self.base().get_tree();
-        let Some(mut terrain) = tree.get_first_node_in_group(TERRAIN_GROUP) else {
+        let mut position = self.base().get_global_position();
+        let Some(ground) = self.ground_height(position) else {
             return;
         };
-        let mut position = self.base().get_global_position();
-        let ground = terrain
-            .call(
-                "height_at",
-                &[position.x.to_variant(), position.z.to_variant()],
-            )
-            .to::<f32>();
         if position.y < ground - 0.25 {
             self.event(&format!("back_on_ground:{:.2}m", ground - position.y));
             position.y = ground + 0.05;

@@ -361,6 +361,17 @@ impl BfScatter {
                 return;
             };
             self.exclusions = exclusions(zone, t.obstacles(), &params);
+            // No props in the holes of the cave mouths (S-164).
+            if let Some(world) = t.cave_world() {
+                let pad = (world.rim.ring() as f32 + 4.0) * zone.heights.spacing;
+                self.exclusions
+                    .extend(world.caves.mouths().map(|m| Exclusion {
+                        x: m.pos[0],
+                        z: m.pos[2],
+                        radius: m.exempt_radius_m + pad,
+                        pebbles: true,
+                    }));
+            }
         }
         self.built_params = Some(params);
         self.zone_ready = true;

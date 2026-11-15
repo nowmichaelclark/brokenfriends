@@ -30,8 +30,10 @@ mod field;
 mod noise3;
 #[cfg(test)]
 mod tests;
+mod walk;
 
 pub use field::Block;
+pub use walk::{Tour, TourPoint, TOUR_PARTS, TOUR_REACH_M};
 
 use crate::highlands::Zone;
 use crate::smoke::SmokeParams;

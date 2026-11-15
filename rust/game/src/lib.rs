@@ -11,6 +11,8 @@ mod autoplay;
 mod bear;
 mod bear_model;
 mod bear_shape;
+mod cave_mesh;
+mod caves;
 mod climb;
 mod dev_menu;
 mod fly_camera;

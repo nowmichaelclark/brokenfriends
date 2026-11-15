@@ -4,15 +4,19 @@
 //! bindings for it. This module calls Terrain3D by name
 //! (`Object::call`, `Object::set`). All of these calls are in this file.
 
+use crate::cave_mesh::CaveWorld;
 use crate::view_distance::terrain_lods;
+use bf_worldgen::caves::{CaveParams, Caves};
 use bf_worldgen::highlands::{generate, HighlandsParams};
 use bf_worldgen::obstacles::{place_obstacles, Obstacle, ObstacleParams, KIND_NAMES};
+use bf_worldgen::smoke::SmokeParams;
 use bf_worldgen::Zone;
 use godot::classes::image::Format;
 use godot::classes::{ClassDb, Image, ImageTexture, InputEvent, InputEventKey, Node3D, Shader};
 use godot::global::Key;
 use godot::prelude::*;
 use std::sync::mpsc::{channel, Receiver, TryRecvError};
+use std::sync::Arc;
 use std::thread::JoinHandle;
 use std::time::Instant;
 
@@ -28,6 +32,34 @@ const LIGHT_SHADER: &str = include_str!("terrain_light.gdshader");
 
 /// Terrain3D can hold 32 x 32 regions.
 const REGION_MAP_SIZE: i32 = 32;
+
+/// The hole bit of the Terrain3D control map (bit 3).
+const HOLE_BIT: u32 = 1 << 2;
+
+/// The side of the grain texture of the ground, in pixels.
+const GRAIN_SIZE: i32 = 64;
+
+/// The RGBA bytes of the grain texture of the ground: small light and
+/// dark grains. Alpha is the height of the texture.
+fn grain_bytes() -> PackedByteArray {
+    let mut albedo = PackedByteArray::new();
+    albedo.resize((GRAIN_SIZE * GRAIN_SIZE * 4) as usize);
+    for (i, px) in albedo.as_mut_slice().chunks_exact_mut(4).enumerate() {
+        let grain = bf_worldgen::noise::hash01(i as i32 % GRAIN_SIZE, i as i32 / GRAIN_SIZE, 17);
+        let v = (225.0 + grain * 30.0) as u8;
+        px.copy_from_slice(&[v, v, v, 128]);
+    }
+    albedo
+}
+
+/// Gives the grain texture of the ground, with mipmaps. The cave walls
+/// use it too (S-164), so the rim at a mouth looks like the ground.
+pub fn grain_texture() -> Option<Gd<ImageTexture>> {
+    let mut image =
+        Image::create_from_data(GRAIN_SIZE, GRAIN_SIZE, false, Format::RGBA8, &grain_bytes())?;
+    image.generate_mipmaps();
+    ImageTexture::create_from_image(&image)
+}
 
 /// The water at one place (S-160).
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -51,6 +83,10 @@ struct Generated {
     zone: Zone,
     obstacles: Vec<Obstacle>,
     colours: Vec<[u8; 3]>,
+    /// The caves of the zone (S-164), if they are on.
+    caves: Option<Arc<CaveWorld>>,
+    /// The part of `seconds` for the caves.
+    cave_seconds: f32,
     seconds: f32,
 }
 
@@ -199,6 +235,24 @@ pub struct BfTerrain {
     #[init(val = 0.1)]
     grip_sand: f32,
 
+    /// If this is on, the zone has caves (S-164). `--bf-caves=off` on
+    /// the command line turns them off for one process.
+    #[export]
+    #[init(val = true)]
+    caves_enabled: bool,
+
+    /// The band of hole cells around each cave mouth, in samples. The
+    /// cave mesh follows the ground in the band.
+    #[export]
+    #[init(val = 2)]
+    hole_band_cells: i32,
+
+    /// The ring of cave mesh under the terrain edge at a mouth, in
+    /// samples. It hides the cracks.
+    #[export]
+    #[init(val = 2)]
+    rim_ring_cells: i32,
+
     /// How far Terrain3D draws, in metres (set by `BfViewDistance`).
     /// Terrain3D draws rings of mesh around the camera. This value
     /// sets the number of rings. Zero means the default of the addon.
@@ -215,6 +269,9 @@ pub struct BfTerrain {
 
     /// The obstacles of the current zone (R23).
     obstacles: Vec<Obstacle>,
+
+    /// The caves of the current zone (S-164).
+    cave_world: Option<Arc<CaveWorld>>,
 
     /// The time to make the current zone on the worker thread, in seconds.
     generation_seconds: f32,
@@ -237,6 +294,14 @@ pub struct BfTerrain {
 impl INode3D for BfTerrain {
     fn ready(&mut self) {
         self.base_mut().add_to_group(TERRAIN_GROUP);
+        for arg in godot::classes::Os::singleton()
+            .get_cmdline_user_args()
+            .as_slice()
+        {
+            if *arg == "--bf-caves=off" {
+                self.caves_enabled = false;
+            }
+        }
         self.regenerate();
     }
 
@@ -291,7 +356,10 @@ impl BfTerrain {
         let size = self.sample_count();
         let spacing = self.vertex_spacing.max(0.25);
         let params = self.params();
-        let obstacle_params = ObstacleParams {
+        let caves_on = self.caves_enabled;
+        let band = self.hole_band_cells.clamp(0, 8) as usize;
+        let ring = self.rim_ring_cells.clamp(1, 8) as u8;
+        let mut obstacle_params = ObstacleParams {
             density: self.obstacle_density.max(0.0),
             clear_start_m: self.obstacle_clear_start_m.max(0.0),
             hard_at_m: self.obstacle_hard_at_m.max(50.0),
@@ -302,16 +370,37 @@ impl BfTerrain {
         let worker = std::thread::spawn(move || {
             let start = Instant::now();
             let mut zone = generate(seed, size, spacing, &params);
+            // The caves read the heights before the obstacles dig their
+            // pits (S-164). No obstacle stands at a mouth.
+            let cave_start = Instant::now();
+            let caves = caves_on
+                .then(|| Caves::generate(&zone, &SmokeParams::default(), &CaveParams::default()));
+            if let Some(caves) = &caves {
+                let pad = (band + ring as usize) as f32 * spacing + 3.0;
+                obstacle_params.keep_out = caves
+                    .mouths()
+                    .map(|m| [m.pos[0], m.pos[2], m.exempt_radius_m + pad])
+                    .collect();
+            }
+            let mut cave_seconds = cave_start.elapsed().as_secs_f32();
             // The obstacles come after the terrain. The ash crusts dig
             // their pits into the heights.
             let obstacles = place_obstacles(&mut zone, &obstacle_params);
             let colours = zone.ground_colours();
+            let cave_start = Instant::now();
+            let caves = caves.map(|c| {
+                let ground = zone.heights.clone();
+                Arc::new(CaveWorld::new(c, ground, colours.clone(), band, ring))
+            });
+            cave_seconds += cave_start.elapsed().as_secs_f32();
             let seconds = start.elapsed().as_secs_f32();
             // If the game stopped, nobody receives the zone. That is not an error.
             let _ = sender.send(Generated {
                 zone,
                 obstacles,
                 colours,
+                caves,
+                cave_seconds,
                 seconds,
             });
         });
@@ -444,6 +533,56 @@ impl BfTerrain {
             .map_or(0.0, |zone| zone.heights.sample_world(x, z))
     }
 
+    /// Gives the floor for a point, with the caves (S-164): the cave
+    /// floor below a point in a cave, the air above a point in rock,
+    /// and the ground height where no cave is near. The point is through
+    /// the floor by `floor_at - y` when that is positive. Gives minus
+    /// infinity if a point in the air has no floor within 600 m.
+    #[func]
+    pub fn floor_at(&self, x: f32, y: f32, z: f32) -> f32 {
+        match (&self.cave_world, &self.zone) {
+            (Some(w), _) => w.caves.floor_under(&w.ground, [x, y, z], 600.0),
+            (None, Some(zone)) => zone.heights.sample_world(x, z),
+            (None, None) => 0.0,
+        }
+    }
+
+    /// Tells if a point is in the air of a cave, under the ground (S-164).
+    #[func]
+    pub fn in_cave(&self, x: f32, y: f32, z: f32) -> bool {
+        self.cave_world
+            .as_ref()
+            .is_some_and(|w| w.caves.in_cave(&w.ground, [x, y, z]))
+    }
+
+    /// Tells if a cave can be within about 6 m of a point, or if the
+    /// point is above a hole of a mouth (S-164). If not, the heightmap
+    /// alone is the ground there.
+    #[func]
+    pub fn near_cave(&self, x: f32, y: f32, z: f32) -> bool {
+        self.cave_world
+            .as_ref()
+            .is_some_and(|w| w.caves.near_cave([x, y, z]) || w.rim.at(x, z) <= w.rim.ring())
+    }
+
+    /// Gives the distance along a ray to the first rock or ground, with
+    /// the caves (S-164). Gives `max_m` if the ray meets nothing. `dir`
+    /// must have length 1.
+    #[func]
+    pub fn cave_ray(&self, from: Vector3, dir: Vector3, max_m: f32) -> f32 {
+        let Some(w) = &self.cave_world else {
+            return max_m;
+        };
+        w.caves
+            .ray_hit(
+                &w.ground,
+                [from.x, from.y, from.z],
+                [dir.x, dir.y, dir.z],
+                max_m,
+            )
+            .unwrap_or(max_m)
+    }
+
     /// Gives the name of the main ground type at a world position, for
     /// example "rust rock" or "sand".
     #[func]
@@ -526,6 +665,11 @@ impl BfTerrain {
             viscosity: b.viscosity,
             density: b.density,
         })
+    }
+
+    /// Gives the caves of the current zone (S-164).
+    pub fn cave_world(&self) -> Option<&Arc<CaveWorld>> {
+        self.cave_world.as_ref()
     }
 
     /// Gives the obstacles of the current zone.
@@ -621,17 +765,10 @@ impl BfTerrain {
     /// Gives Terrain3D one plain ground texture. Without a texture,
     /// Terrain3D draws a checker pattern. The colour map gives the colour.
     fn add_ground_texture(terrain: &Gd<Node3D>) {
-        const SIZE: i32 = 64;
-        let mut albedo = PackedByteArray::new();
+        const SIZE: i32 = GRAIN_SIZE;
+        let albedo = grain_bytes();
         let mut normal = PackedByteArray::new();
-        albedo.resize((SIZE * SIZE * 4) as usize);
         normal.resize((SIZE * SIZE * 4) as usize);
-        for (i, px) in albedo.as_mut_slice().chunks_exact_mut(4).enumerate() {
-            // Small light and dark grains. Alpha is the height of the texture.
-            let grain = bf_worldgen::noise::hash01(i as i32 % SIZE, i as i32 / SIZE, 17);
-            let v = (225.0 + grain * 30.0) as u8;
-            px.copy_from_slice(&[v, v, v, 128]);
-        }
         for px in normal.as_mut_slice().chunks_exact_mut(4) {
             // A flat normal. Alpha is the roughness: the ground is dry.
             px.copy_from_slice(&[128, 128, 255, 240]);
@@ -665,9 +802,12 @@ impl BfTerrain {
             zone,
             obstacles,
             colours,
+            caves,
+            cave_seconds,
             seconds,
         } = generated;
         self.obstacles = obstacles;
+        self.cave_world = caves;
         let start = Instant::now();
         let map = &zone.heights;
         let size = map.size as i32;
@@ -722,10 +862,26 @@ impl BfTerrain {
             return;
         };
 
+        // The control image: the bits of a 32-bit integer in each float.
+        // Only the hole bit is set, in the holes of the cave mouths and
+        // their band (S-164).
+        let control = self.cave_world.as_ref().and_then(|world| {
+            let mut bytes = PackedByteArray::new();
+            bytes.resize(world.mask.len() * 4);
+            for (dst, &m) in bytes.as_mut_slice().chunks_exact_mut(4).zip(&world.mask) {
+                let bits: u32 = if m > 0 { HOLE_BIT } else { 0 };
+                dst.copy_from_slice(&bits.to_le_bytes());
+            }
+            Image::create_from_data(size, size, false, Format::RF, &bytes)
+        });
+
         // import_images wants three images: height, control and colour.
         let mut images = VarArray::new();
         images.push(&heights.to_variant());
-        images.push(&Variant::nil());
+        match &control {
+            Some(c) => images.push(&c.to_variant()),
+            None => images.push(&Variant::nil()),
+        }
         images.push(&colour_map.to_variant());
         let half = map.world_size() * 0.5;
         let corner = Vector3::new(-half, 0.0, -half);
@@ -743,9 +899,12 @@ impl BfTerrain {
         godot_print!(
             "BfTerrain: seed {}, {size} x {size} samples, heights {lo:.0} to {hi:.0} m, \
              generation {seconds:.1} s, Terrain3D import {show_ms:.0} ms, water bodies: {}, \
-             obstacles: {}",
+             cave systems: {} ({cave_seconds:.2} s), obstacles: {}",
             zone.seed,
             zone.water.bodies.len(),
+            self.cave_world
+                .as_ref()
+                .map_or(0, |w| w.caves.systems.len()),
             self.obstacle_text()
         );
         self.zone = Some(zone);

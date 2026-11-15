@@ -469,7 +469,8 @@ impl BfAutoplay {
             .get("stick_held")
             .and_then(|v| v.try_to::<bool>().ok())
             .unwrap_or(false);
-        let ground = terrain.bind().height_at(pos.x, pos.z);
+        // The cave floor in a cave (S-164).
+        let ground = terrain.bind().floor_at(pos.x, pos.y, pos.z);
 
         let Some(a) = &mut self.active else {
             return;

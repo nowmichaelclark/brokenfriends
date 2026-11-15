@@ -114,6 +114,7 @@ impl BfDebugOverlay {
         let mut obstacles = String::from("none");
         let mut scatter = String::from("none");
         let mut water = String::from("none");
+        let mut caves = String::from("none");
         if self.base().is_inside_tree() {
             let tree = self.base().get_tree();
             if let Some(mut node) = tree.get_first_node_in_group(BEAR_GROUP) {
@@ -130,6 +131,9 @@ impl BfDebugOverlay {
             }
             if let Some(mut node) = tree.get_first_node_in_group(WATER_GROUP) {
                 water = node.call("debug_text", &[]).to_string();
+            }
+            if let Some(mut node) = tree.get_first_node_in_group(crate::caves::CAVES_GROUP) {
+                caves = node.call("debug_text", &[]).to_string();
             }
             if let Some(mut terrain) = tree.get_first_node_in_group(TERRAIN_GROUP) {
                 seed = terrain.call("current_seed", &[]).to_string();
@@ -149,6 +153,7 @@ impl BfDebugOverlay {
              obstacles: {obstacles}\n\
              scatter: {scatter}\n\
              water: {water}\n\
+             caves: {caves}\n\
              F2: fly camera   F3: hide   F4: new zone   F6: next obstacle   F9: mark   F10: menu (pad: hold Back)"
         )
     }

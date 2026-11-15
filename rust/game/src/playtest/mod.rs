@@ -7,6 +7,7 @@
 
 pub mod autoplay;
 pub mod bench;
+pub mod cave_tour;
 pub mod detect;
 pub mod frame_parts;
 pub mod menu;
@@ -129,6 +130,24 @@ pub struct Sample {
     pub bear: Option<BearSample>,
     pub camera: Option<CameraSample>,
     pub input: InputSample,
+    /// The cave at the bear (S-164). Not in the sample outside a cave.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cave: Option<CaveSample>,
+}
+
+/// The cave data in one sample, when the bear is in a cave (S-164).
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct CaveSample {
+    /// How much sky the bear sees, from 0 (none) to 1 (open sky).
+    pub sky: f32,
+    /// The cave chunks with a mesh.
+    pub meshes: u32,
+    /// The cave chunks with collision.
+    pub bodies: u32,
+    /// The cave chunks that wait for a worker or an upload.
+    pub queue: u32,
+    /// The CPU time of the cave work in the last frame, in milliseconds.
+    pub upload_ms: f32,
 }
 
 /// One line of `events.jsonl`.

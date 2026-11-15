@@ -560,3 +560,109 @@ fn survey_seeds_1_to_50() {
     }
     println!("{near} of 50 zones have a mouth within 600 m of the start; {systems} systems; {faults} roof faults");
 }
+
+// The queries for the game (S-164, `walk.rs`).
+
+#[test]
+fn wall_blocks_hold_the_walls() {
+    for seed in SEEDS {
+        let (_, caves) = zone(seed);
+        let blocks = caves.wall_blocks(32.0);
+        assert!(!blocks.is_empty(), "seed {seed}: no wall blocks");
+        assert!(blocks.windows(2).all(|w| w[0] < w[1]), "the list is sorted");
+        // Each point near a wall (a sign change of the cave value) is in
+        // a listed block.
+        for p in probe_points(caves, 3000) {
+            let v = caves.cave_value(p);
+            if v.abs() > 0.5 {
+                continue;
+            }
+            let b = p.map(|c| (c / 32.0).floor() as i32);
+            assert!(
+                blocks.binary_search(&b).is_ok(),
+                "seed {seed}: the wall at {p:?} is not in a listed block"
+            );
+        }
+        println!("seed {seed}: {} wall blocks of 32 m", blocks.len());
+    }
+}
+
+#[test]
+fn floor_under_finds_the_chamber_floor() {
+    for seed in SEEDS {
+        let (zone, caves) = zone(seed);
+        let g = &zone.heights;
+        for sys in &caves.systems {
+            for c in sys.chambers() {
+                let n = sys.nodes[c];
+                let p = [n.pos[0], n.floor_y + 2.0, n.pos[2]];
+                if !caves.in_cave(g, p) {
+                    continue;
+                }
+                let floor = caves.floor_under(g, p, 100.0);
+                assert!(
+                    (floor - n.floor_y).abs() < 3.0,
+                    "seed {seed}: floor {floor} for a chamber floor at {}",
+                    n.floor_y
+                );
+                // A point 0.5 m in the rock under the floor goes back up.
+                let below = [p[0], floor - 0.5, p[2]];
+                let back = caves.floor_under(g, below, 100.0);
+                assert!(
+                    (back - floor).abs() < 0.05,
+                    "seed {seed}: back {back}, floor {floor}"
+                );
+            }
+        }
+        // Far from the caves, the floor is the heightmap.
+        let far = [-900.0, 0.0, -900.0];
+        let h = g.sample_world(far[0], far[2]);
+        if !caves.near_cave([far[0], h, far[2]]) {
+            assert_eq!(caves.floor_under(g, [far[0], h - 3.0, far[2]], 50.0), h);
+        }
+    }
+}
+
+#[test]
+fn the_tour_goes_into_a_chamber_and_back() {
+    for seed in SEEDS {
+        let (zone, caves) = zone(seed);
+        let g = &zone.heights;
+        let tour = caves
+            .tour(g, TOUR_REACH_M)
+            .expect("a zone with caves has a tour");
+        assert_eq!(tour.points.len(), tour.parts.len());
+        assert_eq!(tour.points.len(), tour.along.len());
+        assert!(
+            tour.parts.windows(2).all(|w| w[0] <= w[1]),
+            "parts in order"
+        );
+        for part in 0..TOUR_PARTS.len() {
+            assert!(tour.parts.contains(&part), "seed {seed}: no part {part}");
+        }
+        assert!(tour.along.windows(2).all(|w| w[0] < w[1]));
+        // The camera stays in the air (open air or cave air).
+        let steps = (tour.length_m() / 2.0) as usize;
+        let in_rock = (0..steps)
+            .filter(|&i| caves.air_value(g, tour.at(i as f32 * 2.0).pos) <= 0.0)
+            .count();
+        let (mx, mz) = (tour.mouth[0], tour.mouth[2]);
+        println!(
+            "seed {seed}: tour of {:.0} m, mouth at ({mx:.0}, {mz:.0}), chamber {:.0} m wide, {in_rock} of {steps} points in rock",
+            tour.length_m(),
+            tour.chamber_width_m
+        );
+        assert!(
+            in_rock * 50 <= steps,
+            "seed {seed}: {in_rock} of {steps} points in rock"
+        );
+        // The tour ends where it started.
+        let (a, b) = (tour.points[0], *tour.points.last().unwrap());
+        assert!((a[0] - b[0]).abs() < 0.01 && (a[2] - b[2]).abs() < 0.01);
+        assert_eq!(
+            caves.tour(g, TOUR_REACH_M),
+            Some(tour),
+            "the same zone gives the same tour"
+        );
+    }
+}

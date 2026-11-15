@@ -8,6 +8,8 @@
 
 [node name="Water" type="BfWater" parent="."]
 
+[node name="Caves" type="BfCaves" parent="."]
+
 [node name="SmokeEdge" type="BfSmokeEdge" parent="."]
 
 [node name="FlyCamera" type="BfFlyCamera" parent="."]

@@ -207,6 +207,9 @@ pub struct ObstacleParams {
     pub hard_at_m: f32,
     /// No obstacle is nearer to the zone border than this, in metres.
     pub border_m: f32,
+    /// Circles (x, z, radius) where no obstacle stands, for example the
+    /// cave mouths (S-164). An obstacle keeps its full size out of them.
+    pub keep_out: Vec<[f32; 3]>,
 }
 
 impl Default for ObstacleParams {
@@ -224,6 +227,7 @@ impl Default for ObstacleParams {
             first_within_m: 260.0,
             hard_at_m: 800.0,
             border_m: 40.0,
+            keep_out: Vec::new(),
         }
     }
 }
@@ -711,6 +715,15 @@ pub fn place_obstacles(zone: &mut Zone, params: &ObstacleParams) -> Vec<Obstacle
     let (start_x, start_z) = zone.start_point();
     let from_start = |s: &Site| ((s.x - start_x).powi(2) + (s.z - start_z).powi(2)).sqrt();
     let mut sites = find_sites(zone, params);
+    // No obstacle in a keep-out circle (the cave mouths, S-164).
+    for list in &mut sites {
+        list.retain(|s| {
+            params.keep_out.iter().all(|k| {
+                let gap = k[2] + s.ext;
+                (s.x - k[0]).powi(2) + (s.z - k[1]).powi(2) >= gap * gap
+            })
+        });
+    }
 
     // (type, place, easy)
     let mut chosen: Vec<(usize, Site, bool)> = Vec::new();

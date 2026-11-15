@@ -6,14 +6,17 @@
 //! go into the report of the playtest. The pure parts (the path, the
 //! statistics and the text) are in `crate::playtest::bench`.
 
+use crate::caves::{BfCaves, CAVES_GROUP};
 use crate::playtest::bench::{
     camera_height, make_json, make_markdown, plan, view_at, BenchPath, FrameData, PartResult,
     PathPoint, RunResult, RunSpec, RunStats, TestKind, TestReport, VIEW_SECONDS, WATER_VIEWS,
 };
+use crate::playtest::cave_tour::{self, CaveFrame, CaveRun, CaveStats};
 use crate::recorder::RECORDER_GROUP;
 use crate::terrain::TERRAIN_GROUP;
 use crate::view_distance::{VIEW_CAMERA_GROUP, VIEW_DISTANCE_GROUP};
 use crate::water::WATER_GROUP;
+use bf_worldgen::caves::{Tour, TOUR_PARTS};
 use godot::classes::performance::Monitor;
 use godot::classes::{
     Camera3D, CanvasLayer, DisplayServer, INode, InputEvent, InputEventJoypadButton, InputEventKey,
@@ -55,6 +58,15 @@ struct Active {
     views: Vec<Option<(Vector3, Vector3)>>,
     /// The names of the views for the report.
     view_names: Vec<String>,
+    /// The Cave tour (S-164): the path of this run, after the zone shows.
+    tour: Option<Tour>,
+    /// The tour of this run was asked for.
+    tour_checked: bool,
+    /// The cave numbers of this run and of the runs before.
+    cave_stats: CaveStats,
+    cave_runs: Vec<CaveRun>,
+    /// The part of the tour in the last frame (for the screenshots).
+    tour_part: usize,
 }
 
 /// Runs the tests of the dev menu.
@@ -97,6 +109,11 @@ pub struct BfTestRunner {
     #[export]
     #[init(val = 12.0)]
     look_down_degrees: f32,
+
+    /// The speed of the camera in the Cave tour, in metres per second.
+    #[export]
+    #[init(val = 10.0)]
+    cave_tour_speed_mps: f32,
 
     active: Option<Active>,
     /// A test from the command line (`-- --bf-test=benchmark`). It starts
@@ -271,6 +288,11 @@ impl BfTestRunner {
             quit_at_end,
             views: Vec::new(),
             view_names: Vec::new(),
+            tour: None,
+            tour_checked: false,
+            cave_stats: CaveStats::new(),
+            cave_runs: Vec::new(),
+            tour_part: 0,
         });
         self.begin_run();
         true
@@ -291,12 +313,18 @@ impl BfTestRunner {
         let spec = active.specs[active.run];
         let parts = if active.kind == TestKind::WaterView {
             WATER_VIEWS.len()
+        } else if active.kind == TestKind::CaveTour {
+            TOUR_PARTS.len()
         } else {
             self.path_parts.clamp(3, 64) as usize
         };
         active.stats = RunStats::new(parts);
         active.views.clear();
         active.view_names.clear();
+        active.tour = None;
+        active.tour_checked = false;
+        active.cave_stats = CaveStats::new();
+        active.tour_part = 0;
         active.phase = Phase::Zone { requested: false };
         let forced = spec.view_distance_m.unwrap_or(0.0);
         if let Some(mut view) = self.node(VIEW_DISTANCE_GROUP) {
@@ -354,6 +382,31 @@ impl BfTestRunner {
                 active.view_names = names;
             }
         }
+        // The Cave tour: find the path when the zone is ready.
+        let need_tour = matches!(&self.active, Some(a)
+            if a.kind == TestKind::CaveTour
+                && !a.tour_checked
+                && matches!(a.phase, Phase::Settle { .. }));
+        if need_tour {
+            let tour = self
+                .node(CAVES_GROUP)
+                .and_then(|c| c.try_cast::<BfCaves>().ok())
+                .and_then(|c| c.bind().tour());
+            if let Some(active) = &mut self.active {
+                active.view_names = TOUR_PARTS.iter().map(|p| p.to_string()).collect();
+                if let Some(t) = &tour {
+                    active.view_names[2] = format!("chamber ({:.0} m wide)", t.chamber_width_m);
+                }
+                active.tour = tour;
+                active.tour_checked = true;
+            }
+        }
+        let cave_stats = self
+            .node(CAVES_GROUP)
+            .and_then(|c| c.try_cast::<BfCaves>().ok())
+            .map(|c| c.bind().stats());
+        let tour_speed = self.cave_tour_speed_mps.max(0.5);
+        let mut shot: Option<String> = None;
         let mut view_pose: Option<(Vector3, Vector3)> = None;
 
         // The state machine. `next` says what to do after the borrow.
@@ -395,6 +448,8 @@ impl BfTestRunner {
                     *left -= delta;
                     if active.kind == TestKind::WaterView {
                         view_pose = active.views.iter().flatten().next().copied();
+                    } else if active.kind == TestKind::CaveTour {
+                        view_pose = active.tour.as_ref().map(|t| tour_pose(t, 0.0));
                     } else {
                         aim = Some(path.at_time(0.0));
                     }
@@ -432,6 +487,40 @@ impl BfTestRunner {
                             );
                         }
                         None => {
+                            next = Next::RunDone;
+                            text = format!("{title}: run {}/{runs} is done", active.run + 1);
+                        }
+                    }
+                }
+                Phase::Fly { elapsed } if active.kind == TestKind::CaveTour => {
+                    *elapsed += delta;
+                    match &active.tour {
+                        Some(tour) if *elapsed * tour_speed < tour.length_m() => {
+                            let d = *elapsed * tour_speed;
+                            let part = tour.at(d).part;
+                            view_pose = Some(tour_pose(tour, d));
+                            frame_to_add = Some((part, delta));
+                            // A screenshot at the mouth (in and out) and
+                            // in the chamber.
+                            if part != active.tour_part {
+                                active.tour_part = part;
+                                if part == 1 || part == 2 || part == 3 {
+                                    shot = Some(format!(
+                                        "cave-tour-seed{}-{}",
+                                        spec.seed, TOUR_PARTS[part]
+                                    ));
+                                }
+                            }
+                            text = format!(
+                                "{title}: run {}/{runs}, seed {}, {}: {:.0} of {:.0} m. B or Esc stops the test.",
+                                active.run + 1,
+                                spec.seed,
+                                active.view_names[part],
+                                d,
+                                tour.length_m()
+                            );
+                        }
+                        _ => {
                             next = Next::RunDone;
                             text = format!("{title}: run {}/{runs} is done", active.run + 1);
                         }
@@ -509,6 +598,22 @@ impl BfTestRunner {
                     water_draws,
                 },
             );
+            if let (TestKind::CaveTour, Some(c)) = (active.kind, cave_stats) {
+                active.cave_stats.add(
+                    part,
+                    CaveFrame {
+                        ms,
+                        shown: c.shown as f32,
+                        bodies: c.bodies as f32,
+                        queue: c.queue as f32,
+                        upload_ms: c.upload_ms,
+                        triangles: c.triangles as f32,
+                    },
+                );
+            }
+        }
+        if let (Some(tag), Some(mut recorder)) = (shot, self.node(RECORDER_GROUP)) {
+            recorder.call("test_screenshot", &[tag.to_variant()]);
         }
         if let Some(active) = &mut self.active {
             active.last_usec = usec;
@@ -541,6 +646,10 @@ impl BfTestRunner {
         let spec = active.specs[active.run];
         let parts = active.stats.results();
         let total = active.stats.total();
+        if active.kind == TestKind::CaveTour {
+            let run = cave_run(spec.seed, active.tour.as_ref(), &active.cave_stats);
+            active.cave_runs.push(run);
+        }
         if let Some(t) = &total {
             godot_print!(
                 "BfTestRunner: seed {}, view distance {:.0} m: {:.0} fps, 1% low {:.0} fps, {:.0} draw calls",
@@ -602,7 +711,14 @@ impl BfTestRunner {
         let water_on = self
             .node(WATER_GROUP)
             .is_some_and(|mut w| w.call("is_water_shown", &[]).booleanize());
-        let settings = format!("water {}", if water_on { "on" } else { "off" });
+        let caves_on = self
+            .node(CAVES_GROUP)
+            .is_some_and(|mut c| c.call("is_caves_enabled", &[]).booleanize());
+        let settings = format!(
+            "water {}, caves {}",
+            if water_on { "on" } else { "off" },
+            if caves_on { "on" } else { "off" }
+        );
         let report = TestReport {
             kind: active.kind,
             path: self.path(),
@@ -612,8 +728,18 @@ impl BfTestRunner {
             headless,
             settings,
         };
-        let markdown = make_markdown(&report);
-        let data = make_json(&report).to_string();
+        let mut markdown = make_markdown(&report);
+        let mut json = make_json(&report);
+        if active.kind == TestKind::CaveTour {
+            if cancelled && active.cave_runs.len() < active.results.len() {
+                let spec = active.specs[active.run.min(active.specs.len() - 1)];
+                let run = cave_run(spec.seed, active.tour.as_ref(), &active.cave_stats);
+                active.cave_runs.push(run);
+            }
+            markdown.push_str(&cave_tour::make_markdown(&active.cave_runs));
+            json["caves"] = cave_tour::make_json(&active.cave_runs);
+        }
+        let data = json.to_string();
         godot_print!("BfTestRunner: {}", markdown);
         if let Some(mut recorder) = self.node(RECORDER_GROUP) {
             recorder.call(
@@ -652,5 +778,38 @@ impl BfTestRunner {
         if active.quit_at_end && self.base().is_inside_tree() {
             self.base().get_tree().quit();
         }
+    }
+}
+
+/// The camera of the Cave tour at a distance along the path: the eye,
+/// and a target 6 m further along the path.
+fn tour_pose(tour: &Tour, d: f32) -> (Vector3, Vector3) {
+    let a = tour.at(d);
+    let b = tour.at(d + 6.0);
+    let eye = Vector3::new(a.pos[0], a.pos[1], a.pos[2]);
+    let mut target = Vector3::new(b.pos[0], b.pos[1], b.pos[2]);
+    if eye.distance_to(target) < 0.5 {
+        target = eye + Vector3::new(a.dir[0], a.dir[1], a.dir[2]);
+    }
+    (eye, target)
+}
+
+/// The cave numbers of one run of the Cave tour.
+fn cave_run(seed: i64, tour: Option<&Tour>, stats: &CaveStats) -> CaveRun {
+    let about = match tour {
+        Some(t) => format!(
+            "mouth at ({:.0}, {:.0}, {:.0}), a chamber {:.0} m wide, a path of {:.0} m",
+            t.mouth[0],
+            t.mouth[1],
+            t.mouth[2],
+            t.chamber_width_m,
+            t.length_m()
+        ),
+        None => "the zone has no cave (or the caves are off)".to_string(),
+    };
+    CaveRun {
+        seed,
+        about,
+        stats: stats.clone(),
     }
 }

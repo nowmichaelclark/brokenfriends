@@ -84,6 +84,7 @@ pub fn make_report(r: &ReportInput) -> String {
     obstacle_section(&mut out, r.events);
     tumble_section(&mut out, r.events);
     water_section(&mut out, r.samples, r.events);
+    cave_section(&mut out, r.samples, r.events);
     event_section(&mut out, r.events);
     out
 }
@@ -440,6 +441,42 @@ fn water_section(out: &mut String, samples: &[Sample], events: &[Event]) {
     }
 }
 
+fn cave_section(out: &mut String, samples: &[Sample], events: &[Event]) {
+    out.push_str("\n## Caves\n\n");
+    let inside: Vec<_> = samples.iter().filter_map(|s| s.cave.as_ref()).collect();
+    let count = |prefix: &str| {
+        events
+            .iter()
+            .filter(|e| e.kind == "cave" && e.info.starts_with(prefix))
+            .count()
+    };
+    let (enters, misses) = (count("cave_enter"), count("cave_no_collision"));
+    if inside.is_empty() && enters == 0 {
+        out.push_str("- the bear was not in a cave\n");
+        return;
+    }
+    let _ = writeln!(out, "- time in caves: {} s", inside.len());
+    let _ = writeln!(
+        out,
+        "- cave_enter: {enters}, cave_leave: {}",
+        count("cave_leave")
+    );
+    let _ = writeln!(
+        out,
+        "- cave_no_collision (a cave chunk with no collision near the bear): {misses}"
+    );
+    if !inside.is_empty() {
+        let n = inside.len() as f32;
+        let sky = inside.iter().map(|c| c.sky).sum::<f32>() / n;
+        let queue = inside.iter().map(|c| c.queue).max().unwrap_or(0);
+        let upload = inside.iter().map(|c| c.upload_ms).fold(0.0f32, f32::max);
+        let _ = writeln!(
+            out,
+            "- average sky visibility {sky:.2}, largest chunk queue {queue}, slowest cave frame {upload:.2} ms (of the samples)"
+        );
+    }
+}
+
 fn count<'a>(list: &mut Vec<(&'a str, &'a str, usize)>, limb: &'a str, what: &'a str) {
     match list.iter_mut().find(|c| c.0 == limb && c.1 == what) {
         Some(c) => c.2 += 1,
@@ -699,5 +736,41 @@ mod tests {
         let mut dry = String::new();
         water_section(&mut dry, &[], &[]);
         assert!(dry.contains("not in water"));
+    }
+
+    #[test]
+    fn report_counts_the_cave_events() {
+        use crate::playtest::CaveSample;
+        let samples: Vec<Sample> = (0..4)
+            .map(|i| Sample {
+                t: i as f64,
+                cave: (i > 0).then(|| CaveSample {
+                    sky: 0.5,
+                    queue: i,
+                    upload_ms: 0.2,
+                    ..Default::default()
+                }),
+                ..Default::default()
+            })
+            .collect();
+        let ev = |info: &str| Event {
+            kind: "cave".into(),
+            info: info.into(),
+            ..Default::default()
+        };
+        let events = vec![
+            ev("cave_enter:sky=0.80"),
+            ev("cave_no_collision:2"),
+            ev("cave_leave"),
+        ];
+        let mut out = String::new();
+        cave_section(&mut out, &samples, &events);
+        assert!(out.contains("- time in caves: 3 s"), "{out}");
+        assert!(out.contains("- cave_enter: 1, cave_leave: 1"), "{out}");
+        assert!(out.contains("near the bear): 1"), "{out}");
+        assert!(out.contains("largest chunk queue 3"), "{out}");
+        let mut none = String::new();
+        cave_section(&mut none, &[], &[]);
+        assert!(none.contains("not in a cave"));
     }
 }

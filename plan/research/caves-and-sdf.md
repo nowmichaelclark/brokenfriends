@@ -69,3 +69,25 @@ columns. The code is in `rust/worldgen/src/caves/`.
 |---|---|---|
 | Inigo Quilez, "distance functions" and "smooth minimum", https://iquilezles.org/articles/ | Ellipsoid estimate, smooth union (formulas only). | Articles; no code copied. |
 | Ken Perlin, "Improving Noise" (SIGGRAPH 2002) | Gradient set and fade curve. | Paper; no code copied. |
+
+## What S-164 built (2026-11-15)
+
+The wiki is read-only for the worker of S-164, so the result is here.
+A later session can move it to the wiki page "Caves".
+
+- **Seams.** `fast-surface-nets` makes no faces on the positive
+  boundary of a chunk. Thus chunks of 32 voxels with 34 samples
+  (origin at the chunk corner minus 1 voxel) fit together. A test welds
+  8 chunks around a ball and finds each edge in exactly two triangles.
+- **Ground in the field.** The air value holds the ground surface. A
+  chunk drops each vertex that is on the ground (less than 0.6 m below
+  it, normal up) unless it is in a hole, its band or a ring of 2
+  samples more. The ring sinks 8 cm under the terrain edge.
+- **Terrain3D holes.** The hole bit in the control map of
+  `import_images` works: the bear falls through the ground at a hole
+  and stands on the cave collision (checked headless, seeds 1, 7, 42).
+- **Costs** (a laptop with another Rust build at the same time, not
+  valid): a chunk takes 2 to 6 ms on one thread, up to 50 ms under
+  load. The Cave tour shows 16 to 80 cave meshes and 20k to 160k cave
+  triangles; the cave work on the main thread is 0.04 to 0.11 ms on
+  average and 2.4 ms at most.

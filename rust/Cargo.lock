@@ -22,6 +22,7 @@ dependencies = [
  "fast-surface-nets",
  "glam 0.32.1",
  "godot",
+ "rayon",
  "serde",
  "serde_json",
 ]

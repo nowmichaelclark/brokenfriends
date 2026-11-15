@@ -40,6 +40,12 @@ pub struct BfFollowCamera {
     #[init(val = 0.2)]
     water_clearance_m: f32,
 
+    /// Near a cave, the camera stays this far from the rock along its
+    /// ray, in metres (S-164).
+    #[export]
+    #[init(val = 0.2)]
+    cave_clearance_m: f32,
+
     /// The turn for each pixel of mouse movement, in degrees.
     #[export]
     #[init(val = 0.12)]
@@ -137,9 +143,41 @@ impl ICamera3D for BfFollowCamera {
         let (sin_pitch, cos_pitch) = self.pitch.sin_cos();
         let dir = Vector3::new(sin_yaw * cos_pitch, sin_pitch, cos_yaw * cos_pitch);
 
-        // Come nearer if the ground is in the way.
+        // Come nearer if the ground is in the way. Near a cave, a ray
+        // through the cave field finds the walls and the roof (S-164).
         let mut wanted = self.distance;
-        if let Some(mut terrain) = tree.get_first_node_in_group(TERRAIN_GROUP) {
+        let mut in_cave = false;
+        let near_cave = tree
+            .get_first_node_in_group(TERRAIN_GROUP)
+            .map(|mut t| {
+                let at = [
+                    target.x.to_variant(),
+                    target.y.to_variant(),
+                    target.z.to_variant(),
+                ];
+                in_cave = t.call("in_cave", &at).booleanize();
+                t.call("near_cave", &at).booleanize()
+            })
+            .unwrap_or(false);
+        if near_cave {
+            if let Some(mut terrain) = tree.get_first_node_in_group(TERRAIN_GROUP) {
+                let hit = terrain
+                    .call(
+                        "cave_ray",
+                        &[
+                            target.to_variant(),
+                            dir.to_variant(),
+                            self.distance.to_variant(),
+                        ],
+                    )
+                    .to::<f32>();
+                wanted = if hit < self.distance {
+                    (hit - self.cave_clearance_m).max(0.05)
+                } else {
+                    self.distance
+                };
+            }
+        } else if let Some(mut terrain) = tree.get_first_node_in_group(TERRAIN_GROUP) {
             let height = |x: f32, z: f32| {
                 terrain
                     .call("height_at", &[x.to_variant(), z.to_variant()])
@@ -163,7 +201,11 @@ impl ICamera3D for BfFollowCamera {
 
         let mut position = target + dir * self.current_distance.max(0.05);
         // Stay above a lake or a pond (S-160): the water has no under side.
-        if let Some(mut terrain) = tree.get_first_node_in_group(TERRAIN_GROUP) {
+        // In a cave, a lake far above is not in the way.
+        if let Some(mut terrain) = tree
+            .get_first_node_in_group(TERRAIN_GROUP)
+            .filter(|_| !in_cave)
+        {
             let level = terrain
                 .call(
                     "water_level_at",

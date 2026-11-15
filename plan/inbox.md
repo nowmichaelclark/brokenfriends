@@ -99,3 +99,7 @@ sorts them.
 - Water: the colour of the smog for `sky_colour` from `BfAtmosphere`, so the water follows a change of the smog.
 - Seed 42: the Water view (largest lake near (-331, 451)) shows tall vertical panels with the ground grain beyond the lake. They are not water. Check what they are (terrain rings, the zone edge, an obstacle) with the fly camera.
 - Scatter: no rocks and pebbles under the water of ponds and lakes, or a darker, wet look for them.
+- Caves: a dev menu line "Caves: on/off" (`BfCaves::set_caves_enabled` exists; the menu has no line yet).
+- Caves: merge the cave chunks into fewer meshes (2 × 2 × 2 chunks) if the Cave tour shows more than 80 cave draw calls in a chamber.
+- Caves: build the collision faces of a chunk from a coarser mesh or split them, if `ConcavePolygonShape3D::set_faces` makes upload frames over 1 ms on the TUF.
+- Caves: the deep cave rock has the smog fog of the outside; S-166 gives it its own fog. Until then, the chambers look flat and pale.

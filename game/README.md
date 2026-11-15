@@ -24,8 +24,8 @@ what it assumes.
   6. The water step (S-160, `water.rs`) fills the basins. Each deep
      basin becomes a lake, and some shallow basins keep their hollow and
      become ponds (see "`BfWater`" below).
-- **The cave layer** (S-161, `bf-worldgen`, `caves/`). The game does
-  not use it yet (S-164 does). It makes two to five cave systems in each
+- **The cave layer** (S-161, `bf-worldgen`, `caves/`). `BfCaves` shows
+  it (S-164, see below). It makes two to five cave systems in each
   zone, from the zone heights and the seed:
   - Each system is a graph. A node is a chamber (a flattened ball with a
     flat floor, 40 to 250 m wide) or a joint. An edge is a tunnel (a
@@ -46,6 +46,11 @@ what it assumes.
   - Queries without a mesh: `in_cave`, `floor_below`, `ray_hit`,
     `sky_visibility` and `chamber_at`. `hole_mask` gives the hole cells
     of the mouths and a band around them, for the Terrain3D control map.
+  - Queries for the game (S-164, `walk.rs`): `wall_blocks` lists the
+    32 m blocks that can have a wall. `floor_under` gives the floor of
+    a point (the cave floor in a cave, the air above a point in rock,
+    the heightmap where no cave is near). `tour` gives the path of the
+    Cave tour test.
   - Costs (release build, on a laptop that was busy with another
     build): the graph and the grid take 30 to 70 ms for a full zone. In
     the tests, one SDF sample takes about 0.2 to 0.3 µs, and one chunk
@@ -65,6 +70,54 @@ what it assumes.
   - **Exports for speed:** `light_shader`, `grain_strength`,
     `mesh_size` (48, the most detailed ring of Terrain3D) and
     `casts_shadows` (on). `apply_look()` gives a change to Terrain3D.
+- **`BfCaves`** shows the walkable caves (S-164, `rust/game/src/caves.rs`,
+  `cave_mesh.rs`, `cave.gdshader`).
+  - **Zone.** `BfTerrain` makes the caves on its worker thread, after
+    `highlands::generate` and before the obstacles. Then it makes a
+    `CaveWorld`: the hole mask, a rim map, the list of wall chunks
+    (about 1 600 to 2 400) and the rim chunks of the mouths. This adds
+    about 0.3 to 0.6 s to a zone [unverified: a busy laptop].
+  - **Holes.** The control map of Terrain3D gets the hole bit in each
+    hole sample of a mouth and in a band of 2 samples
+    (`hole_band_cells`). Terrain3D draws no ground there and has no
+    collision there.
+  - **Chunks.** A chunk is 32 m with 1 m voxels (34³ samples). Rayon
+    worker threads run Surface Nets on the air value. A chunk takes
+    about 2 to 6 ms on one thread (up to 50 ms while another build ran).
+    The chunks fit together with no gaps (a test checks this).
+  - **The rim.** The air value holds the ground too. A chunk keeps the
+    ground part of its mesh only in the holes, the band and a ring of
+    2 samples more (`rim_ring_cells`). The ring sinks 8 cm
+    (`rim_sink_m`) under the terrain edge, so no crack shows. The rim
+    chunks always have a mesh. The ground colour of the colour map and
+    the grain texture of the terrain give the rim the look of the ground.
+    Deeper, the colour goes to `rock_colour` in 4 m.
+  - **Near the camera.** Wall chunks within 96 m of the camera get a
+    mesh (`mesh_radius_m`). The meshes cast no shadows. If the camera is
+    outside and more than 70 m from all mouths (`outside_view_m`), only
+    the rim chunks show.
+  - **Collision.** Chunks within 20 m of the bear get a `StaticBody3D`
+    with a `ConcavePolygonShape3D` (`collision_radius_m`). The jobs and
+    the uploads for the bear come first. Each frame makes at most 2
+    meshes and 1 collision shape (`meshes_per_frame`,
+    `collisions_per_frame`). The walls have the grip 0.85 (`wall_grip`).
+  - **The floor.** `BfTerrain::floor_at(x, y, z)` gives the cave floor
+    in a cave. The put-back of `BfBear`, the ragdoll, the recorder and
+    the autoplay bot use it for "through the ground". Far from caves it
+    is the heightmap, as before.
+  - **The camera.** Near a cave, `BfFollowCamera` casts a ray through
+    the cave field (`cave_ray`) and stays 0.2 m from the rock
+    (`cave_clearance_m`). In a cave, a lake above does not lift it.
+  - **No props at a mouth.** The obstacles and the scatter keep out of a
+    circle around each mouth.
+  - **Debug.** The overlay line `caves:` shows the chunks, the meshes,
+    the collision, the queue, the triangles and the CPU time of the cave
+    work. `--bf-caves=off` on the command line turns the caves (and the
+    holes) off for one process.
+  - **Recorder.** Each sample has `cave` when the bear is in a cave: the
+    sky visibility, the chunks with a mesh and with collision, the queue
+    and the CPU ms. The events are `cave_enter`, `cave_leave` and
+    `cave_no_collision`. `report.md` has a "Caves" section.
 - **`BfWater`** shows the still water: lakes and ponds (S-160,
   `rust/game/src/water.rs`, `water_mesh.rs`, `water.gdshader`, and
   `rust/worldgen/src/water.rs`). Rivers stay dry until S-162.
@@ -391,6 +444,14 @@ what it assumes.
     water near the shore and looks across the longest stretch of water,
     toward the centre of the zone. The view lasts 6 s; the numbers start
     after 2 s. S-162 and S-165 add the river and the falls.
+  - **Cave tour** (S-164): for seeds 1, 7 and 42, the camera flies at
+    10 m/s from 50 m outside the widest hillside mouth to the mouth,
+    down the tunnels to the widest chamber within 400 m, once around it
+    and back. The parts are outside, tunnel, chamber and back. A second
+    table gives the cave chunks of each part: meshes shown, collision,
+    the largest queue, the CPU ms of the cave work and the hitches
+    (frames of 50 ms or more). The recorder saves a screenshot at the
+    mouth, in the chamber and on the way back.
   - **Water draw calls.** Each test row has `water draws`: the water
     meshes in the view of the camera.
   - **Draw distance test:** the path over seed 7 at the view distances
@@ -401,7 +462,8 @@ what it assumes.
   - **While a test runs,** the recorder takes no screenshots and marks
     its hitches as "loading", so they do not disturb the numbers.
   - **From the command line** (cloud, CI): `-- --bf-test=benchmark`,
-    `-- --bf-test=draw-distance` or `-- --bf-test=water-view` starts the
+    `-- --bf-test=draw-distance`, `-- --bf-test=water-view` or
+    `-- --bf-test=cave-tour` starts the
     test when the first zone shows and quits the game at the end. Add
     `--bf-record` for a recording without a window. Add `--bf-water=off`
     to measure the same views without water (run each setting in a new
@@ -681,7 +743,7 @@ what it assumes.
     place of the ledge), and
     which bears crossed or fell off the stepping stones.
 - **`main.tscn`** is the start scene: atmosphere, terrain, water,
-  obstacles, scatter, bear, cameras, overlay and recorder.
+  caves, obstacles, scatter, bear, cameras, overlay and recorder.
 
 ## Play the latest build (Mikey)
 
@@ -1119,6 +1181,15 @@ Mikey does not build on his laptop (decision R10).
     value for all of its air.
   - The caves come from the heights before the obstacles dig their
     pits.
+- **Walkable caves (S-164).** These are first guesses too:
+  - The caves are lit like the outside, and the smog fog fills them.
+    S-166 makes them dark (the cave light and the cave fog).
+  - The cave rock is a warm brown (`rock_colour`). Near a mouth, the
+    walls have the colour of the ground above them.
+  - The cave walls have the grip 0.85. Mikey: are the cave walls easy
+    enough to climb?
+  - A lake or a pond over a hole is not checked. No such place was seen
+    on seeds 1, 7 and 42.
 - **A square zone has a round wall.** The front is a radius from the
   centre, not a distance from the border. The wall is 40 m or more
   inside the border at all places. The corners of the zone are far

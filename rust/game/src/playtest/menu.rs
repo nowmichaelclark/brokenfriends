@@ -155,6 +155,7 @@ impl MenuState {
                     Kind::Run(TestKind::DrawDistance),
                     Kind::Autoplay,
                     Kind::Run(TestKind::WaterView),
+                    Kind::Run(TestKind::CaveTour),
                 ];
                 if self.test_running {
                     v.push(Kind::Stop);
@@ -234,6 +235,13 @@ impl MenuState {
                     "Water view (a test is running)".into()
                 } else {
                     "Water view: the largest lake of seeds 1, 7 and 42".into()
+                }
+            }
+            Kind::Run(TestKind::CaveTour) => {
+                if self.test_running {
+                    "Cave tour (a test is running)".into()
+                } else {
+                    "Cave tour: into the widest mouth of seeds 1, 7 and 42".into()
                 }
             }
             Kind::Autoplay => {
@@ -510,16 +518,16 @@ mod tests {
             page: Page::Tests,
             ..MenuState::default()
         };
-        assert_eq!(m.lines().0.len(), 5);
+        assert_eq!(m.lines().0.len(), 6);
         m.test_running = true;
         let (lines, _) = m.lines();
-        assert_eq!(lines.len(), 6);
+        assert_eq!(lines.len(), 7);
         assert_eq!(m.activate(), Action::None);
-        for _ in 0..4 {
+        for _ in 0..5 {
             m.down();
         }
         assert_eq!(m.activate(), Action::StopTest);
-        assert!(lines[4].contains("Stop"));
+        assert!(lines[5].contains("Stop"));
     }
 
     #[test]
@@ -551,5 +559,7 @@ mod tests {
             t.down();
         }
         assert_eq!(t.activate(), Action::StartTest(TestKind::WaterView));
+        t.down();
+        assert_eq!(t.activate(), Action::StartTest(TestKind::CaveTour));
     }
 }

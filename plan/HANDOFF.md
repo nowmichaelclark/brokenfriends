@@ -1,118 +1,75 @@
-# Handoff to the next Brain session
+# Handoff to the next lead Brain session
 
-Written: 2026-11-14, at the end of the first Brain session of the 3D
-version (a very long claude.ai Project chat). The next Brain session
-may run on a different Claude account, with no memory of that chat.
-This file and the other plan files hold everything it needs.
+Written: 2026-11-15, evening, at the end of the first lead Brain
+session on Mikey's laptop (Claude Code, Opus 5.5). The next session
+starts with `plan/sessions/lead.md`. This file and the other plan
+files hold everything it needs.
 
 ## Start here
 
-1. Read `CLAUDE.md` (the rules for all sessions, and the writing style:
-   about 80% Simplified Technical English).
-2. Read this file, then `STATE.md`, `decisions.md` (R1 to R23), and
-   the newest section of `play-notes.md`.
-3. Read the specs only when a topic needs them: `demo-1.md`,
-   `tech.md`, `bear.md`, `obstacles.md`, `diagnostics.md`,
-   `vision.md`, `local-setup.md`, and `research/`.
+1. Read `CLAUDE.md`, then `plan/sessions/lead.md` (how the lead runs
+   workers), then this file.
+2. Read `STATE.md`, `decisions.md` (R1 to R26) and the two newest
+   sections of `play-notes.md` (the Intel GPU numbers).
+3. Read `demo-2.md` when you start a demo 2 row.
 
 ## The game in short
 
 Broken Friends is a 3D PC game in Godot 4.7.1 and Rust (godot-rust).
-The player is an old, classic teddy bear, 0.40 m tall, in a
-procedurally generated, hot, smog-filled world. MIT licence, free, no
-ads. Demo 1 is one biome (scorched highlands) where the bear walks,
-jumps and climbs (`demo-1.md`).
+The player is an old teddy bear, 0.40 m tall, in a procedural, hot,
+smoggy world. Demo 1 (one biome: walk, jump, climb, obstacles, tumble,
+seams, smoke edge) is built and waits for Mikey's feel notes. Demo 2
+(water and caves, R24, R25) started on 2026-11-15.
 
-What is built (all on `main`, all tested by the GitHub build):
-- The terrain generator (seeded, 2 x 2 km zones) and Terrain3D.
-- The bear: a model made in code from separate parts, procedural
-  animation (Overgrowth-style layers, springs, aim IK, a stride wheel),
-  climbing like Breath of the Wild (grip, stamina, hop, let go),
-  gaits for missing limbs, a Jolt ragdoll tumble, seams that tear,
-  limbs that come off and stay in the world, sewing.
-- Smog, sun, sky, dust; the draw distance follows the smog; the smoke
-  edge around the zone (death means a restart at the start point).
-- Eleven obstacle types (ash crust, rolling stones, gusts, push vents,
-  launch vents, stepping stones, updrafts, sinking sand, thorn snags,
-  rock teeth, falling rocks). The last three tear seams (S-129).
-- Diagnostics: the playtest recorder (one zip with `report.md`), the
-  gamepad dev menu, a Tests page (Benchmark, Draw distance test,
-  Autoplay tour), and autoplay on GitHub after each push and each
-  night.
+## What this session did
 
-## How Mikey works
+- Ran the S-137 tests on the Intel GPU itself. Mikey only needs to
+  play 10 minutes for S-137.
+- Read the cloud results of S-132, S-135 and S-142 (the demo 2 plan).
+- Ran workers in git worktrees under `~/dev/bf-wt/` (all removed now):
+  S-161 caves layer, S-160 still water, S-180 cheaper water, S-164
+  walkable caves, S-162 rivers, S-166 cave light, S-165 waterfalls.
+  All are on `main`, and all GitHub builds pass.
+- Measured all of it on the Intel GPU (`play-notes.md`). Short form:
+  - Lakes 1.1 to 2.2 ms and rivers 1.1 to 1.8 ms (budget 1.0 ms).
+  - Waterfalls 0.75 ms at most (budget 0.8 ms).
+  - Caves with the deep-cave cut: 71 to 73 fps. The cut saves 5 ms.
+  - Views of lakes and cave mouths need 15 to 18 ms even without
+    water. This base cost is the next speed problem (S-183).
 
-- Mikey is an English teacher in Thailand, not a game developer. He
-  gives the vision, taste and feel. On structural and technical calls
-  he asks Claude to decide as an experienced game developer would.
-- **R22:** never ask him technical questions. Read the playtest report.
-  If data is missing, add a probe or a test.
-- **R10:** he does not tune values. He plays the build from GitHub
-  (`tools/get-build.sh`) and says what he feels; sessions change the
-  defaults.
-- **R13:** he plays with a gamepad, sitting down. Everything must work
-  on the gamepad.
-- He has the $20 Claude plan, and sometimes a limited amount of Fable
-  5.2. Recommend Sonnet 5.5 for well-defined work and Opus 5.5 (or
-  Fable 5.2 at medium) for hard, open work. Effort: high for new
-  systems, medium for tuning.
-- From now on he runs Hands sessions (and maybe Brain sessions) in
-  Claude Code on his Fedora 45 laptop (`local-setup.md`). One row for
-  each session.
-- His laptops: the playtest laptop has an NVIDIA GTX 1650 (discrete).
-  The Vivobook has Intel integrated graphics: that is the real speed
-  target (R5). His disk space is limited.
-- He likes short, clear replies. He does not like long lists of
-  questions. Ask only about taste, and only a few things.
+## Recommended order
 
-## Where things stand
+1. **S-163** (swimming, Sonnet, high). It is the last row before
+   Mikey's first look at demo 2 (S-167). Parallel with it: **S-187**
+   (dev menu caves line and "go to the nearest mouth", Sonnet, low),
+   so that Mikey can find a cave. Check the overlap first: both may
+   touch `bear.rs`.
+2. Then tell Mikey to play **S-167** (and S-137 and S-184 in the same
+   sitting). His answers unblock S-191, S-192, S-202 and the tuning.
+3. Speed rows, one at a time with a quiet laptop: S-183 (base cost of
+   open views), S-181 (water to 1.0 ms), S-205 (cave base cost).
+4. Look rows: S-186 (cave rim), S-201 (falls look), S-195 then S-168
+   (light on water, then pools in caves), S-169 (far walls, Opus).
 
-The top problem is **long freezes**: 5 s freezes in the first minute
-at the start of seed 1, and a freeze of about 950 ms every few
-minutes (`play-notes.md`, S-125). S-136 found the cause: the desktop
-of the laptop, not the game (`research/freezes.md`). The new top
-problem is speed on Intel graphics: 12 fps on the Intel GPU of the
-playtest laptop (S-139).
+## Lessons for the lead
 
-**Update, 2026-11-15 (second Brain session, the lead chat):** S-139
-(about 70 fps on Intel UHD), S-108 (scatter) and S-140 (closed, not
-reproduced) are done. Mikey decided R24 to R26: water, demo 2 starts
-now, research goes in the wiki. The lead Brain chat runs cloud workers
-for S-132, S-135 and the demo 2 plan (S-142). `STATE.md` has the
-current order. The list below is the old order.
-
-Recommended order:
-1. **S-139**, the speed on Intel graphics (12 fps on the Intel GPU of
-   the playtest laptop), and **S-140**, the desktop stalls of that
-   laptop. S-138 (S-136, then S-129) is done.
-2. **S-137**, Mikey's test on the Vivobook with integrated graphics.
-3. The tuning rows from the S-125 playtest, one at a time: S-132
-   (obstacles: launch vents miss too often and tear both legs off;
-   rolling stones never hit), S-135 (tumble and seams: legs come off
-   too easily), S-126, S-130, S-131 (Sonnet 5.5, medium).
-4. S-108 (ground scatter). S-129 is done.
-5. S-109, a Brain session: play the full demo, decide what to fix,
-   plan demo 2 (caves, `tech.md` and `research/caves-and-sdf.md`).
-
-S-124 (replay) can wait until a bug cannot be understood from a
-report. S-134 waits for the first nightly autoplay result.
+- Two workers at most. Give each its own worktree. Copy
+  `tools/.cache` and `game/addons/terrain_3d` into it (`cp -a
+  --reflink=auto`), so `tools/check.sh` downloads nothing.
+- Workers must not measure GPU time when another build runs. The lead
+  measures after the builds, with the GitHub build
+  (`tools/get-build.sh`), one process for each setting.
+- Mikey's usage limit stopped two Opus workers once. A `SendMessage` to
+  the stopped agent resumed it with no lost work. Use Sonnet, high, for
+  Opus rows when the limit is low (STATE.md, "How we chose the models").
+- The workers write good weak spots. Read them before the next row.
+- Workers send a screenshot path. Send the picture to Mikey with
+  SendUserFile. He likes to see each new thing.
 
 ## Open questions for Mikey (taste only)
 
-- Obstacles (`obstacles.md`): are these the right kinds? Should the
-  bear sometimes *want* to lose a limb, for example to escape a trap?
-- The visual style is still open (R15 is a budget, not a style).
-- The ash crusts are 6 to 9 m wide. Too big for a small bear?
-
-## Lessons from the first Brain session
-
-- Start a new Brain session after each big step. The first one ran far
-  too long, and it should have handed off much earlier.
-- Several Hands sessions can run at the same time if they change
-  different systems. They merge `STATE.md` by hand; this worked.
-- Cloud sessions sometimes could not start Godot or could push only to
-  their own branch. Local sessions avoid both. `tools/check.sh` does
-  the full end-of-row check.
-- Each Hands session sends a summary with "Weak spots". Read them: they
-  found real problems (for example the crash on quit, F6 missing on
-  the gamepad).
+- The three demo 2 questions in `demo-2.md`: water colours, light in
+  deep caves, thick water as a danger.
+- Longer rivers (S-191) and true cliffs for the big falls (S-202).
+- The new water look after S-180 (S-184).
+- Demo 1: are the obstacles the right kinds? The visual style.

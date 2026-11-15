@@ -320,8 +320,10 @@ what it assumes.
     one before it [unverified: the formula in `terrain_lods()`]. At
     767 m, Terrain3D makes 4 rings instead of 7.
   - **Props.** Each `GeometryInstance3D` in the group `bf_view_ranged`
-    gets a visibility range that ends at the distance. Scatter (S-108)
-    joins this group.
+    gets a visibility range that ends at the distance. A prop can set
+    a shorter limit with the metadata `bf_view_max_m`, and a margin
+    with `bf_view_margin_m` (`ranged_end()`). The scatter (S-108) uses
+    both.
   - **The smoke wall** (S-115) is the exception. The far plane of a
     camera also reaches the far side of the wall, so the wall shows
     from far away (`keep_smoke_wall`). A forced distance (the tests)
@@ -338,6 +340,40 @@ what it assumes.
   - **Forced distance.** The dev menu and the tests set a distance
     (`set_forced_distance()`). `follow_smog` off makes the distance
     3000 m, as before S-118.
+- **`BfScatter`** puts rocks, pebbles and dead shrubs on the ground
+  (S-108, `rust/game/src/scatter.rs`, `rust/worldgen/src/scatter.rs`
+  and `props.rs`). `plan/research/scatter.md` has the method.
+  - **Placement** (Rust, no Godot). Each class has a grid of cells with
+    one prop at most. A hash of the cell and the seed gives the size,
+    place and chance, so the same seed makes the same props. The ground
+    changes the chance. Rocks like steep rock and clumps, and avoid
+    lake beds. Pebbles like riverbeds and rocky ground. Shrubs stand on
+    gentle soil in patches. No prop stands near the start point or in
+    the place of an obstacle (R23). A rock sits on the lowest ground
+    under it and goes a little into the slope.
+  - **Shapes.** A rock is 80 triangles (a round boulder or a flat slab,
+    0.18 to 3.2 m wide). A pebble is 20 triangles (2.5 to 10 cm). A dead
+    shrub is about 100 to 200 triangles (0.3 to 1.1 m high). Space
+    colonization grows its skeleton. Code makes all shapes, with flat
+    shading and a darker foot.
+  - **Chunks.** The node makes the chunks near the camera, a few each
+    frame (`build_budget_ms`), and frees the far ones. A chunk is one
+    MultiMesh for each shape (1 draw call). Ranges: rocks 320 m,
+    shrubs 110 m, pebbles 50 m. The view distance (the smog) can make
+    them shorter. Each chunk is in the group `bf_view_ranged`.
+  - **Collision.** A pool of 80 bodies moves to the rocks that are
+    nearer than 16 m to the bear and wider than 0.25 m. The shape is
+    the convex hull of the mesh. The grip is 0.9 (`bf_grip`), so the
+    bear can climb a rock. Pebbles and shrubs have no collision.
+  - **Overlay and dev menu.** The overlay line `scatter:` shows the
+    chunks, the props, the bodies and the build time of one chunk. The
+    last item of the dev menu turns the scatter off, to measure its cost.
+  - **Cost.** About 40 draw calls for the rocks, 40 for the shrubs and
+    20 for the pebbles at the full range, when the bear stands in the
+    open [unverified: counted by hand, not measured]. The pebbles are
+    about 2000 in range, and the triangles are about 40 000 [unverified].
+    The cloud container cannot measure the frame time. Mikey's laptop
+    does (the overlay and the recorder).
 - **`BfFollowCamera`** is the third-person camera. The mouse or the
   right stick turns it around the bear. It reads the heightmap and
   comes nearer when the ground is in the way.
@@ -491,7 +527,7 @@ what it assumes.
     type in "Obstacles". It also tells where each launch ended, and
     which bears crossed or fell off the stepping stones.
 - **`main.tscn`** is the start scene: atmosphere, terrain, obstacles,
-  bear, cameras, overlay and recorder.
+  scatter, bear, cameras, overlay and recorder.
 
 ## Play the latest build (Mikey)
 
@@ -827,6 +863,16 @@ Mikey does not build on his laptop (decision R10).
 - **Obstacle numbers are first guesses** (wind speed, throw speed,
   shake time, rhythm). Nobody played them yet. Mikey tells Claude
   what feels unfair or dull.
+- **The scatter is a first guess** (S-108). The sizes are real: a 0.18
+  m stone is half the height of the bear, and a 3 m boulder is huge for
+  it. The numbers (how many, how big, how far) are not played yet. Mikey:
+  is the ground too empty or too busy? Are the rocks good to climb? Do
+  you see pebbles or shrubs appear at the edge of their range?
+- **The bear walks through shrubs and small stones.** Only rocks wider
+  than 0.25 m have collision, and only near the bear. A dead shrub is
+  only a look.
+- **Props do not move.** A rock does not fall, and the bear cannot push
+  it. The obstacles of R23 stay the only moving things.
 - **Same world on all computers.** The generator uses its own `sin`,
   `cos` and `exp` (`detmath.rs`), not the functions of the operating
   system. A test on Windows did not run yet [unverified].

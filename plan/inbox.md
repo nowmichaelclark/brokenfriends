@@ -77,3 +77,8 @@ sorts them.
 - Obstacles: collision for thorn bushes and rock teeth, and rock teeth in the real slide paths (record where the bear slides first).
 - Obstacles: a dark shadow disc on the ground as the tell of a falling rock, not only dust.
 - Playtest laptop: the game window draws nothing while it is fully behind other windows; a test session must keep it in front, or the screenshots and render numbers are stale.
+- Scatter: if the draw calls are too many on the Intel GPU, put all shapes of a chunk in one mesh and draw it with one MultiMesh (a shape index in the instance colour alpha), or use bigger chunks for the far rocks.
+- Scatter: if the build time of a chunk shows in the hitches, make the chunks on a worker thread (the placement is pure Rust) and give the finished buffers to the main thread.
+- Scatter: let the wind move the dead shrubs (a vertex shader with a sway), and let the bear push them aside.
+- Scatter: use `visibility_range_fade_mode` for the pebbles if Mikey sees them pop at 50 m.
+- Scatter: a rock that the bear can use: ledges on a big slab, and rocks near a wall as steps for a climb. Needs a look at the climb notes first.

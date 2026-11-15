@@ -14,6 +14,8 @@ far = 3000.0
 
 [node name="Obstacles" type="BfObstacles" parent="."]
 
+[node name="Scatter" type="BfScatter" parent="."]
+
 [node name="Bear" type="BfBear" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 600, 0)
 

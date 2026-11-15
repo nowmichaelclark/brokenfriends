@@ -24,6 +24,7 @@ mod overlay;
 mod playtest;
 mod ragdoll;
 mod recorder;
+mod scatter;
 mod smoke_dose;
 mod smoke_edge;
 mod spring;

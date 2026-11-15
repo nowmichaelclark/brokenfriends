@@ -7,6 +7,8 @@
 //! - the far plane of each camera (group `bf_view_cameras`),
 //! - the number of mesh rings of Terrain3D (`BfTerrain::set_draw_distance`),
 //! - the end of the visibility range of each prop (group `bf_view_ranged`).
+//!   A prop can set its own limit with the metadata `bf_view_max_m` and
+//!   `bf_view_margin_m`.
 //!
 //! The dev menu can force a different distance (for the tests).
 
@@ -27,6 +29,29 @@ pub const VIEW_CAMERA_GROUP: &str = "bf_view_cameras";
 /// range. The range ends at the view distance. A prop is not drawn
 /// beyond it. Scatter (rocks, shrubs) joins this group.
 pub const VIEW_RANGED_GROUP: &str = "bf_view_ranged";
+
+/// The metadata of a ranged prop: the longest range that it keeps, in
+/// metres. A pebble needs no range of 700 m. Without this value, the
+/// range is the view distance.
+pub const VIEW_MAX_META: &str = "bf_view_max_m";
+
+/// The metadata of a ranged prop: metres that the end of the range
+/// gets in addition. A MultiMesh chunk is one big node. Godot measures
+/// its distance from the middle of the chunk [unverified], so the
+/// margin must be about half the diagonal of the chunk.
+pub const VIEW_MARGIN_META: &str = "bf_view_margin_m";
+
+/// Gives the end of the visibility range of a prop in metres. The range
+/// is the view distance, or `max_m` if that is shorter (0 means no
+/// limit), plus `margin_m`.
+pub fn ranged_end(distance: f32, max_m: f32, margin_m: f32) -> f32 {
+    let base = if max_m > 0.0 {
+        distance.min(max_m)
+    } else {
+        distance
+    };
+    base + margin_m.max(0.0)
+}
 
 /// Gives the distance at which the exponential smog has this part of
 /// its full strength, in metres. Godot makes the smog of an object at
@@ -218,8 +243,16 @@ impl BfViewDistance {
         }
         for node in tree.get_nodes_in_group(VIEW_RANGED_GROUP).iter_shared() {
             if let Ok(mut prop) = node.try_cast::<GeometryInstance3D>() {
-                if (prop.get_visibility_range_end() - distance).abs() > 0.5 {
-                    prop.set_visibility_range_end(distance);
+                let meta = |name: &str| {
+                    if prop.has_meta(name) {
+                        prop.get_meta(name).try_to::<f32>().unwrap_or(0.0)
+                    } else {
+                        0.0
+                    }
+                };
+                let end = ranged_end(distance, meta(VIEW_MAX_META), meta(VIEW_MARGIN_META));
+                if (prop.get_visibility_range_end() - end).abs() > 0.5 {
+                    prop.set_visibility_range_end(end);
                 }
             }
         }
@@ -277,6 +310,19 @@ mod tests {
         assert_eq!(terrain_lods(800.0, 48, 1.0, 7), 5);
         assert_eq!(terrain_lods(3000.0, 48, 1.0, 7), 6);
         assert_eq!(terrain_lods(100000.0, 48, 1.0, 7), 7);
+    }
+
+    #[test]
+    fn a_ranged_prop_keeps_its_own_limit() {
+        // No limit: the view distance.
+        assert_eq!(ranged_end(767.0, 0.0, 0.0), 767.0);
+        // A limit that is shorter than the view distance.
+        assert_eq!(ranged_end(767.0, 50.0, 0.0), 50.0);
+        // A limit that is longer: the view distance wins.
+        assert_eq!(ranged_end(100.0, 320.0, 0.0), 100.0);
+        // The margin of a chunk is added at the end.
+        assert_eq!(ranged_end(767.0, 50.0, 23.0), 73.0);
+        assert_eq!(ranged_end(767.0, 50.0, -5.0), 50.0);
     }
 
     #[test]

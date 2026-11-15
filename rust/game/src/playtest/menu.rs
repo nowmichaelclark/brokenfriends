@@ -44,6 +44,8 @@ pub enum Action {
     RestoreLimbs,
     /// Put the bear at the next obstacle (the same as F6).
     NextObstacle,
+    /// Turn the ground scatter (rocks, pebbles, shrubs) on or off.
+    ToggleScatter,
     /// Throw the bear, so it tumbles. `true` is a hard throw that can
     /// tear limbs.
     Tumble(bool),
@@ -61,6 +63,7 @@ enum Kind {
     TestsPage,
     LimbsPage,
     NextObstacle,
+    Scatter,
     Limb(usize),
     RestoreLimbs,
     Tumble(bool),
@@ -79,6 +82,8 @@ pub struct MenuState {
     pub seed: i64,
     pub fly_camera: bool,
     pub overlay: bool,
+    /// The ground scatter shows.
+    pub scatter: bool,
     /// The index in `VIEW_STEPS`.
     view: usize,
     /// The distance of the smog in metres, for the label of "auto".
@@ -96,6 +101,7 @@ impl Default for MenuState {
             seed: 1,
             fly_camera: false,
             overlay: true,
+            scatter: true,
             view: 0,
             smog_distance_m: 0.0,
             test_running: false,
@@ -124,6 +130,7 @@ impl MenuState {
                 Kind::Save,
                 Kind::TestsPage,
                 Kind::NextObstacle,
+                Kind::Scatter,
             ],
             Page::Limbs => vec![
                 Kind::Limb(0),
@@ -174,6 +181,10 @@ impl MenuState {
             Kind::Overlay => format!("Debug overlay: {}", on(self.overlay)),
             Kind::NewZone => "New zone (next seed)".into(),
             Kind::NextObstacle => "Go to the next obstacle (each time: the next type)".into(),
+            Kind::Scatter => format!(
+                "Ground scatter (rocks, pebbles, shrubs): {}",
+                on(self.scatter)
+            ),
             Kind::Seed => format!(
                 "Seed: {}   (left, right: change. A: make the zone)",
                 self.seed
@@ -271,6 +282,7 @@ impl MenuState {
             Kind::Overlay => Action::ToggleOverlay,
             Kind::NewZone => Action::NewZone,
             Kind::NextObstacle => Action::NextObstacle,
+            Kind::Scatter => Action::ToggleScatter,
             Kind::Seed => Action::MakeZone(self.seed),
             Kind::View => self.adjust(1),
             Kind::Save => Action::SavePlaytest,
@@ -344,11 +356,15 @@ mod tests {
     }
 
     #[test]
-    fn next_obstacle_is_the_last_main_item() {
+    fn the_scatter_toggle_is_the_last_main_item() {
         let mut m = MenuState::default();
         m.up();
-        assert_eq!(m.activate(), Action::NextObstacle);
+        assert_eq!(m.activate(), Action::ToggleScatter);
         assert_eq!(m.page, Page::Main);
+        assert!(m.lines().0.last().unwrap().contains("scatter"));
+        // The next obstacle is the item before it.
+        m.up();
+        assert_eq!(m.activate(), Action::NextObstacle);
     }
 
     #[test]

@@ -3,6 +3,58 @@
 Mikey's notes from play sessions. The newest section is at the top.
 Claude sessions use these notes to change the default values.
 
+## 2026-11-15, lead Brain: water, rivers, falls and caves on the Intel GPU, build 2e2d5f8
+
+The lead Brain ran six tests on the Intel GPU (`--gpu-index 0`), each
+in a new process, with no build at the same time. This does the
+measurements of S-185, S-190, S-196 and S-200 (one run of each).
+The numbers are GPU ms for each frame. Run-to-run noise is about 0.5 ms.
+
+**Water view** (all water, no falls, no water):
+
+| Seed | View | All | No falls | No water | Water | Falls |
+|---|---|---|---|---|---|---|
+| 1 | Lake #19 | 19.6 | 18.9 | 17.4 | 2.2 | – |
+| 1 | River #45 | 17.6 | 17.4 | 16.5 | 1.1 | – |
+| 1 | Fall #32 (49 m high, 30 m wide) | 16.1 | 15.35 | 15.1 | 1.0 | 0.75 |
+| 7 | Lake #21 | 18.5 | 18.4 | 16.8 | 1.7 | – |
+| 7 | River #49 | 19.8 | 19.9 | 18.0 | 1.8 | – |
+| 7 | Fall #4 (3 m high) | 15.6 | 15.55 | 14.9 | 0.7 | 0.05 |
+| 42 | Lake #42 | 19.1 | 19.1 | 18.0 | 1.1 | – |
+| 42 | River #49 | 16.8 | 16.6 | 15.4 | 1.4 | – |
+| 42 | Fall #30 (6 m high) | 17.1 | 16.95 | 16.2 | 0.9 | 0.15 |
+
+- The lakes cost 1.1 to 2.2 ms (budget 1.0 ms). S-180 measured 1.2 ms.
+- The rivers cost 1.1 to 1.8 ms. A river can cost more than a lake.
+- The waterfalls cost 0.75 ms at most (budget 0.8 ms). No cut is needed.
+- Without water, these views already need 14.9 to 18.0 ms. Some views
+  are below 60 fps before any water (S-183).
+- The tallest and the widest fall are the same fall on each seed.
+  On seeds 7 and 42 the test chose small falls (3 m and 6 m).
+
+**Cave tour** (the deep-cave cut on, and off):
+
+| Seed | Part | Cut on | Cut off |
+|---|---|---|---|
+| 1 | Outside | 16.5 | 16.6 |
+| 1 | Tunnel | 14.0 | 17.0 |
+| 1 | Chamber (100 m) | 11.4 | 16.4 |
+| 7 | Outside | 18.0 | 17.8 |
+| 7 | Tunnel | 13.4 | 17.9 |
+| 7 | Chamber (106 m) | 12.0 | 17.6 |
+| 42 | Outside | 16.9 | 17.0 |
+| 42 | Tunnel | 12.9 | 16.5 |
+| 42 | Chamber (140 m) | 11.6 | 16.8 |
+
+- With the cut, the tour gives 71 to 73 fps (1% low 41 to 44 fps).
+  Without it, 54 to 58 fps. The cut saves about 5 ms in a chamber.
+  Thus a stronger cut (S-197) is not necessary now.
+- The cave code on the main thread needs 0.1 to 0.2 ms on average and
+  2.7 ms at most. The tour had 0 hitches in play.
+- The view outside a mouth needs 16.5 to 18 ms (52 to 56 fps). The
+  test cannot give the cost of the caves outside: with `--bf-caves=off`
+  it finds no cave and flies nowhere (S-205).
+
 ## 2026-11-15, lead Brain: the Water view on the Intel GPU, build 393c26b
 
 The lead Brain ran `--bf-test=water-view` twice on the Intel GPU

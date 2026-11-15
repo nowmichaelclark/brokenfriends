@@ -21,7 +21,9 @@ changes the plan.
    `game/README.md`, "Proposed" in `decisions.md`), with options and a
    recommendation. Write decisions only after he agrees.
 6. Check the way of working: the cycle, the gate, the usage limits.
-   Propose a change if a step does not work.
+   Read the "Model check" lines of the handoff commits
+   (`git log --grep "Model check"`), and change the model table in
+   `lead.md` from them. Propose a change if a step does not work.
 7. Write `STATE.md` again: the phase, the cycle, one table for each
    lead, each row with a model and an effort.
 

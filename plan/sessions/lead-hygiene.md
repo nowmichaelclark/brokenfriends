@@ -10,10 +10,12 @@ features and does not change how the game plays.
   Hygiene lead. Each one gets a row, a line in `inbox.md`, or a fix.
 - **Docs.** `game/README.md` tells what the build is now. The briefs,
   `tech.md` and the specs agree with `decisions.md`.
-- **`STATE.md` and `rows.md`.** No row waits on a row that is gone.
-  Each row is in both files. `STATE.md` is below 90 lines.
+- **`STATE.md` and `rows.md`.** `tools/check-plan.py` checks that
+  they agree. Read the rows too: is each row still true, in the
+  correct table, with the correct "Play" column?
 - **Tests and CI.** Flaky tests, slow tests, things that only CI
-  builds, warnings in the headless load, the nightly autoplay report.
+  builds, warnings in the headless load. A bug that the nightly
+  autoplay shows becomes a row in the Fix table.
 - **Code.** Dead code, copies of the same logic, values that are not
   `#[export]`, `Default` values that differ from the exported ones.
 - **Disk.** Old worktrees in `~/dev/bf-wt/`, old `target/` folders.

@@ -15,8 +15,9 @@ build with his notes applied on the same day.
    only after he agrees.
 4. Do the tuning rows that his notes unblock. Most rows change
    `#[export]` defaults. Run two workers if the rows share no system.
-5. If a note needs new work and not a new value, add a row to the
-   Builder table.
+5. If a note is a bug (a thing that is wrong, not a thing that feels
+   wrong), add a row to the Fix table with the seed, the place and
+   the mark. If a note needs new work, add a row to the Builder table.
 6. Tell Mikey which build has the changes and what to look at.
 
 ## Rules

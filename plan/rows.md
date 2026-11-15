@@ -114,7 +114,7 @@ Where: Mikey's TUF laptop. Model: Mikey.
 
 ## S-174
 
-**Brain: tune demo 2 from S-167.** Read the zip and Mikey's answers. Write his decisions with him, and add tuning rows S-175 to S-179.
+**Brain: tune demo 2 from S-167.** Read the zip and Mikey's answers. Write his decisions with him, and add the tuning rows.
 
 Where: Claude Code (local). Model: Opus 5.5, medium.
 
@@ -203,7 +203,7 @@ Where: Lead chat (cloud worker). Model: Sonnet 5.5, low.
 Where: Claude Code (local). Model: Sonnet 5.5, medium.
 ## S-207
 
-**Hygiene: make the old briefs and docs agree with the plan.** `sessions/build.md` sends research to `plan/research/` (R26 says the wiki), names only `demo-1.md` and S-101, and does not name `rows.md`. `sessions/brain.md` names a "Hands session". `sessions/play.md` does not name the one-sitting rule. `tech.md` and `game/README.md` can have text from before demo 2. Fix each doc; do not change a rule.
+**Hygiene: make the docs agree with the plan.** `tech.md`, `demo-1.md`, `demo-2.md`, `diagnostics.md`, `local-setup.md` and `game/README.md` can have text from before demo 2 and from before the lead types (R27). Fix each doc; do not change a rule. The session briefs are already done (S-206).
 
 Where: Claude Code (local or cloud). Model: Sonnet 5.5, medium.
 
@@ -230,3 +230,9 @@ Where: Claude Code (local or cloud). Model: Opus 5.5, medium.
 **Bird's-eye: the first look from above.** Sort `inbox.md` (delete what is built, group the rest by system, mark what fits `vision.md`). Give Mikey the list "Proposed, Mikey must decide" of `decisions.md` and the "Assumed" list of `game/README.md` as short taste questions; technical points that are in use for weeks become decisions if he agrees. Check the order of all agendas against demo 2 and the proc-gen direction. Write `STATE.md` again.
 
 Where: Claude Code (local). Model: Fable 5.2, medium (or Opus 5.5, high).
+
+## S-212
+
+**Fix: the visual and collision bugs that Mikey sees now** (Mikey, 2026-11-15). Mikey gives one line for each bug in his own words (what he saw, and about where), or taps a mark in a play. For each bug: find the seed and the place (the mark, the newest zips in `~/Games/broken-friends-linux/playtests/`, or the fly camera), make a picture, and follow `sessions/lead-fix.md`. Known places to look at first: the tall vertical panels beyond the lake of seed 42 near (-331, 451) (`inbox.md`), the stepped walls at the river mouths (seed 7, river #49), the cave rim (S-186 has it), and the small put-back on seed 7 near (-256, 201) (S-134 has it).
+
+Where: Claude Code (local). Model: Opus 5.5, high.

@@ -88,7 +88,8 @@ this style.
 
 ## End of every agenda row
 
-1. Run `tools/check.sh`. It runs `cargo fmt`, `clippy` and `test`,
+1. Run `tools/check.sh`. It checks the plan files
+   (`tools/check-plan.py`), runs `cargo fmt`, `clippy` and `test`,
    builds the library, installs Godot 4.7.1 (into `tools/.cache/`)
    and Terrain3D if they are missing, and loads the game headless. Fix
    the problems that it shows. During the work, `tools/check.sh

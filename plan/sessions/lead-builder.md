@@ -6,8 +6,9 @@ Mikey the next thing to see.
 
 ## Steps
 
-1. Check the play gate (`lead.md`). If it is closed, do not start a
-   feature row. Tell Mikey, and name the lead that can run.
+1. Check the play gate (`lead.md`). If it is closed, start only rows
+   with "–" or a ready play row in the "Play" column. If no such row
+   is ready, tell Mikey, and name the lead that can run.
 2. Select the rows of the wave. Prefer the rows that unblock a play
    row. Write down the files of each row, and pair only rows with no
    overlap.
@@ -15,7 +16,8 @@ Mikey the next thing to see.
 4. After each worker: read its weak spots, check that the GitHub build
    passes, and send its picture to Mikey.
 5. For each weak spot about speed, add a row to the Speed table. For
-   each one about docs or tests, add a row to the Hygiene table.
+   a bug, add a row to the Fix table. For docs or tests, add a row to
+   the Hygiene table. Give each new Builder row a "Play" column.
 6. When a play row becomes ready, count the gate again.
 
 ## Rules

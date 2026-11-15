@@ -3,8 +3,9 @@
 A Brain session plans with Mikey. It runs in Claude Code in the repo
 (`plan/local-setup.md`), so it can read and change the plan files and
 push them. If it runs in a chat that cannot write to the repo, it
-gives each file change as a full block, and the next Hands session
-applies it.
+gives each file change as a full block, and the next session in
+Claude Code applies it. The Bird's-eye lead and the Feel lead are
+Brain sessions with a fixed job (`lead.md`).
 
 ## Read first
 
@@ -21,8 +22,9 @@ newest section of `play-notes.md`, and the spec that the row names.
 - Do not ask Mikey technical questions (R22). Read the playtest
   reports. If data is missing, add a recorder probe or a test as a new
   row.
-- At the end, rewrite the agenda in `STATE.md`. For each row, give the
-  place, the model and the effort that you recommend.
+- At the end, write the agenda in `STATE.md` again, with the full text
+  of each new row in `rows.md`. For each row, give the lead table, the
+  model and the effort that you recommend. Run `tools/check-plan.py`.
 - At the end of your reply, write **Weak spots**: three or more honest
   problems.
 

@@ -4,21 +4,24 @@ Use Claude Code only. This session builds, runs and pushes.
 
 ## Read first
 
-Read these files: `CLAUDE.md`, your row in `STATE.md`, `tech.md`,
-`demo-1.md`, and `game/README.md` (after S-101 makes it). Then read
-only the code that you will change.
+Read these files: `CLAUDE.md`, your row in `STATE.md` and its full
+text in `rows.md`, `tech.md`, the spec that the row names (`demo-1.md`
+or `demo-2.md`), and `game/README.md`. Then read only the code that
+you will change. If a lead started you, do what its brief says about
+row numbers and `STATE.md`.
 
 ## Steps
 
 1. Write the "done when" of your row again in your own words. If the
    row has no "done when," add one to the row first.
-2. Look for references before you code. Read the files in
-   `plan/research/` that are about your topic. Then use a subagent to
-   find 2 or 3 open-source repos or articles that solve the same
-   problem. Tell it to send back a short summary: the method, the
-   cost, and the licence. Write the useful points in
-   `plan/research/<topic>.md`. Do not copy code with a licence that
-   does not fit MIT.
+2. Look for references before you code. Read the wiki articles in
+   `~/dev/wiki/Broken Friends/` and the old notes in `plan/research/`
+   that are about your topic. If they do not answer the question, use
+   a subagent to find 2 or 3 open-source repos or articles that solve
+   the same problem. Tell it to send back a short summary: the
+   method, the cost, and the licence. Write the useful points as a
+   wiki article (R26), and link to it. Do not copy code with a licence
+   that does not fit MIT.
 3. Build in small steps. After each step, compile and run the game
    headless. If the change is visible, make a screenshot (see
    `tech.md`, "Tests in Claude Code").
@@ -32,7 +35,10 @@ only the code that you will change.
    version. Add it to "Assumed" in `game/README.md`. Ask Mikey in your
    summary.
 7. If a change can cost frame time, write it down. Also write how to
-   measure it on Mikey's laptop.
+   measure it on Mikey's laptop. Do not measure GPU time yourself
+   while a different build runs; the Speed lead measures.
+8. Keep the values that a seed could select as data (ranges and
+   weights), not as constants in the code (`vision.md`).
 
 ## Done when
 

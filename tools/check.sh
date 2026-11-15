@@ -4,7 +4,7 @@
 # Godot 4.7.1 (into tools/.cache/) and the Terrain3D addon.
 #
 #   tools/check.sh          all checks
-#   tools/check.sh --quick  only cargo fmt, clippy and test
+#   tools/check.sh --quick  only the plan check, cargo fmt, clippy and test
 #
 # It also runs a short autoplay tour on seed 7 (S-133). It exits with
 # an error if a check fails, if the bear falls through the ground or if
@@ -16,6 +16,9 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cache="${root}/tools/.cache"
 
 step() { echo; echo "== $* =="; }
+
+step "Plan files (STATE.md and rows.md)"
+python3 "${root}/tools/check-plan.py"
 
 step "cargo fmt, clippy and test"
 cd "${root}/rust"

@@ -1,8 +1,9 @@
 # Handoff to the next lead session
 
 Written: 2026-11-15, night, at the end of S-206 (a planning lead,
-Fable 5.2). **The next lead is a Builder lead.** Mikey starts it with:
-"Start the Builder lead. Read plan/sessions/lead.md."
+Fable 5.2). **The next lead is a Fix lead** (S-212), then a Builder
+lead. Mikey starts it with: "Start the Fix lead. Read
+plan/sessions/lead.md."
 
 ## Start here
 
@@ -41,9 +42,12 @@ light are on `main` (build 2e2d5f8).
 ## Mikey's bugs (S-212)
 
 Mikey said on 2026-11-15 that the game has visual bugs and collision
-bugs now. He has not listed them yet. If he gives the list, start a
-Fix lead before the Builder lead (`lead-fix.md`). Do not ask him for
-seeds or numbers (R22): one line of words, or a mark, for each bug.
+bugs now. His first three are in `rows.md`, S-212: the water edge is
+square and does not follow the ground, a bright haze shows deep in the
+caves, and the camera sometimes goes through the ground. He says there
+are more. Do not ask him for seeds or numbers (R22): one line of
+words, or a mark, for each bug. The water bug and S-181 change the
+same files, so do not run them at the same time.
 
 ## The first wave
 

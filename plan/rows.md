@@ -86,6 +86,14 @@ Where: Lead chat (cloud worker). Model: Sonnet 5.5, medium.
 
 **Build: the far walls of big chambers.** A second level of cave chunks (2 m voxels from about 48 m), hidden seams, and occluders from the cave shells if the Cave tour shows overdraw. Parallel: the water rows.
 
+Mikey's first list (2026-11-15, his words in short; he says there are more):
+
+1. **The water does not follow the ground and looks square**, not natural. First idea [unverified]: the water edge follows the quads of the mesh (2 m for lakes, 1 m for rivers), and the shore fade reads the depth only at the vertices (weak spot of S-160). Look at lake and river shores on seeds 1, 7 and 42, on steep and on flat banks. S-181 (Speed) has the idea of a dithered shore edge; do the two rows together or one after the other, because both change `water.gdshader` and the water mesh.
+2. **A thing like bright smog deep in the caves.** Mikey is not sure that it is the smog. First ideas [unverified]: the cave fog takes the smog colour too far from a mouth (S-166), or a thing from outside still draws in the deep cave (the smoke wall cards, the sky, dust, mist; the deep-cave cut hides only the terrain). Run the Cave tour, make pictures in the chambers of seeds 1, 7 and 42, and turn the parts off one at a time.
+3. **The camera sometimes goes through the ground.** First idea [unverified]: the follow camera reads the heightmap, and a ray only near a cave (S-164), so rocks, crust lids, cave rims and steep ground behind the bear can cut the view (`inbox.md` has two lines on this). Add a recorder probe that counts the frames with the camera below the ground or in a mesh, with the place, so the autoplay finds the places.
+
+Ask Mikey for the other bugs after these three, or read his marks in the next playtest.
+
 Where: Claude Code (local). Model: Opus 5.5, high.
 
 ## S-170
@@ -182,6 +190,14 @@ Where: Claude Code (local). Model: Sonnet 5.5, medium.
 
 **Build: true cliffs for the feature falls, if Mikey wants them** (S-165 "Assumed" in `game/README.md`). Carve a flat lip and a near-vertical drop with an overhang at the best candidate, and raise the river levels to match. Check that caves, obstacles and scatter still fit the carved ground.
 
+Mikey's first list (2026-11-15, his words in short; he says there are more):
+
+1. **The water does not follow the ground and looks square**, not natural. First idea [unverified]: the water edge follows the quads of the mesh (2 m for lakes, 1 m for rivers), and the shore fade reads the depth only at the vertices (weak spot of S-160). Look at lake and river shores on seeds 1, 7 and 42, on steep and on flat banks. S-181 (Speed) has the idea of a dithered shore edge; do the two rows together or one after the other, because both change `water.gdshader` and the water mesh.
+2. **A thing like bright smog deep in the caves.** Mikey is not sure that it is the smog. First ideas [unverified]: the cave fog takes the smog colour too far from a mouth (S-166), or a thing from outside still draws in the deep cave (the smoke wall cards, the sky, dust, mist; the deep-cave cut hides only the terrain). Run the Cave tour, make pictures in the chambers of seeds 1, 7 and 42, and turn the parts off one at a time.
+3. **The camera sometimes goes through the ground.** First idea [unverified]: the follow camera reads the heightmap, and a ray only near a cave (S-164), so rocks, crust lids, cave rims and steep ground behind the bear can cut the view (`inbox.md` has two lines on this). Add a recorder probe that counts the frames with the camera below the ground or in a mesh, with the place, so the autoplay finds the places.
+
+Ask Mikey for the other bugs after these three, or read his marks in the next playtest.
+
 Where: Claude Code (local). Model: Opus 5.5, high.
 
 ## S-203
@@ -234,5 +250,13 @@ Where: Claude Code (local). Model: Fable 5.2, medium (or Opus 5.5, high).
 ## S-212
 
 **Fix: the visual and collision bugs that Mikey sees now** (Mikey, 2026-11-15). Mikey gives one line for each bug in his own words (what he saw, and about where), or taps a mark in a play. For each bug: find the seed and the place (the mark, the newest zips in `~/Games/broken-friends-linux/playtests/`, or the fly camera), make a picture, and follow `sessions/lead-fix.md`. Known places to look at first: the tall vertical panels beyond the lake of seed 42 near (-331, 451) (`inbox.md`), the stepped walls at the river mouths (seed 7, river #49), the cave rim (S-186 has it), and the small put-back on seed 7 near (-256, 201) (S-134 has it).
+
+Mikey's first list (2026-11-15, his words in short; he says there are more):
+
+1. **The water does not follow the ground and looks square**, not natural. First idea [unverified]: the water edge follows the quads of the mesh (2 m for lakes, 1 m for rivers), and the shore fade reads the depth only at the vertices (weak spot of S-160). Look at lake and river shores on seeds 1, 7 and 42, on steep and on flat banks. S-181 (Speed) has the idea of a dithered shore edge; do the two rows together or one after the other, because both change `water.gdshader` and the water mesh.
+2. **A thing like bright smog deep in the caves.** Mikey is not sure that it is the smog. First ideas [unverified]: the cave fog takes the smog colour too far from a mouth (S-166), or a thing from outside still draws in the deep cave (the smoke wall cards, the sky, dust, mist; the deep-cave cut hides only the terrain). Run the Cave tour, make pictures in the chambers of seeds 1, 7 and 42, and turn the parts off one at a time.
+3. **The camera sometimes goes through the ground.** First idea [unverified]: the follow camera reads the heightmap, and a ray only near a cave (S-164), so rocks, crust lids, cave rims and steep ground behind the bear can cut the view (`inbox.md` has two lines on this). Add a recorder probe that counts the frames with the camera below the ground or in a mesh, with the place, so the autoplay finds the places.
+
+Ask Mikey for the other bugs after these three, or read his marks in the next playtest.
 
 Where: Claude Code (local). Model: Opus 5.5, high.

@@ -16,6 +16,7 @@
 //!
 //! The logic without Godot is in `crate::playtest`.
 
+use crate::atmosphere::ATMOSPHERE_GROUP;
 use crate::bear::BEAR_GROUP;
 use crate::playtest::detect::{Detectors, Found, FrameInput};
 use crate::playtest::frame_parts::{FrameMarks, FrameParts};
@@ -425,6 +426,39 @@ impl BfRecorder {
         );
         event.value = Some(seed as f64);
         self.write_event(event);
+        // The look settings that cost GPU time (S-139). They are exports,
+        // so a session can change them. The report then shows the values.
+        let atmosphere = self
+            .base()
+            .get_tree()
+            .get_first_node_in_group(ATMOSPHERE_GROUP);
+        let get = |node: &Gd<Node>, name: &str| {
+            let value = node.get(name);
+            match value.get_type() {
+                VariantType::BOOL => json!(value.to::<bool>()),
+                VariantType::INT => json!(value.to::<i64>()),
+                VariantType::FLOAT => json!(value.to::<f64>()),
+                _ => json!(value.to_string()),
+            }
+        };
+        let mut look = json!({
+            "terrain_light_shader": get(&terrain, "light_shader"),
+            "terrain_casts_shadows": get(&terrain, "casts_shadows"),
+            "terrain_mesh_size": get(&terrain, "mesh_size"),
+            "terrain_grain_strength": get(&terrain, "grain_strength"),
+        });
+        if let Some(atmosphere) = &atmosphere {
+            for name in [
+                "shadow_map_size",
+                "shadow_cascades",
+                "shadow_distance",
+                "soft_shadows",
+                "ambient_from_sky",
+            ] {
+                look[name] = get(atmosphere, name);
+            }
+        }
+        self.session["look"] = look;
         let zone = json!({"t": t, "seed": seed, "generation_s": seconds, "import_ms": import, "obstacles": obstacles});
         if let Some(zones) = self.session["zones"].as_array_mut() {
             zones.push(zone);

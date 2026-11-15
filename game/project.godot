@@ -29,3 +29,5 @@ window/size/mode=2
 
 renderer/rendering_method="mobile"
 renderer/rendering_method.mobile="mobile"
+lights_and_shadows/directional_shadow/size=2048
+lights_and_shadows/directional_shadow/soft_shadow_filter_quality=0

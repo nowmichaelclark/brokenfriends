@@ -1,6 +1,6 @@
 # State
 
-Updated: 2026-11-15 (S-108 done: ground scatter of rocks, pebbles and dead shrubs; S-140 closed: KWin stalls not reproduced)
+Updated: 2026-11-15 (S-139: Intel UHD Graphics from 12 fps to about 70 fps; S-108 done: ground scatter)
 
 Write this file again each time. Do not add to the end (90 lines at most).
 
@@ -23,6 +23,9 @@ each night. A hard hit makes the bear tumble as a Jolt ragdoll (R11);
 hits tear the seams, a limb dangles or falls off, and the bear sews it
 on again (R12). Rocks, pebbles and dead shrubs (S-108) stream in near
 the camera. The S-125 freezes come from the desktop (`research/freezes.md`).
+On Intel UHD Graphics, a frame needs about 12 to 13.4 ms of GPU time
+with the scatter (S-139: light terrain shader, cheaper shadows and sky
+light, `research/gpu-speed.md`). Seed 1 had scatter-time hitches.
 
 ## Agenda
 
@@ -39,12 +42,11 @@ Next number: S-142.
 | S-130 | **Build: tune the climbing hands and the gaits from the playtest** (R18). Read Mikey's notes and the `limb_off`, `gait` and `grab` events. Change the defaults of the holds (`hold_step_m`, `hand_reach`, `hang_*`) and of the gaits (hop, lie, crawl, the speed scales on `Bear`). Keep `AnimParams::default()` and `GaitTuning::default()` the same as the exported defaults. | Claude Code | Sonnet 5.5, medium | **ready** |
 | S-131 | **Build: tune the smoke edge from the playtest** (R14, `demo-1.md`). Read Mikey's notes, `smoke_m` and `smoke_s` in `samples.jsonl`, and the events `smoke_enter`, `smoke_leave` and `death:smoke:*` with their shots. Change the defaults on `BfSmokeEdge` (limits, wall speed, opacity, haze, card count). Check the frame time near the wall (overdraw) and cut cards if it is high. | Claude Code | Sonnet 5.5, medium | **ready** |
 | S-132 | **Build: tune the obstacles from the playtest.** Read Mikey's notes and "Obstacles" in `report.md` (hits, falls, escapes and launch results by type). Change the defaults on `Obstacles` and `Terrain`, and `SimParams::default()` with them. Include the stepping stones, updrafts and sinking sand of S-128, and the thorn snags, rock teeth and falling rocks of S-129 (`thorn_*`, `teeth_*`, `rock_*`; events `snag`, `tear`, `pin`, `free`). Check that the dust and steam show in the Mobile renderer (marks and `shots/`). | Claude Code | Sonnet 5.5, medium | **ready** |
-| S-137 | **Play: the integrated-graphics test.** On the Vivobook (Intel integrated graphics), download the newest zip, run the Benchmark, the Draw distance test and the Autoplay tour from the Tests page, then play for 10 minutes. Send the zip. The report now tells for each hitch if it was outside the game code. | Mikey's Vivobook | Mikey | **ready** (S-139 first is better: the game is probably very slow there) |
-| S-109 | **Brain** with Mikey: play the full demo, decide what to fix, and plan demo 2 (caves). | Project chat | Opus 5.5, medium | **ready** (S-108 is done; S-139 and S-137 first give better speed data) |
+| S-137 | **Play: the integrated-graphics test.** On the Vivobook (Intel integrated graphics), download the newest zip, run the Benchmark, the Draw distance test and the Autoplay tour from the Tests page, then play for 10 minutes. Send the zip. The report now tells for each hitch if it was outside the game code. | Mikey's Vivobook | Mikey | **ready** |
+| S-109 | **Brain** with Mikey: play the full demo, decide what to fix, and plan demo 2 (caves). | Project chat | Opus 5.5, medium | **ready** (S-137 first gives better speed data) |
 | S-134 | **Build: fix what the first nightly autoplay finds** (`diagnostics.md`, "Autoplay"). Read `autoplay-nightly.md` on the `game-latest` release and the "Autoplay" notes of the game builds. Fix the bugs that it shows (falls through the ground, errors, many stuck or climb loop events at one place). If a task of the tour is often "missed" on a seed, make the bot better (`playtest/autoplay.rs`). Also look at the small put-back (0.26 m) on seed 7 at the stepping stones near (-256, 201): the collision and the heightmap do not agree there. | Claude Code | Sonnet 5.5, medium | waiting on the first nightly run (after the push of S-133) |
 | S-135 | **Build: tune the tumble and the seams from the playtest** (R11, R12). Read Mikey's notes and "Tumbles and limbs" in `report.md` (causes, speeds, time on the ground, torn seams, lost and sewn limbs), and `seam_min` in `samples.jsonl`. Change the defaults on `Bear` (`tumble_*`, `seam_*`, `thread_wear_per_m`, `sew_*`) and keep `TumbleParams::default()` and `TearParams::default()` the same. Look at the marks for a ragdoll that shakes, goes through the ground or stands up wrong. | Claude Code | Sonnet 5.5, medium | **ready** |
-| S-139 | **Build: find why the Intel GPU gives 12 fps** (`research/freezes.md`). On the playtest laptop, `BrokenFriends.x86_64 --gpu-index 0` uses the Intel UHD Graphics (the class of the speed target, R5): GPU time 80 ms each frame at 1080p. Run the Benchmark and the Draw distance test on that GPU (`-- --bf-test=...`), find the expensive part (shadows, smog, smoke cards, Terrain3D, the bear, primitives) by turning parts off, and cut it to reach 60 fps. Do this row before the tuning rows. | Claude Code on Mikey's laptop | Opus 5.5, high | **ready** |
-| S-141 | **Build: tune the scatter from the playtest** (`research/scatter.md`). Read Mikey's notes, the overlay line `scatter:` in the marks, and the frame time with the scatter on and off (dev menu). Change the defaults on `BfScatter` (density, size scale, ranges, collision) and `ScatterParams::default()` with them. If the draw calls or the chunk build time are too high on the Intel GPU, use the ideas in `inbox.md`. | Claude Code | Sonnet 5.5, medium | waiting on Mikey's play (S-137) |
+| S-141 | **Build: tune the scatter from the playtest** (`research/scatter.md`). Read Mikey's notes, the overlay line `scatter:` in the marks, and the frame time with the scatter on and off (dev menu). Change the defaults on `BfScatter` (density, size scale, ranges, collision) and `ScatterParams::default()` with them. If the draw calls or the chunk build time are too high on the Intel GPU, use the ideas in `inbox.md`. Also find the hitches of the Benchmark on seed 1 with the scatter (worst 45.8 ms, `research/gpu-speed.md`). | Claude Code | Sonnet 5.5, medium | waiting on Mikey's play (S-137) |
 
 ## Combined runs
 

@@ -26,6 +26,11 @@ The install scripts in `tools/` download Terrain3D v1.1.0 by Cory
 Petkovsek and Roope Palmroos (https://github.com/TokisanGames/Terrain3D).
 The addon is not in this repo.
 
+`rust/game/src/terrain_light.gdshader` is made from the "minimum" and
+"lightweight" shaders of Terrain3D v1.1.0. Terrain3D has the MIT
+licence: Copyright (c) 2023-2026 Cory Petkovsek, Roope Palmroos, and
+Contributors.
+
 ## godot-rust (crate, MPL-2.0)
 
 `bf-game` uses the `godot` crate (https://github.com/godot-rust/gdext)

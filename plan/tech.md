@@ -157,7 +157,18 @@ all of it. This is more work, but it removes the C++ dependency.
   shrub with MultiMesh (one draw call for many copies). Use visibility
   ranges to remove far props.
 - **Shadows.** Use one sun with 2 cascades. Set the shadow distance to
-  about 100 m. Turn off soft shadows.
+  about 100 m. Turn off soft shadows. Use a shadow map of 2048 pixels:
+  4096 costs about 5 ms more on Intel UHD Graphics (S-139).
+- **The terrain shader.** Use the light terrain shader
+  (`terrain_light.gdshader`). The default shader of Terrain3D costs
+  about 25 ms more at 1080p on Intel UHD Graphics (S-139).
+- **No sky map in each pixel.** Use a flat ambient colour and no sky
+  reflections. Do not change a sky value each frame: each change draws
+  the sky light map again.
+- **Measure on the Intel GPU.** On Mikey's playtest laptop, start the
+  game with `--gpu-index 0` (Intel UHD Graphics). Godot's
+  `--gpu-profile` prints the GPU time of each render pass. See
+  `plan/research/gpu-speed.md` for the method.
 - **Threads.** Run generation and meshing on Rust worker threads
   (`rayon`). The main thread only receives finished data.
 - **The haze is the draw distance.** The smog hides all objects more

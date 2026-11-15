@@ -80,6 +80,7 @@ its default vsync.
 
 ## A different problem that these tests found
 
-On the Intel GPU of this laptop (UHD Graphics, CML GT2), the game runs
-at 12 fps: the GPU time is 80 ms for each frame at 1920 x 1023. This
-GPU is of the same class as the speed target (R5). See the agenda.
+On the Intel GPU of this laptop (UHD Graphics, CML GT2), the game ran
+at 12 fps: the GPU time was 80 ms for each frame at 1920 x 1023. This
+GPU is of the same class as the speed target (R5). S-139 found the
+cause and cut the GPU time to about 12 ms (`gpu-speed.md`).

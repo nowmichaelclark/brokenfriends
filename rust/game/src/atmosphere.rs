@@ -7,18 +7,44 @@
 
 use crate::bear::BEAR_GROUP;
 use godot::builtin::{Aabb, Color, Vector2, Vector3};
-use godot::classes::environment::{BgMode, FogMode, ToneMapper};
+use godot::classes::directional_light_3d::ShadowMode;
+use godot::classes::environment::{AmbientSource, BgMode, FogMode, ReflectionSource, ToneMapper};
 use godot::classes::gpu_particles_3d::DrawOrder;
+use godot::classes::light_3d::Param;
 use godot::classes::particle_process_material::EmissionShape;
+use godot::classes::rendering_server::ShadowQuality;
 use godot::classes::{
     DirectionalLight3D, Environment, GpuParticles3D, INode3D, Material, Node3D,
-    ParticleProcessMaterial, ProceduralSkyMaterial, QuadMesh, Shader, ShaderMaterial, Sky,
-    WorldEnvironment,
+    ParticleProcessMaterial, ProceduralSkyMaterial, QuadMesh, RenderingServer, Shader,
+    ShaderMaterial, Sky, WorldEnvironment,
 };
 use godot::prelude::*;
 
 /// The group that holds the `BfAtmosphere` node. Other nodes find it there.
 pub const ATMOSPHERE_GROUP: &str = "bf_atmosphere";
+
+/// Gives the flat ambient colour: the mean of the sky top and horizon.
+fn flat_ambient(top: Color, horizon: Color) -> Color {
+    Color::from_rgb(
+        (top.r + horizon.r) * 0.5,
+        (top.g + horizon.g) * 0.5,
+        (top.b + horizon.b) * 0.5,
+    )
+}
+
+/// Sets a light value only when it changes.
+fn set_light_param(sun: &mut Gd<DirectionalLight3D>, param: Param, value: f32) {
+    if sun.get_param(param) != value {
+        sun.set_param(param, value);
+    }
+}
+
+/// Gives a valid shadow map size: a power of 2 from 512 to 8192.
+fn shadow_map_size(wanted: i32) -> i32 {
+    let clamped = wanted.clamp(512, 8192) as u32;
+    // The nearest power of 2 that is not larger than the wanted size.
+    1 << (31 - clamped.leading_zeros())
+}
 
 /// The shader for one dust particle: a soft, round, faint dot.
 const DUST_SHADER: &str = "
@@ -126,11 +152,38 @@ pub struct BfAtmosphere {
     #[init(val = 0.55)]
     ambient_energy: f32,
 
+    /// If this is on, the ambient light and the reflections come from the
+    /// sky map. If it is off, the ambient light is one flat colour: the
+    /// mean of the sky top and horizon colours, and there are no sky
+    /// reflections. Off is about 2.6 ms cheaper on Intel UHD Graphics.
+    #[export]
+    #[init(val = false)]
+    ambient_from_sky: bool,
+
+    /// If this is on, the shadow edges are soft (more shadow map reads
+    /// for each pixel). Off is about 0.9 ms cheaper on Intel UHD Graphics.
+    #[export]
+    #[init(val = false)]
+    soft_shadows: bool,
+
     /// The shadow distance of the sun in metres. This is a cost: a
     /// longer distance draws more objects into the shadow map.
     #[export]
     #[init(val = 100.0)]
     shadow_distance: f32,
+
+    /// The size of the sun shadow map in pixels (a power of 2). This is a
+    /// cost: on Intel UHD Graphics at 1080p, 4096 takes about 5 ms more
+    /// than 2048 for each frame (S-139). The two cascades share this map.
+    #[export]
+    #[init(val = 2048)]
+    shadow_map_size: i32,
+
+    /// The number of shadow cascades (1 or 2). One cascade is cheaper,
+    /// but the shadows near the camera are less sharp.
+    #[export]
+    #[init(val = 2)]
+    shadow_cascades: i32,
 
     /// The colour saturation after grading. Below 1 makes the colours
     /// look faded.
@@ -175,6 +228,10 @@ pub struct BfAtmosphere {
 
     environment: Option<Gd<Environment>>,
     sky_material: Option<Gd<ProceduralSkyMaterial>>,
+    /// The shadow map size that the renderer has now (0: not set yet).
+    applied_shadow_map_size: i32,
+    /// The shadow filter that the renderer has now (None: not set yet).
+    applied_shadow_quality: Option<ShadowQuality>,
     sun: Option<Gd<DirectionalLight3D>>,
     dust: Option<Gd<GpuParticles3D>>,
     dust_process: Option<Gd<ParticleProcessMaterial>>,
@@ -259,8 +316,7 @@ impl BfAtmosphere {
     fn make_sun(&mut self) {
         let mut sun = DirectionalLight3D::new_alloc();
         sun.set_shadow(true);
-        // Two cascades, as the budget says. Soft shadows are off.
-        sun.set_shadow_mode(godot::classes::directional_light_3d::ShadowMode::PARALLEL_2_SPLITS);
+        // Soft shadows are off. `apply_sun` sets the cascades.
         sun.set_param(godot::classes::light_3d::Param::SHADOW_BLUR, 0.0);
         self.base_mut().add_child(&sun);
         self.sun = Some(sun);
@@ -317,18 +373,44 @@ impl BfAtmosphere {
         env.set_fog_height_density(self.smog_height_density);
         env.set_fog_sky_affect(self.fog_sky_affect);
         env.set_fog_sun_scatter(self.fog_sun_scatter);
-        env.set_ambient_source(godot::classes::environment::AmbientSource::SKY);
+        // A flat ambient colour from the sky colours is about 2.6 ms
+        // cheaper than the light of the sky map on Intel UHD Graphics
+        // (S-139): each pixel then reads no sky map. The sky has no sharp
+        // parts, so the look changes only a little.
+        if self.ambient_from_sky {
+            env.set_ambient_source(AmbientSource::SKY);
+            env.set_reflection_source(ReflectionSource::BG);
+        } else {
+            env.set_ambient_source(AmbientSource::COLOR);
+            env.set_ambient_light_color(flat_ambient(self.sky_top_color, self.sky_horizon_color));
+            env.set_reflection_source(ReflectionSource::DISABLED);
+        }
         env.set_ambient_light_energy(self.ambient_energy);
         env.set_adjustment_saturation(self.grade_saturation);
         env.set_adjustment_contrast(self.grade_contrast);
         env.set_adjustment_brightness(self.grade_brightness);
 
+        // Set the sky only when a value changes. Each change of the sky
+        // material makes the renderer draw the sky light map again. With
+        // the refresh each 0.5 s, that cost about 3 ms of GPU time in each
+        // frame on Intel UHD Graphics (S-139).
         if let Some(sky) = &mut self.sky_material {
-            sky.set_sky_top_color(self.sky_top_color);
-            sky.set_sky_horizon_color(self.sky_horizon_color);
-            sky.set_ground_horizon_color(self.sky_horizon_color);
-            sky.set_ground_bottom_color(self.fog_color.darkened(0.25));
-            sky.set_sun_angle_max(self.sun_disc_degrees);
+            let ground_bottom = self.fog_color.darkened(0.25);
+            if sky.get_sky_top_color() != self.sky_top_color {
+                sky.set_sky_top_color(self.sky_top_color);
+            }
+            if sky.get_sky_horizon_color() != self.sky_horizon_color {
+                sky.set_sky_horizon_color(self.sky_horizon_color);
+            }
+            if sky.get_ground_horizon_color() != self.sky_horizon_color {
+                sky.set_ground_horizon_color(self.sky_horizon_color);
+            }
+            if sky.get_ground_bottom_color() != ground_bottom {
+                sky.set_ground_bottom_color(ground_bottom);
+            }
+            if sky.get_sun_angle_max() != self.sun_disc_degrees {
+                sky.set_sun_angle_max(self.sun_disc_degrees);
+            }
         }
     }
 
@@ -336,21 +418,45 @@ impl BfAtmosphere {
         let Some(sun) = &mut self.sun else {
             return;
         };
-        sun.set_color(self.sun_color);
-        sun.set_param(godot::classes::light_3d::Param::ENERGY, self.sun_energy);
-        sun.set_param(
-            godot::classes::light_3d::Param::SIZE,
-            self.sun_disc_degrees * 0.5,
-        );
-        sun.set_param(
-            godot::classes::light_3d::Param::SHADOW_MAX_DISTANCE,
-            self.shadow_distance,
-        );
+        // Set the sun only when a value changes. The sky uses the sun, so
+        // a change also draws the sky light map again.
+        if sun.get_color() != self.sun_color {
+            sun.set_color(self.sun_color);
+        }
+        set_light_param(sun, Param::ENERGY, self.sun_energy);
+        set_light_param(sun, Param::SIZE, self.sun_disc_degrees * 0.5);
+        set_light_param(sun, Param::SHADOW_MAX_DISTANCE, self.shadow_distance);
+        let mode = if self.shadow_cascades <= 1 {
+            ShadowMode::ORTHOGONAL
+        } else {
+            ShadowMode::PARALLEL_2_SPLITS
+        };
+        if sun.get_shadow_mode() != mode {
+            sun.set_shadow_mode(mode);
+        }
+        let quality = if self.soft_shadows {
+            ShadowQuality::SOFT_LOW
+        } else {
+            ShadowQuality::HARD
+        };
+        if self.applied_shadow_quality != Some(quality) {
+            RenderingServer::singleton().directional_soft_shadow_filter_set_quality(quality);
+            self.applied_shadow_quality = Some(quality);
+        }
+        let size = shadow_map_size(self.shadow_map_size);
+        if self.applied_shadow_map_size != size {
+            // The map is made again only when the size changes.
+            RenderingServer::singleton().directional_shadow_atlas_set_size(size, true);
+            self.applied_shadow_map_size = size;
+        }
         // The light shines along -Z of the node. Turn the node so that
         // -Z points from the sun to the ground.
         let azimuth = self.sun_azimuth_degrees.to_radians();
         let elevation = self.sun_elevation_degrees.to_radians();
-        sun.set_rotation(Vector3::new(-elevation, azimuth, 0.0));
+        let rotation = Vector3::new(-elevation, azimuth, 0.0);
+        if (sun.get_rotation() - rotation).length() > 1e-5 {
+            sun.set_rotation(rotation);
+        }
     }
 
     fn apply_dust(&mut self) {
@@ -413,5 +519,28 @@ impl BfAtmosphere {
         if let Some(position) = position {
             particles.set_global_position(position);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{flat_ambient, shadow_map_size};
+    use godot::builtin::Color;
+
+    #[test]
+    fn the_flat_ambient_is_the_mean_of_the_sky() {
+        let c = flat_ambient(
+            Color::from_rgb(0.2, 0.4, 0.6),
+            Color::from_rgb(0.6, 0.4, 0.2),
+        );
+        assert!((c.r - 0.4).abs() < 1e-6 && (c.g - 0.4).abs() < 1e-6 && (c.b - 0.4).abs() < 1e-6);
+    }
+
+    #[test]
+    fn shadow_map_sizes_are_powers_of_two() {
+        assert_eq!(shadow_map_size(2048), 2048);
+        assert_eq!(shadow_map_size(3000), 2048);
+        assert_eq!(shadow_map_size(100), 512);
+        assert_eq!(shadow_map_size(100_000), 8192);
     }
 }

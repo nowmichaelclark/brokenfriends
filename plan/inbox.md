@@ -82,3 +82,6 @@ sorts them.
 - Scatter: let the wind move the dead shrubs (a vertex shader with a sway), and let the bear push them aside.
 - Scatter: use `visibility_range_fade_mode` for the pebbles if Mikey sees them pop at 50 m.
 - Scatter: a rock that the bear can use: ledges on a big slab, and rocks near a wall as steps for a climb. Needs a look at the climb notes first.
+- Tests page: a "GPU parts" test that writes the GPU time with each part off (terrain, shadows, fog, smoke, sky light). A change while the game runs gives order effects (`research/gpu-speed.md`), so the test may need one restart for each part.
+- Terrain: bake the shadows of far cliffs into the colour map (the sun does not move). Then the terrain can stop casting real-time shadows (about 2 ms on Intel UHD) and far slopes still get shade.
+- Recorder: also record the GPU time per render pass (`--gpu-profile` data) in the Benchmark, if Godot gives it to code.

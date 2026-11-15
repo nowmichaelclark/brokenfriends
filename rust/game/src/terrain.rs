@@ -9,7 +9,7 @@ use bf_worldgen::highlands::{generate, HighlandsParams};
 use bf_worldgen::obstacles::{place_obstacles, Obstacle, ObstacleParams, KIND_NAMES};
 use bf_worldgen::Zone;
 use godot::classes::image::Format;
-use godot::classes::{ClassDb, Image, ImageTexture, InputEvent, InputEventKey, Node3D};
+use godot::classes::{ClassDb, Image, ImageTexture, InputEvent, InputEventKey, Node3D, Shader};
 use godot::global::Key;
 use godot::prelude::*;
 use std::sync::mpsc::{channel, Receiver, TryRecvError};
@@ -21,6 +21,10 @@ pub const TERRAIN_GROUP: &str = "bf_terrain";
 
 /// The most mesh rings (LODs) that Terrain3D makes. This is its default.
 const MAX_MESH_LODS: i32 = 7;
+
+/// The light terrain shader (S-139). It replaces the default shader of
+/// Terrain3D through `shader_override`.
+const LIGHT_SHADER: &str = include_str!("terrain_light.gdshader");
 
 /// Terrain3D can hold 32 x 32 regions.
 const REGION_MAP_SIZE: i32 = 32;
@@ -52,6 +56,36 @@ pub struct BfTerrain {
     #[export]
     #[init(val = 1.0)]
     vertex_spacing: f32,
+
+    /// If this is on, the terrain uses the light shader of Broken
+    /// Friends (`terrain_light.gdshader`, S-139). If it is off, it uses
+    /// the default shader of Terrain3D, which is about 25 ms slower on
+    /// Intel UHD Graphics at 1080p.
+    #[export]
+    #[init(val = true)]
+    light_shader: bool,
+
+    /// How much the grain texture changes the ground colour (0 to 1).
+    /// Only the light shader uses this value.
+    #[export]
+    #[init(val = 1.0)]
+    grain_strength: f32,
+
+    /// The size of the most detailed mesh ring of Terrain3D, in vertices
+    /// (Terrain3D's `mesh_size`). The rings farther out have the same
+    /// size with 2, 4, 8 ... times the spacing. A smaller value draws
+    /// fewer triangles. But at 32 and 24 the rings reach past the smog
+    /// distance, and the extra far ground made the frame slower on Intel
+    /// UHD Graphics (S-139). Thus 48 (the default of Terrain3D) stays.
+    #[export]
+    #[init(val = 48)]
+    mesh_size: i32,
+
+    /// If this is on, the terrain casts sun shadows on itself and on the
+    /// bear. This is a cost: the shadow map draws the terrain again.
+    #[export]
+    #[init(val = true)]
+    casts_shadows: bool,
 
     /// The height of the base terrain in metres, before erosion.
     #[export]
@@ -155,6 +189,9 @@ pub struct BfTerrain {
 
     /// The Terrain3D node. It is a child of this node.
     terrain: Option<Gd<Node3D>>,
+
+    /// The light terrain shader, after the first use.
+    light_shader_res: Option<Gd<Shader>>,
 
     /// The current zone.
     zone: Option<Zone>,
@@ -311,6 +348,47 @@ impl BfTerrain {
         }
     }
 
+    /// Gives the shader choice, the grain and the shadow setting to
+    /// Terrain3D. Call it again after a change of these fields.
+    #[func]
+    pub fn apply_look(&mut self) {
+        let Some(mut node) = self.terrain.clone().filter(|t| t.is_instance_valid()) else {
+            return;
+        };
+        let mesh_size = self.mesh_size.clamp(8, 64);
+        if node.get("mesh_size").try_to::<i32>().ok() != Some(mesh_size) {
+            node.set("mesh_size", &mesh_size.to_variant());
+            // The number of rings for the draw distance depends on it.
+            self.apply_draw_distance(node.clone());
+        }
+        // GeometryInstance3D.ShadowCastingSetting: 0 is off, 1 is on.
+        let cast = i32::from(self.casts_shadows);
+        if node.get("cast_shadows").try_to::<i32>().ok() != Some(cast) {
+            node.set("cast_shadows", &cast.to_variant());
+        }
+        let Ok(mut material) = node.get("material").try_to::<Gd<Object>>() else {
+            return;
+        };
+        if self.light_shader {
+            let shader = self.light_shader_resource();
+            material.set("shader_override", &shader.to_variant());
+            material.call(
+                "set_shader_param",
+                &[
+                    "grain_strength".to_variant(),
+                    self.grain_strength.clamp(0.0, 1.0).to_variant(),
+                ],
+            );
+        }
+        material.set("shader_override_enabled", &self.light_shader.to_variant());
+    }
+
+    /// Tells if the light terrain shader is on (for the recorder).
+    #[func]
+    pub fn uses_light_shader(&self) -> bool {
+        self.light_shader
+    }
+
     /// Gives the number of mesh rings that Terrain3D draws now, or 0 if
     /// the terrain is not ready.
     #[func]
@@ -415,6 +493,17 @@ impl BfTerrain {
         &self.obstacles
     }
 
+    /// Gives the light terrain shader. It is made one time.
+    fn light_shader_resource(&mut self) -> Gd<Shader> {
+        if let Some(shader) = &self.light_shader_res {
+            return shader.clone();
+        }
+        let mut shader = Shader::new_gd();
+        shader.set_code(LIGHT_SHADER);
+        self.light_shader_res = Some(shader.clone());
+        shader
+    }
+
     /// Gives the number of samples on each side of the zone.
     fn sample_count(&self) -> usize {
         let spacing = self.vertex_spacing.max(0.25);
@@ -471,6 +560,7 @@ impl BfTerrain {
         }
         Self::add_ground_texture(&node);
         self.terrain = Some(node.clone());
+        self.apply_look();
         self.apply_draw_distance(node.clone());
         Some(node)
     }

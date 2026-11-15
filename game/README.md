@@ -26,6 +26,16 @@ what it assumes.
   addon. Terrain3D draws the ground and makes the collision. Push F4
   to make a new zone with the next seed. The node sends the signal
   `zone_changed` when the zone is on the screen.
+  - **The light terrain shader** (S-139, `rust/game/src/terrain_light.gdshader`).
+    It replaces the default shader of Terrain3D through
+    `shader_override`. The vertex shader makes the height and the
+    normal. The fragment shader reads only the colour map and one grain
+    texture, with Lambert light and no specular. On Intel UHD Graphics
+    at 1080p, it is about 25 ms faster than the default shader.
+    `light_shader = false` gives the default shader back.
+  - **Exports for speed:** `light_shader`, `grain_strength`,
+    `mesh_size` (48, the most detailed ring of Terrain3D) and
+    `casts_shadows` (on). `apply_look()` gives a change to Terrain3D.
 - **`BfBear`** is the teddy bear, a `CharacterBody3D`, 0.40 m tall.
   Its collision shape is a capsule. It walks, jogs and
   jumps. The jump has coyote time and a jump buffer. When a new zone
@@ -391,6 +401,14 @@ what it assumes.
   zone, the fog gets dark and thick. There is no heat shimmer
   (R19). The node reads its values
   twice each second, so a change in the Remote Inspector shows soon.
+  It sets a sky or sun value only when the value changes. Each change
+  makes the renderer draw the sky light map again (S-139).
+  - **The sun shadows** use 2 cascades to 100 m, a map of 2048 pixels
+    (`shadow_map_size`) and hard edges (`soft_shadows = false`).
+  - **The ambient light** is one flat colour: the mean of the sky top
+    and horizon colours. There are no sky reflections. The setting
+    `ambient_from_sky = true` gives the light of the sky map back. It
+    costs about 2.6 ms on Intel UHD Graphics.
 - **`BfRecorder`** is the playtest recorder (R22,
   `plan/diagnostics.md`). It is always on when the game has a window.
   - **Files.** It writes `session.json` (build, hardware, settings,
@@ -933,6 +951,14 @@ Mikey does not build on his laptop (decision R10).
   Compatibility renderer with a software GL driver, not from the Mobile
   renderer on a laptop [unverified]. The wall is dark brown and fades
   to the smog colour from 300 m. Mikey tells Claude what he sees.
-- **Frame cost.** The atmosphere has no measured cost. The parts that
-  can cost time are the dust (300 particles, small) and
-  the shadows (2 cascades, 100 m).
+- **Frame cost (S-139, Intel UHD Graphics, 1080p).** The full game
+  needs about 12 to 13.4 ms of GPU time for each frame in the
+  Benchmark, with the scatter (63 to 71 fps on a 144 Hz screen). The sun shadows cost about 4.6 ms, the fog
+  about 0.9 ms, and the dust, the bear and the obstacles about 0.5 to
+  1.3 ms each. See `plan/research/gpu-speed.md`.
+- **The terrain normals are per vertex.** The light terrain shader
+  makes the normal in the vertex shader, on the 1 m grid near the
+  camera. Thus the ground near the camera shows the grid a little more
+  than with the default shader of Terrain3D.
+- **The ambient light is flat.** It does not come from the sky map.
+  The difference was small in a screenshot on the playtest laptop.

@@ -1,6 +1,6 @@
 # State
 
-Updated: 2026-11-15 (S-206: seven lead types, the cycle, the play gate, the plan check, the bug tools)
+Updated: 2026-11-15 (S-206: seven lead types, the cycle, the play gate, the plan check, the bug tools, R29)
 
 Write this file again each time. Do not add to the end (90 lines at most). One line for each row. The full text of each row is in `rows.md`. `tools/check-plan.py` checks both files.
 
@@ -11,7 +11,7 @@ Write this file again each time. Do not add to the end (90 lines at most). One l
 
 ## Cycle (`sessions/lead.md`, R27, R28)
 Builder → Speed → Fix → Hygiene → Mikey plays → Feel → Bird's-eye. One lead at a time. Research runs while the cycle waits. A Fix lead can run at any time.
-- **Next lead: Fix**, for the bug tools S-213 to S-216 (`diagnostics.md`, "Finding bugs"). Then Builder. Wave: S-163, and beside it S-187 and S-186, one after the other.
+- **First: S-210** on Fable 5.2 (not available after 2026-11-16). **Next lead: Fix**, for the bug tools S-213 to S-216 (`diagnostics.md`, "Finding bugs"). Then Builder. Wave: S-163, and beside it S-187 and S-186, one after the other.
 - **Play gate: open** (1 play row is ready). It closes when S-163 is on `main` (S-167 becomes ready). Then the Builder does only rows with "–" or a ready play row in the "Play" column.
 
 Next number: S-217. A worker numbers its new rows from the range in its brief.
@@ -84,5 +84,5 @@ Next number: S-217. A worker numbers its new rows from the range in its brief.
 | # | Row | Model, effort | Status |
 |---|---|---|---|
 | S-209 | Research: move `plan/research/` (15 notes) to the wiki | Sonnet 5.5, medium | **ready** |
-| S-210 | Research: how a seed selects looks, sizes and timings (`vision.md`) | Opus 5.5, medium | **ready** |
-| S-211 | Bird's-eye: sort the inbox and the open lists; check the direction and the cycle | Fable 5.2, medium | after the first Feel lead |
+| S-210 | Brain: the foundation spec for "procedural almost everything" (`recipe.md`, reads the code) | Fable 5.2, medium | **ready**: the last Fable session, by 2026-11-16 |
+| S-211 | Bird's-eye: sort the inbox and the open lists; check the direction and the cycle | Opus 5.5, high | after the first Feel lead |

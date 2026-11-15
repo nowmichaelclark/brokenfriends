@@ -183,10 +183,9 @@ renderer and a real GPU, so a lead runs them on the laptop.
 **Layer 3: Mikey.** A mark, or one line of words. Mikey is the only
 judge of taste. He is also the test of layers 1 and 2: see the rule.
 
-**The rule: each bug teaches a tool.** When Mikey finds a bug that
-layers 1 and 2 did not find, the Fix lead first adds the rule, the
-probe or the view that finds this kind of bug. Then it fixes the bug.
-A fix without such a check is not done.
+**Each bug teaches a tool (R29).** It is OK if Mikey finds a bug
+first. The Fix lead then fixes the bug and also adds the rule, the
+probe or the view that finds this kind of bug the next time.
 
 **What the tools cannot do.** A session can miss a small or rare
 fault in a picture. A fault that shows for one frame needs a probe,

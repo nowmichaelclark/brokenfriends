@@ -51,6 +51,10 @@ only. Do not use their code or their rules.
   next playtest. Ask Mikey only about feel and taste.
 - **Mark guesses.** If you did not check a statement about an engine,
   a crate or speed, add `[unverified]` after it.
+- **Make and use tools** (R29). `tools/README.md` lists the tools
+  that a session can run to see, test, measure and make things. Look
+  there first. Make a tool when you do a check the second time. When
+  a tool is weak, write that in the list and make the tool better.
 - **Research goes in the wiki** (R26). Write new research as articles
   in the Workshop Wiki (`nowmichaelclark/wiki`, folder
   `Broken Friends/`). Follow the wiki's `CLAUDE.md`. In the repo, link

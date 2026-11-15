@@ -37,6 +37,7 @@ version" are still valid.
 | R26 | Research goes in the Workshop Wiki (`nowmichaelclark/wiki`), not in this repo. Wiki articles can link to each other. The repo keeps the specs, the decisions and the agenda. | Mikey, 2026-11-15 |
 | R27 | Lead sessions have seven types: Builder, Speed, Fix, Feel, Hygiene, Research and Bird's-eye. Only one lead runs at a time. They run in a cycle: Builder, Speed, Fix, Hygiene, Mikey's play, Feel, Bird's-eye. The Research lead runs while the cycle waits. A Fix lead (bugs) can run at any time (`sessions/lead.md`). | Mikey, 2026-11-15 |
 | R28 | The play gate: when two play rows are ready for Mikey, the Builder lead starts no new feature row. It can finish the rows of a play row that is ready, and it can make tools. The other leads can run. The gate opens after Mikey plays. | Mikey, 2026-11-15 |
+| R29 | We make tools for Claude during the whole project: tools to test, to see, to measure and to make things. A session uses a tool and makes it better when the tool is weak. It is OK if Mikey finds a bug first; the session then also adds a check for that kind of bug (`tools/README.md`). | Mikey, 2026-11-15 |
 
 ## Proposed, Mikey must decide
 

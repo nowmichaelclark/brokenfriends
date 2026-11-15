@@ -20,7 +20,7 @@ plan/sessions/lead.md." If he gives no type, use the type that
 | Feel | `lead-feel.md` | Turns Mikey's play into new defaults | Sonnet 5.5, medium |
 | Hygiene | `lead-hygiene.md` | Docs, tests, CI, weak spots | Sonnet 5.5, medium |
 | Research | `lead-research.md` | Wiki articles, research for a spec | Sonnet 5.5, medium |
-| Bird's-eye | `lead-birdseye.md` | Sorts, checks the direction, plans | Fable 5.2 or Opus 5.5 |
+| Bird's-eye | `lead-birdseye.md` | Sorts, checks the direction, plans | Opus 5.5, high |
 
 ## The cycle (R27)
 
@@ -98,7 +98,15 @@ fails if the line is wrong.
 - A worker does not measure GPU time. The Speed lead does.
 - If Mikey's usage limit stops a worker, a `SendMessage` to the agent
   resumes it. Use Sonnet 5.5, high, for an Opus row when the limit is
-  low. Use Fable 5.2 only for the Bird's-eye lead and the hardest rows.
+  low. Fable 5.2 is not available after 2026-11-16.
+
+## Tools (R29)
+
+`tools/README.md` is the toolbox: the tools that exist, how to run
+them, and their limits. Each lead and each worker follows its rules:
+look there first, make a tool when you do a thing the second time,
+write down the faults of a tool, and make it better. Tell each worker
+this. In the handoff, name the tools that are new or changed.
 
 ## Play and measure
 

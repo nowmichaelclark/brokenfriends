@@ -18,6 +18,8 @@ features and does not change how the game plays.
   autoplay shows becomes a row in the Fix table.
 - **Code.** Dead code, copies of the same logic, values that are not
   `#[export]`, `Default` values that differ from the exported ones.
+- **Tools.** `tools/README.md` is true: each tool runs, each limit
+  is still real, each wish has a row or a reason.
 - **Disk.** Old worktrees in `~/dev/bf-wt/`, old `target/` folders.
 
 ## Rules

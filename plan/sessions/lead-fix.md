@@ -18,9 +18,10 @@ The play gate does not stop a Fix lead. It can run at any time.
 The Fix lead owns these tools. The rows that make or change a tool
 are in the Fix table, and the play gate does not stop them.
 
-**Each bug teaches a tool.** If Mikey finds a bug that the tools did
-not find, first add the rule, the probe or the view that finds this
-kind of bug. Then fix the bug. Count both kinds in the handoff.
+**Each bug teaches a tool (R29).** It is OK if Mikey finds a bug
+first. Fix the bug, and also add the rule, the probe or the view that
+finds this kind of bug the next time. If a tool was wrong or weak,
+make the tool better and write it in `tools/README.md`.
 
 ## Where bugs come from
 
@@ -35,7 +36,6 @@ kind of bug. Then fix the bug. Count both kinds in the handoff.
 
 ## Steps for each bug
 
-0. **Ask why no tool found it.** Add the check first (the rule above).
 1. **Find it.** Get the seed and the place. Go there with the dev menu
    or a test view, on the Mobile renderer in a real window.
 2. **Show it.** Make a "before" picture, or a test that fails. If you
@@ -43,7 +43,8 @@ kind of bug. Then fix the bug. Count both kinds in the handoff.
    recorder probe or a test view, keep the row, and say so.
 3. **Find the cause.** Fix the cause in Rust, not the place where it
    shows. Look for the same fault on seeds 1, 7 and 42.
-4. **Keep it fixed.** Add a test that fails without the fix: a unit
+4. **Keep it fixed.** Ask why no tool found it, and add that check
+   (the rule above). Add a test that fails without the fix: a unit
    test for logic and collision, or a view in a test page for a
    visual bug that no unit test can see.
 5. **Show the fix.** Make an "after" picture at the same place. Send
@@ -70,5 +71,5 @@ kind of bug. Then fix the bug. Count both kinds in the handoff.
 
 Write `HANDOFF.md`: the bugs fixed, the bugs that you could not make
 happen, and the checks that you added. In the commit message, write
-one line "Bug check": how many bugs the tools found, and how many
-Mikey found first. The aim is that Mikey finds fewer each round.
+one line "Bug check": how many bugs the tools found, how many Mikey
+found first, and the checks that you added.

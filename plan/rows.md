@@ -237,15 +237,24 @@ Where: Claude Code (local or cloud). Model: Sonnet 5.5, medium.
 
 ## S-210
 
-**Research: how a seed selects looks, sizes and timings** (`vision.md`, "Procedural almost everything"). Write a wiki article: how other games keep procedural results good (weights, constraints, budgets, a director), with sources. Then list in the repo the values of the water, the caves and the obstacles that are ranges and weights today, and those that are constants. Do not change the code.
+**Brain (the last Fable 5.2 session, by 2026-11-16): the foundation for "procedural almost everything"** (`vision.md`). This is the design that all later systems follow, so the strongest model does it once. Read the code this time (`rust/`), not only the plans.
 
-Where: Claude Code (local or cloud). Model: Opus 5.5, medium.
+1. Read how each system gets its values today: terrain, water, rivers, falls, caves, obstacles, scatter, smog, the bear. List which values are seeded ranges and weights, which are `#[export]` tuning values, and which are constants in the code.
+2. Use one subagent for a short research summary: how other games keep procedural results good (weights, constraints, budgets, a director). The wiki article can come later (S-209).
+3. Write the spec `plan/recipe.md`: how a seed makes the "recipe" of a zone (looks, sizes, timings); how weights and limits keep the parts good together; how a system declares its ranges as data; how Mikey's tuning (R10) and the seeded ranges live together; how the speed budget (R5) limits a recipe; how the world audit (S-214) checks a recipe on many seeds; what stays fixed.
+4. Give two or three options with a recommendation where the choice is Mikey's (taste, scope). Write decisions only after he agrees.
+5. Name the risks in the present code for this direction, the worst first, each with the file and a row.
+6. Write the rows that move the systems to the spec, one system for each row, small enough for Sonnet 5.5, with the order. Do not change game code in this session.
+
+Done when a Sonnet 5.5 worker can do the first row from `recipe.md` and its row text only.
+
+Where: Claude Code (local). Model: Fable 5.2, medium. After 2026-11-16: Opus 5.5, high.
 
 ## S-211
 
 **Bird's-eye: the first look from above.** Sort `inbox.md` (delete what is built, group the rest by system, mark what fits `vision.md`). Give Mikey the list "Proposed, Mikey must decide" of `decisions.md` and the "Assumed" list of `game/README.md` as short taste questions; technical points that are in use for weeks become decisions if he agrees. Check the order of all agendas against demo 2 and the proc-gen direction. Write `STATE.md` again.
 
-Where: Claude Code (local). Model: Fable 5.2, medium (or Opus 5.5, high).
+Where: Claude Code (local). Model: Opus 5.5, high.
 
 ## S-212
 

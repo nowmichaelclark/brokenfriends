@@ -5,13 +5,18 @@ Fable 5.2). **The next lead is a Fix lead**, for the bug tools S-213
 to S-216 (not for the bugs first), then a Builder lead. Mikey starts it with: "Start the Fix lead. Read
 plan/sessions/lead.md."
 
+**Before it, if Fable 5.2 is still available (until 2026-11-16):**
+"Run S-210". It writes `plan/recipe.md`, the foundation for
+"procedural almost everything". After that date, all leads use Opus
+5.5 or Sonnet 5.5.
+
 ## Start here
 
 1. Read `CLAUDE.md`, then `plan/sessions/lead.md` (the cycle, the play
    gate, the workers), then `plan/sessions/lead-builder.md`.
 2. Read `STATE.md`. It has one line for each row. The full text of a
    row is in `rows.md`.
-3. Read `decisions.md` (R1 to R28) and `demo-2.md`.
+3. Read `decisions.md` (R1 to R29) and `demo-2.md`.
 
 ## The game in short
 
@@ -33,6 +38,9 @@ light are on `main` (build 2e2d5f8).
   that `STATE.md` and `rows.md` agree and that the gate line is true.
 - The briefs `build.md`, `brain.md` and `play.md` agree with R26 to
   R28.
+- **R29:** we make tools for Claude during the whole project, use
+  them and make them better. `tools/README.md` is the toolbox: the
+  tools, how to run them, their limits, and wishes.
 - `STATE.md` has one table for each lead and short rows. `rows.md` is
   new and has the full row texts.
 - S-184 is now part of S-167, so Mikey plays one sitting.

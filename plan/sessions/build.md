@@ -40,6 +40,13 @@ row numbers and `STATE.md`.
 8. Keep the values that a seed could select as data (ranges and
    weights), not as constants in the code (`vision.md`).
 
+## Tools (R29)
+
+Read `tools/README.md` before you check a thing by hand. If you do a
+check the second time, make it a tool and add it to the list. If a
+tool was wrong or weak, write that in its "Limits" cell, and fix it
+if the fix is small.
+
 ## Look at your own work
 
 Before you finish, make pictures of the new thing on seeds 1, 7 and

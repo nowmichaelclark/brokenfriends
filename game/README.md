@@ -466,13 +466,15 @@ what it assumes.
     The nearest obstacle of each type is easy.
   - **Ash crust.** A pale, cracked disc on flat ground, 6 to 9 m
     wide, over a pit of 0.9 to 1.6 m. When the bear walks on it, it
-    shakes for 0.9 s (hard: 0.45 s) and then falls. A fast bear gets
-    off in time. The bear can climb out of the pit. A crust that fell
+    shakes for 1.8 s (hard: 0.9 s) and then falls. A bear that
+    turns back at once, or jogs on, gets off in time (S-132: 6 falls in 6
+    tries in the first playtest). The bear can climb out of the pit. A crust that fell
     stays broken until a new zone is made.
-  - **Rolling stones.** At the top of a gully, 1 to 3 stones shake for
-    1 s with dust, then roll down, one after another. A new wave comes
-    each 8 to 14 s. A stone that hits the bear throws it down the
-    slope. Stones start only if the bear is nearer than 90 m.
+  - **Rolling stones.** At the top of a gully, 2 to 4 stones (0.2 to 0.4 m in radius)
+    shake for 1 s with dust, then roll down, one after another. A new wave comes
+    each 8 to 14 s. A stone hits a bear that is up to 0.3 m beside its
+    edge (`stone_hit_margin_m`), so the lane is 1 to 2.5 m wide. A hit
+    throws the bear down the slope at 0.7 of the speed of the stone. Stones start only if the bear is nearer than 90 m.
   - **Gust.** Wind along a narrow pass, in a rhythm of 7 to 9.5 s.
     Dust comes in for 1.2 s, then the wind blows for 2.2 s at 1.2 to
     2.6 m/s. The wind carries the bear. A bear in the air gets 1.5
@@ -481,14 +483,15 @@ what it assumes.
     and more steam for 1 s, then blows for 0.45 s. A bear in front of
     it is thrown to that side (3 to 5.5 m/s) and its fur gets wet.
   - **Launch vent.** A yellow mound at the foot of a steep face. It
-    blows up. A bear on it flies to the ledge above (1.8 to 9 m). With
-    no input, the bear keeps the direction to the ledge.
+    blows up. A bear on it flies to the ledge above (1.8 to 9 m). For
+    0.8 s after the launch, the stick does not change the sideways speed
+    (`launch_steer_s`): the bear keeps the direction to the ledge.
   - **Stepping stones** (help). A trench in wide flat ground: 16 to 22
     m long, 5 to 6 m wide and 1.6 to 2.4 m deep. 4 stones cross it, 1.6
     to 1.9 m apart. The stones take turns. The first and third are solid
     first. The second and fourth start half a cycle later. Thus, two
-    stones next to each other are solid together for 1.1 s (easy) to
-    0.5 s (hard). A bear can hop from one stone to the next then. A
+    stones next to each other are solid together for 0.6 of a cycle
+    (easy) to 0.4 of a cycle (hard). A bear can hop from one stone to the next then. A
     stone blinks and shakes for 0.7 s before it vanishes. A small dark
     ghost grows for 0.5 s before it is solid. A cycle takes 3.2 to 4.8 s.
     The bear can walk around the trench, or climb out of it.
@@ -542,7 +545,9 @@ what it assumes.
   - **Recorder.** Each tell, hit, push, launch, fall, snag, tear and
     pin is a bear event
     (`obstacle:<what>:<type>:#<number>`). `report.md` counts them by
-    type in "Obstacles". It also tells where each launch ended, and
+    type in "Obstacles". It also tells where each launch ended (the launch events end with
+    `:dy=<m>:off=<m>`: the height above the ledge and the distance to the
+    place of the ledge), and
     which bears crossed or fell off the stepping stones.
 - **`main.tscn`** is the start scene: atmosphere, terrain, obstacles,
   scatter, bear, cameras, overlay and recorder.

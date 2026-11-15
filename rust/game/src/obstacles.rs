@@ -171,6 +171,12 @@ pub struct BfObstacles {
     #[init(val = SimParams::default().stone_knock_up)]
     stone_knock_up: f32,
 
+    /// A stone hits a bear that is this much further away than the two
+    /// radii touch, in metres. The fur and the limbs make the bear wider.
+    #[export]
+    #[init(val = SimParams::default().stone_hit_margin_m)]
+    stone_hit_margin_m: f32,
+
     /// Stones start only if the bear is nearer than this, in metres.
     #[export]
     #[init(val = SimParams::default().stone_wake_m)]
@@ -235,6 +241,17 @@ pub struct BfObstacles {
     #[export]
     #[init(val = SimParams::default().launch_margin_m)]
     launch_margin_m: f32,
+
+    /// A launch aims this far past the place of the ledge, in metres.
+    #[export]
+    #[init(val = SimParams::default().launch_overreach_m)]
+    launch_overreach_m: f32,
+
+    /// For this long after a launch, the stick does not change the
+    /// sideways speed of the bear in the air, in seconds. 0 turns it off.
+    #[export]
+    #[init(val = SimParams::default().launch_steer_s)]
+    launch_steer_s: f32,
 
     /// Puffs show only for obstacles nearer than this, in metres.
     #[export]
@@ -493,6 +510,10 @@ impl INode3D for BfObstacles {
             bear.set_ground_slow(out.slow);
             if let Some(knock) = out.knock {
                 bear.knock(to_godot(knock));
+            } else if let (Some(steer), false) = (out.steer, bear.is_tumbling()) {
+                // Keep the up and down speed. Change only the sideways speed.
+                let up = bear.base().get_velocity().y;
+                bear.knock(Vector3::new(steer.x, up, steer.y));
             }
             if out.wet {
                 bear.make_wet(1.0);
@@ -653,6 +674,7 @@ impl BfObstacles {
             stone_max_speed: self.stone_max_speed,
             stone_knock_part: self.stone_knock_part,
             stone_knock_up: self.stone_knock_up,
+            stone_hit_margin_m: self.stone_hit_margin_m,
             stone_wake_m: self.stone_wake_m,
             gust_speed_easy: self.gust_speed_easy,
             gust_speed_hard: self.gust_speed_hard,
@@ -666,6 +688,8 @@ impl BfObstacles {
             vent_push_up: self.vent_push_up,
             vent_radius: self.vent_radius,
             launch_margin_m: self.launch_margin_m,
+            launch_overreach_m: self.launch_overreach_m,
+            launch_steer_s: self.launch_steer_s,
             bear_gravity,
             bear_fall_factor,
             puff_range_m: self.puff_range_m,

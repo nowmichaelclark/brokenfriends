@@ -43,6 +43,9 @@ pub struct SimParams {
     pub stone_knock_part: f32,
     /// The speed up that the bear gets in a hit, in m/s.
     pub stone_knock_up: f32,
+    /// A stone hits a bear that is this much further away than the two
+    /// radii touch, in metres.
+    pub stone_hit_margin_m: f32,
     /// Stones start only if the bear is nearer than this, in metres.
     pub stone_wake_m: f32,
     /// The wind speed of an easy gust in m/s.
@@ -69,6 +72,12 @@ pub struct SimParams {
     pub vent_radius: f32,
     /// A launch goes this far above the ledge, in metres.
     pub launch_margin_m: f32,
+    /// A launch aims this far past the place of the ledge, in metres. A
+    /// bear that drifts a little still lands on the ledge.
+    pub launch_overreach_m: f32,
+    /// For this long after a launch, the stick does not change the
+    /// sideways speed of the bear in the air, in seconds. 0 turns it off.
+    pub launch_steer_s: f32,
     /// The gravity on the bear while it goes up, in m/s each second.
     pub bear_gravity: f32,
     /// The gravity on the bear is multiplied by this while it falls.
@@ -144,15 +153,16 @@ pub struct SimParams {
 impl Default for SimParams {
     fn default() -> Self {
         Self {
-            crust_shake_easy_s: 0.9,
-            crust_shake_hard_s: 0.45,
+            crust_shake_easy_s: 1.8,
+            crust_shake_hard_s: 0.9,
             stone_tell_s: 1.0,
             stone_gap_s: 0.9,
             stone_gravity: 9.8,
             stone_friction: 0.06,
             stone_max_speed: 9.0,
-            stone_knock_part: 0.9,
+            stone_knock_part: 0.7,
             stone_knock_up: 2.2,
+            stone_hit_margin_m: 0.3,
             stone_wake_m: 90.0,
             gust_speed_easy: 1.2,
             gust_speed_hard: 2.6,
@@ -166,11 +176,13 @@ impl Default for SimParams {
             vent_push_up: 2.5,
             vent_radius: 0.45,
             launch_margin_m: 0.9,
+            launch_overreach_m: 0.0,
+            launch_steer_s: 0.8,
             bear_gravity: 14.0,
             bear_fall_factor: 1.4,
             puff_range_m: 140.0,
-            step_on_easy: 0.75,
-            step_on_hard: 0.66,
+            step_on_easy: 0.8,
+            step_on_hard: 0.7,
             step_tell_s: 0.7,
             step_ghost_s: 0.5,
             updraft_speed: 2.2,
@@ -272,6 +284,9 @@ pub struct StepOut {
     /// bear) and the health that it loses. If the bear does not have
     /// the limb, the damage goes to the next limb that it has.
     pub tears: Vec<(usize, f32)>,
+    /// A launch keeps the sideways speed of the bear in the air: the
+    /// velocity (x, z) that the bear must have, in m/s.
+    pub steer: Option<Vec2>,
 }
 
 /// The state of a stepping stone at one moment.
@@ -425,6 +440,10 @@ struct RipVisit {
 #[derive(Clone, Copy, Debug)]
 struct Launch {
     id: u32,
+    /// The horizontal velocity of the launch (x, z).
+    steer: Vec2,
+    /// The place of the ledge (x, z).
+    ledge: Vec2,
     /// The height that counts as "on the ledge".
     reached_y: f32,
     time: f32,
@@ -975,7 +994,7 @@ impl ObstacleSim {
                                 self.acted[i] = cycle;
                                 let (up, forward) = launch_velocity(
                                     rise,
-                                    reach,
+                                    reach + p.launch_overreach_m,
                                     p.launch_margin_m,
                                     p.bear_gravity,
                                     p.bear_fall_factor,
@@ -985,6 +1004,8 @@ impl ObstacleSim {
                                 out.events.push(format!("obstacle:launch:{name}:#{}", o.id));
                                 self.launch = Some(Launch {
                                     id: o.id,
+                                    steer: Vec2::new(dir.x, dir.z) * forward,
+                                    ledge: xz(pos) + Vec2::new(dir.x, dir.z) * reach,
                                     reached_y: pos.y + rise - 0.6,
                                     time: 0.0,
                                 });
@@ -1286,7 +1307,7 @@ impl ObstacleSim {
 
         self.obstacles = obstacles;
         self.step_stones(dt, centre, bear, heights, p, &mut out);
-        self.step_launch(dt, bear, &mut out);
+        self.step_launch(dt, bear, p, &mut out);
         out
     }
 
@@ -1345,7 +1366,9 @@ impl ObstacleSim {
             s.travelled += speed * dt;
             s.age += dt;
 
-            if s.cooldown <= 0.0 && speed >= 0.8 && centre.distance(s.pos) <= s.radius + BEAR_RADIUS
+            if s.cooldown <= 0.0
+                && speed >= 0.8
+                && centre.distance(s.pos) <= s.radius + BEAR_RADIUS + p.stone_hit_margin_m
             {
                 s.cooldown = 1.0;
                 let flat = Vec3::new(s.vel.x, 0.0, s.vel.y);
@@ -1390,11 +1413,17 @@ impl ObstacleSim {
     }
 
     /// Looks where the bear lands after a launch, and makes an event.
-    fn step_launch(&mut self, dt: f32, bear: &BearIn, out: &mut StepOut) {
+    fn step_launch(&mut self, dt: f32, bear: &BearIn, p: &SimParams, out: &mut StepOut) {
         let Some(mut launch) = self.launch else {
             return;
         };
         launch.time += dt;
+        // The steam carries the bear: for a short time, the stick does
+        // not change the sideways speed of the flight.
+        if launch.time < p.launch_steer_s && !bear.climbing && (launch.time < 0.2 || !bear.on_floor)
+        {
+            out.steer = Some(launch.steer);
+        }
         let result = if launch.time < 0.3 {
             None
         } else if bear.on_floor {
@@ -1411,8 +1440,14 @@ impl ObstacleSim {
             None
         };
         if let Some(result) = result {
-            out.events
-                .push(format!("obstacle:{result}:vent_launch:#{}", launch.id));
+            // Where the flight ended: the height above the ledge (negative:
+            // below it) and the distance to the place of the ledge.
+            let dy = bear.feet.y - launch.reached_y;
+            let off = xz(bear.feet).distance(launch.ledge);
+            out.events.push(format!(
+                "obstacle:{result}:vent_launch:#{}:dy={dy:.1}:off={off:.1}",
+                launch.id
+            ));
             self.launch = None;
         } else {
             self.launch = Some(launch);
@@ -1574,9 +1609,11 @@ mod tests {
         assert!(knock.y > 9.0 && knock.x > 0.5);
         // The bear lands on the ledge.
         let out = run(&mut sim, &bear_at(2.0, 3.0, 0.0), &map, 0.5);
-        assert_eq!(
-            out.events,
-            vec!["obstacle:launch_reached:vent_launch:#5".to_string()]
+        assert_eq!(out.events.len(), 1, "{:?}", out.events);
+        assert!(
+            out.events[0].starts_with("obstacle:launch_reached:vent_launch:#5:dy="),
+            "{:?}",
+            out.events
         );
     }
 
@@ -1626,8 +1663,83 @@ mod tests {
         let map = flat();
         let mut sim = ObstacleSim::new(vec![crust()]);
         run(&mut sim, &bear_at(1.0, 0.0, 0.0), &map, 0.2);
-        let out = run(&mut sim, &bear_at(4.0, 0.0, 0.0), &map, 1.0);
+        let out = run(&mut sim, &bear_at(4.0, 0.0, 0.0), &map, 2.0);
         assert_eq!(out.events, vec!["obstacle:escape:ash_crust:#5".to_string()]);
+    }
+
+    #[test]
+    fn a_walking_bear_that_turns_back_at_once_escapes_the_crust() {
+        let map = flat();
+        let p = SimParams::default();
+        let mut sim = ObstacleSim::new(vec![crust()]);
+        // The bear steps on the edge (radius 2.5 m), waits 0.5 s to see
+        // the shake, then walks out at 1.4 m/s.
+        let (mut x, mut events) = (2.1f32, Vec::new());
+        for step in 0..(3.0 / DT) as usize {
+            let t = step as f32 * DT;
+            if t > 0.5 {
+                x += 1.4 * DT;
+            }
+            let out = sim.step(DT, &bear_at(x, 0.0, 0.0), &map, &p);
+            events.extend(out.events);
+        }
+        assert!(
+            events.contains(&"obstacle:escape:ash_crust:#5".to_string()),
+            "{events:?}"
+        );
+    }
+
+    #[test]
+    fn a_stone_hits_a_bear_that_is_a_little_beside_its_path() {
+        let map = slope();
+        let x = -8.0;
+        let z = -0.24 - 0.55;
+        let beside = bear_at(x, map.sample_world(x, z), z);
+        let mut sim = ObstacleSim::new(vec![stones()]);
+        let out = run(&mut sim, &beside, &map, 26.0);
+        assert!(
+            out.events.iter().any(|e| e.contains(":hit:")),
+            "{:?}",
+            out.events
+        );
+        // Without the margin the stone passes.
+        let p = SimParams {
+            stone_hit_margin_m: 0.0,
+            ..SimParams::default()
+        };
+        let mut sim = ObstacleSim::new(vec![stones()]);
+        let mut hits = 0;
+        for _ in 0..(26.0 / DT) as usize {
+            let out = sim.step(DT, &beside, &map, &p);
+            hits += out.events.iter().filter(|e| e.contains(":hit:")).count();
+        }
+        assert_eq!(hits, 0);
+    }
+
+    #[test]
+    fn a_launch_keeps_the_sideways_speed_for_a_short_time() {
+        let map = flat();
+        let p = SimParams::default();
+        let vent = Kind::VentLaunch {
+            rise: 3.0,
+            reach: 2.0,
+        };
+        let mut sim = ObstacleSim::new(vec![obstacle(vent, 4.0)]);
+        let mut steer_times = Vec::new();
+        let mut air = bear_at(0.3, 0.5, 0.0);
+        for step in 0..(5.0 / DT) as usize {
+            let out = sim.step(DT, &air, &map, &p);
+            if out.knock.is_some() {
+                air.on_floor = false;
+            }
+            if let Some(v) = out.steer {
+                assert!(v.x > 0.5 && v.y.abs() < 1e-3, "{v:?}");
+                steer_times.push(step as f32 * DT);
+            }
+        }
+        assert!(!steer_times.is_empty());
+        let (first, last) = (steer_times[0], *steer_times.last().unwrap());
+        assert!(last - first <= p.launch_steer_s + 0.05, "{first} {last}");
     }
 
     fn stepping_stones() -> Obstacle {
@@ -1671,9 +1783,9 @@ mod tests {
             tells += matches!(a, StepPhase::Tell { .. }) as usize;
             ghosts += matches!(a, StepPhase::Ghost { .. }) as usize;
         }
-        // Easy: the on part is 0.75 of 4 s, so each stone is solid for 3 s.
-        // Two cycles: the two stones are solid together for 2 x 2 s.
-        assert!((both - 4.0).abs() < 0.1, "both {both}");
+        // Easy: the on part is 0.8 of 4 s, so each stone is solid for 3.2 s.
+        // Two cycles: the two stones are solid together for 2 x 2.4 s.
+        assert!((both - 4.8).abs() < 0.1, "both {both}");
         assert_eq!(none, 0.0, "a bear can always stand on one of them");
         assert!(tells > 0 && ghosts > 0);
     }
@@ -2146,5 +2258,242 @@ mod tests {
         let out = run(&mut sim, &bear_at(50.0, 0.0, 0.0), &map, 12.0);
         assert!(out.events.is_empty() && out.puffs.is_empty());
         assert_eq!(sim.rock(0), Rock::Idle);
+    }
+}
+
+/// Tests on real zones: do the stones reach the place of the tell, and
+/// does a launch vent put the bear on its ledge?
+#[cfg(test)]
+mod field_tests {
+    use super::*;
+    use bf_worldgen::highlands::{generate, HighlandsParams};
+    use bf_worldgen::obstacles::{place_obstacles, ObstacleParams};
+
+    const DT: f32 = 1.0 / 60.0;
+
+    fn zone_obstacles(seed: u32) -> (HeightMap, Vec<Obstacle>, (f32, f32)) {
+        let mut zone = generate(seed, 768, 1.0, &HighlandsParams::default());
+        let list = place_obstacles(&mut zone, &ObstacleParams::default());
+        let start = zone.start_point();
+        (zone.heights, list, start)
+    }
+
+    fn bear(x: f32, y: f32, z: f32) -> BearIn {
+        BearIn {
+            feet: Vec3::new(x, y, z),
+            on_floor: true,
+            climbing: false,
+            speed: 0.0,
+            full_speed: 0.0,
+            stick_held: false,
+        }
+    }
+
+    fn stone_groups(list: &[Obstacle], start: (f32, f32)) -> Vec<&Obstacle> {
+        let mut near: Vec<&Obstacle> = list
+            .iter()
+            .filter(|o| matches!(o.kind, Kind::RollingStones { .. }))
+            .collect();
+        near.sort_by(|a, b| {
+            let d = |o: &Obstacle| (o.pos[0] - start.0).hypot(o.pos[2] - start.1);
+            d(a).total_cmp(&d(b))
+        });
+        near
+    }
+
+    /// Gives the number of hits on a standing bear in 3 waves.
+    fn stand_hits(map: &HeightMap, o: &Obstacle, p: &SimParams, at: Vec3) -> usize {
+        let mut sim = ObstacleSim::new(vec![o.clone()]);
+        let b = bear(at.x, at.y, at.z);
+        let mut hits = 0;
+        for _ in 0..((3.0 * o.period + 8.0) / DT) as usize {
+            let out = sim.step(DT, &b, map, p);
+            hits += out.events.iter().filter(|e| e.contains(":hit:")).count();
+        }
+        hits
+    }
+
+    /// The place and the direction of the first stone when it has gone
+    /// `at_m` metres along the obstacle direction.
+    fn path_point(map: &HeightMap, o: &Obstacle, p: &SimParams, at_m: f32) -> Option<(Vec3, Vec2)> {
+        let mut sim = ObstacleSim::new(vec![o.clone()]);
+        let pos = Vec3::from_array(o.pos);
+        let uphill = pos - dir3(o.dir) * 8.0;
+        let b = bear(uphill.x, uphill.y, uphill.z);
+        for _ in 0..((3.0 * o.period + 6.0) / DT) as usize {
+            sim.step(DT, &b, map, p);
+            for s in sim.stones() {
+                if s.wait <= 0.0 && (s.pos - pos).dot(dir3(o.dir)) >= at_m {
+                    return Some((s.pos, s.vel.normalize_or_zero()));
+                }
+            }
+        }
+        None
+    }
+
+    /// Gives the hits of a standing bear at the offsets across the path
+    /// of the stones, one count for each offset of 0.25 m from -2 to 2 m.
+    fn lateral_hits(map: &HeightMap, o: &Obstacle, p: &SimParams) -> Option<Vec<usize>> {
+        let Kind::RollingStones { run_m, .. } = o.kind else {
+            return None;
+        };
+        let (pt, v) = path_point(map, o, p, run_m * 0.3)?;
+        let side = Vec2::new(-v.y, v.x);
+        Some(
+            (-8..=8)
+                .map(|k| {
+                    let q = pt + Vec3::new(side.x, 0.0, side.y) * (k as f32 * 0.25);
+                    let y = map.sample_world(q.x, q.z);
+                    stand_hits(map, o, p, Vec3::new(q.x, y, q.z))
+                })
+                .collect(),
+        )
+    }
+
+    #[test]
+    fn stones_hit_a_bear_in_a_lane_that_is_about_a_metre_wide() {
+        let p = SimParams::default();
+        let (map, list, start) = zone_obstacles(7);
+        let groups = stone_groups(&list, start);
+        assert!(groups.len() >= 3);
+        for o in groups.iter().take(3) {
+            let hits = lateral_hits(&map, o, &p).expect("a path");
+            let cells = hits.iter().filter(|&&h| h > 0).count();
+            assert!(
+                cells >= 4,
+                "#{}: the lane is {} m wide",
+                o.id,
+                cells as f32 * 0.25
+            );
+        }
+    }
+
+    #[test]
+    fn a_launch_vent_puts_the_bear_on_its_ledge_in_most_cases() {
+        let p = SimParams::default();
+        let (mut all, mut ok) = (0, 0);
+        for seed in [7u32, 42] {
+            let (map, list, _) = zone_obstacles(seed);
+            for o in list
+                .iter()
+                .filter(|o| matches!(o.kind, Kind::VentLaunch { .. }))
+            {
+                for ox in [-0.4f32, 0.0, 0.4] {
+                    for oy in [-0.3f32, 0.3] {
+                        all += 1;
+                        ok += usize::from(fly(&map, o, &p, Vec2::new(ox, oy), 0.0).0);
+                    }
+                }
+            }
+        }
+        assert!(all >= 20, "{all} flights");
+        assert!(ok * 10 >= all * 9, "{ok} of {all} flights reach the ledge");
+    }
+
+    #[test]
+    #[ignore]
+    fn measure_stone_window() {
+        let p = SimParams::default();
+        for seed in [1u32, 7, 42] {
+            let (map, list, start) = zone_obstacles(seed);
+            for o in stone_groups(&list, start).iter().take(6) {
+                let Kind::RollingStones { count, radius, .. } = o.kind else {
+                    unreachable!()
+                };
+                let line = lateral_hits(&map, o, &p)
+                    .map(|v| v.iter().map(|h| format!(" {h}")).collect::<String>())
+                    .unwrap_or_default();
+                println!(
+                    "seed {seed} #{} n={count} r={radius:.2} lateral -2..2 m:{line}",
+                    o.id
+                );
+            }
+        }
+    }
+
+    /// Flies a bear off a launch vent over the real ground. The bear keeps
+    /// its launch speed (no input) plus `dv` m/s. A wall stops the sideways
+    /// speed. Gives (landed on the ledge, the landing speed in m/s).
+    fn fly(map: &HeightMap, o: &Obstacle, p: &SimParams, off: Vec2, dv: f32) -> (bool, f32) {
+        let Kind::VentLaunch { rise, reach } = o.kind else {
+            return (false, 0.0);
+        };
+        let (up, forward) = launch_velocity(
+            rise,
+            reach + p.launch_overreach_m,
+            p.launch_margin_m,
+            p.bear_gravity,
+            p.bear_fall_factor,
+        );
+        let forward = forward + dv;
+        let d = Vec2::from_array(o.dir);
+        let side = Vec2::new(-d.y, d.x);
+        let start = Vec2::new(o.pos[0], o.pos[2]) + d * off.x + side * off.y;
+        let (mut at, mut y, mut vy) = (start, map.sample_world(start.x, start.y), up);
+        let mut time = 0.0f32;
+        loop {
+            let factor = if vy < 0.0 { p.bear_fall_factor } else { 1.0 };
+            vy -= p.bear_gravity * factor * DT;
+            let step = d * forward * DT;
+            // The front of the body (0.17 m) must be above the ground.
+            let front = at + step + d * 0.17;
+            if map.sample_world(front.x, front.y) <= y + 0.12 {
+                at += step;
+            }
+            y += vy * DT;
+            time += DT;
+            let ground = map.sample_world(at.x, at.y);
+            if vy < 0.0 && y <= ground {
+                return (ground >= o.pos[1] + rise - 0.6, -vy);
+            }
+            if time > 8.0 {
+                return (false, 0.0);
+            }
+        }
+    }
+
+    #[test]
+    #[ignore]
+    fn measure_launch() {
+        for (margin, over) in [
+            (0.9f32, 0.0f32),
+            (1.2, 0.3),
+            (1.5, 0.5),
+            (1.5, 0.8),
+            (2.0, 0.5),
+        ] {
+            let p = SimParams {
+                launch_margin_m: margin,
+                launch_overreach_m: over,
+                ..SimParams::default()
+            };
+            let (mut all, mut ok, mut calm, mut calm_ok) = (0, 0, 0, 0);
+            let mut worst = 0.0f32;
+            for seed in [1u32, 7, 42, 3, 5, 9] {
+                let (map, list, _) = zone_obstacles(seed);
+                for o in list
+                    .iter()
+                    .filter(|o| matches!(o.kind, Kind::VentLaunch { .. }))
+                {
+                    for ox in [-0.4f32, 0.0, 0.4] {
+                        for oy in [-0.3f32, 0.3] {
+                            for dv in [-1.0f32, -0.5, 0.0, 0.5, 1.0] {
+                                let (r, v) = fly(&map, o, &p, Vec2::new(ox, oy), dv);
+                                all += 1;
+                                ok += usize::from(r);
+                                if dv == 0.0 {
+                                    calm += 1;
+                                    calm_ok += usize::from(r);
+                                }
+                                if !r {
+                                    worst = worst.max(v);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            println!("margin {margin} over {over}: calm {calm_ok}/{calm}, speed error +-1 m/s {ok}/{all}, worst miss {worst:.1} m/s");
+        }
     }
 }

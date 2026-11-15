@@ -789,8 +789,8 @@ pub fn place_obstacles(zone: &mut Zone, params: &ObstacleParams) -> Vec<Obstacle
             }
             1 => (
                 Kind::RollingStones {
-                    radius: 0.14 + 0.16 * r(2),
-                    count: 1 + (difficulty * 2.99) as u32,
+                    radius: 0.2 + 0.2 * r(2),
+                    count: 2 + (difficulty * 2.99) as u32,
                     run_m: s.a,
                 },
                 12.0 - 4.0 * difficulty + 2.0 * r(3),

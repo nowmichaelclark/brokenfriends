@@ -49,3 +49,16 @@ only the code that you will change.
 - Do not plan past your row. Write ideas in `inbox.md`.
 - Do not commit screenshots, builds or `target/`.
 - Do not add game logic in GDScript (see `CLAUDE.md`, "Rust first").
+
+## Combined runs
+
+A combined run does more than one row in one session. Use it when a
+strong model is available for a short time.
+
+1. Do the rows in the order that the lead gives.
+2. Finish each row fully before you start the next row: the tests,
+   `STATE.md`, the commit and the push. Each push is a save point.
+3. Keep the context small. Do not read `archive/`. To read external
+   docs, use a subagent that sends back a short summary.
+4. If the context becomes full, finish the current row, push, and
+   stop.

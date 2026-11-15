@@ -12,6 +12,7 @@ only. Do not use their code or their rules.
 ## Start of every session
 
 1. Read `plan/STATE.md`. "Run S-NNN" means that row of the agenda.
+   The full text of the row is in `plan/rows.md`.
 2. Read the brief for the session type of the row
    (`plan/sessions/<type>.md`).
 3. Read `plan/tech.md`. Then read the spec that the row names (now,
@@ -96,8 +97,8 @@ this style.
    prompt), do not look for another way. Say so in the summary. Then
    wait for the GitHub game build (step 6), which loads the game
    headless too.
-3. Update `plan/STATE.md`. Delete your row. Change the rows that your
-   row unblocks to **ready**. Add new rows for follow-up work at the
+3. Update `plan/STATE.md` and `plan/rows.md`. Delete your row in
+   both. Change the rows that your row unblocks to **ready**. Add new rows for follow-up work at the
    bottom. Give each new row a model and an effort level.
 4. Make one commit for each agenda row: `<Session type>: <what
    changed>`.

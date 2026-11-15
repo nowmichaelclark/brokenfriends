@@ -35,6 +35,8 @@ version" are still valid.
 | R24 | The world has water: rivers, ponds and waterfalls, with much variety, because the world is procedural. Waterfalls can be very tall or very wide. Water can have different colours and viscosities. Some water is easy to swim in, and some is more difficult. Generally, the bear can swim. The game must stay fast (R5). | Mikey, 2026-11-15 |
 | R25 | Start demo 2 (caves and water) now, in parallel with the tuning of demo 1. Mikey wants to see water and caves soon. | Mikey, 2026-11-15 |
 | R26 | Research goes in the Workshop Wiki (`nowmichaelclark/wiki`), not in this repo. Wiki articles can link to each other. The repo keeps the specs, the decisions and the agenda. | Mikey, 2026-11-15 |
+| R27 | Lead sessions have six types: Builder, Speed, Feel, Hygiene, Research and Bird's-eye. Only one lead runs at a time. They run in a cycle: Builder, Speed, Hygiene, Mikey's play, Feel, Bird's-eye. The Research lead runs while the cycle waits (`sessions/lead.md`). | Mikey, 2026-11-15 |
+| R28 | The play gate: when two play rows are ready for Mikey, the Builder lead starts no new feature row. The other leads can run. The gate opens after Mikey plays. | Mikey, 2026-11-15 |
 
 ## Proposed, Mikey must decide
 

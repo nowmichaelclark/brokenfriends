@@ -1,78 +1,63 @@
-# Handoff to the next lead Brain session
+# Handoff to the next lead session
 
-Written: 2026-11-15, evening, at the end of the first lead Brain
-session on Mikey's laptop (Claude Code, Opus 5.5). The next session
-starts with `plan/sessions/lead.md`. This file and the other plan
-files hold everything it needs.
+Written: 2026-11-15, night, at the end of S-206 (a planning lead,
+Fable 5.2). **The next lead is a Builder lead.** Mikey starts it with:
+"Start the Builder lead. Read plan/sessions/lead.md."
 
 ## Start here
 
-1. Read `CLAUDE.md`, then `plan/sessions/lead.md` (how the lead runs
-   workers), then this file.
-2. Read `STATE.md`, `decisions.md` (R1 to R26) and the two newest
-   sections of `play-notes.md` (the Intel GPU numbers).
-3. Read `demo-2.md` when you start a demo 2 row.
+1. Read `CLAUDE.md`, then `plan/sessions/lead.md` (the cycle, the play
+   gate, the workers), then `plan/sessions/lead-builder.md`.
+2. Read `STATE.md`. It has one line for each row. The full text of a
+   row is in `rows.md`.
+3. Read `decisions.md` (R1 to R28) and `demo-2.md`.
 
 ## The game in short
 
 Broken Friends is a 3D PC game in Godot 4.7.1 and Rust (godot-rust).
 The player is an old teddy bear, 0.40 m tall, in a procedural, hot,
-smoggy world. Demo 1 (one biome: walk, jump, climb, obstacles, tumble,
-seams, smoke edge) is built and waits for Mikey's feel notes. Demo 2
-(water and caves, R24, R25) started on 2026-11-15.
+smoggy world. Demo 1 is built and waits for Mikey's feel notes. Demo 2
+(water and caves) is in work: lakes, rivers, falls, caves and the cave
+light are on `main` (build 2e2d5f8).
 
-## What this session did
+## What S-206 changed
 
-- Ran the S-137 tests on the Intel GPU itself. Mikey only needs to
-  play 10 minutes for S-137.
-- Read the cloud results of S-132, S-135 and S-142 (the demo 2 plan).
-- Ran workers in git worktrees under `~/dev/bf-wt/` (all removed now):
-  S-161 caves layer, S-160 still water, S-180 cheaper water, S-164
-  walkable caves, S-162 rivers, S-166 cave light, S-165 waterfalls.
-  All are on `main`, and all GitHub builds pass.
-- Measured all of it on the Intel GPU (`play-notes.md`). Short form:
-  - Lakes 1.1 to 2.2 ms and rivers 1.1 to 1.8 ms (budget 1.0 ms).
-  - Waterfalls 0.75 ms at most (budget 0.8 ms).
-  - Caves with the deep-cave cut: 71 to 73 fps. The cut saves 5 ms.
-  - Views of lakes and cave mouths need 15 to 18 ms even without
-    water. This base cost is the next speed problem (S-183).
+- **R27:** six types of lead (Builder, Speed, Feel, Hygiene, Research,
+  Bird's-eye), one at a time, in a cycle. Each has a brief in
+  `plan/sessions/lead-<type>.md`.
+- **R28:** the play gate. If two play rows are ready, the Builder
+  starts no feature row.
+- `STATE.md` has one table for each lead and short rows. `rows.md` is
+  new and has the full row texts.
+- S-184 is now part of S-167, so Mikey plays one sitting.
+- New rows: S-207 and S-208 (Hygiene), S-209 and S-210 (Research),
+  S-211 (Bird's-eye).
 
-## Recommended order
+## The first wave
 
-0. **S-206 first** (Mikey, 2026-11-15): a planning lead on Fable 5.2,
-   medium. It plans the types of lead sessions and the way of working.
-   It may change the order below.
-1. **S-163** (swimming, Sonnet, high). It is the last row before
-   Mikey's first look at demo 2 (S-167). Parallel with it: **S-187**
-   (dev menu caves line and "go to the nearest mouth", Sonnet, low),
-   so that Mikey can find a cave. Check the overlap first: both may
-   touch `bear.rs`.
-2. Then tell Mikey to play **S-167** (and S-137 and S-184 in the same
-   sitting). His answers unblock S-191, S-192, S-202 and the tuning.
-3. Speed rows, one at a time with a quiet laptop: S-183 (base cost of
-   open views), S-181 (water to 1.0 ms), S-205 (cave base cost).
-4. Look rows: S-186 (cave rim), S-201 (falls look), S-195 then S-168
-   (light on water, then pools in caves), S-169 (far walls, Opus).
+1. **S-163** (swimming, Sonnet 5.5, high). Beside it, one after the
+   other: **S-187**, **S-195**, **S-186**. Check the files first:
+   S-187 and S-163 can both change `bear.rs`; S-195 changes
+   `water.gdshader`, and S-163 can change the water files too.
+2. When S-163 is on `main`, S-167 is ready and the gate closes. Tell
+   Mikey to play S-137 and S-167 in one sitting.
+3. Then a Speed lead (S-182, S-183, S-181, S-205), then a Hygiene
+   lead. A Research lead (S-209) can use a wait.
 
-## Lessons for the lead
+## Lessons for a lead
 
-- Two workers at most. Give each its own worktree. Copy
-  `tools/.cache` and `game/addons/terrain_3d` into it (`cp -a
-  --reflink=auto`), so `tools/check.sh` downloads nothing.
-- Workers must not measure GPU time when another build runs. The lead
-  measures after the builds, with the GitHub build
-  (`tools/get-build.sh`), one process for each setting.
-- Mikey's usage limit stopped two Opus workers once. A `SendMessage` to
-  the stopped agent resumed it with no lost work. Use Sonnet, high, for
-  Opus rows when the limit is low (STATE.md, "How we chose the models").
-- The workers write good weak spots. Read them before the next row.
-- Workers send a screenshot path. Send the picture to Mikey with
-  SendUserFile. He likes to see each new thing.
+- Copy `tools/.cache` and `game/addons/terrain_3d` into each worktree,
+  so `tools/check.sh` downloads nothing.
+- Only the Speed lead measures, with the GitHub build and one process
+  for each setting.
+- The usage limit stopped two Opus workers once. A `SendMessage`
+  resumed them with no lost work.
+- Mikey likes to see each new thing. Send the pictures.
 
 ## Open questions for Mikey (taste only)
 
 - The three demo 2 questions in `demo-2.md`: water colours, light in
   deep caves, thick water as a danger.
 - Longer rivers (S-191) and true cliffs for the big falls (S-202).
-- The new water look after S-180 (S-184).
+- The new water look after S-180 (in S-167).
 - Demo 1: are the obstacles the right kinds? The visual style.

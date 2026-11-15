@@ -1,40 +1,26 @@
 # State
 
-Updated: 2026-11-15 (Brain: demo 2 starts now, R24 to R26; the lead Brain chat runs cloud workers)
+Updated: 2026-11-15 (Brain S-142: demo 2 plan, `demo-2.md`, rows S-160 to S-174)
 
 Write this file again each time. Do not add to the end (90 lines at most).
 
 ## Phase
 
-**Demo 1** (`demo-1.md`): walk, jump and climb through one biome
-under smog. Rust makes a zone of scorched highlands; Terrain3D shows it
-(`game/README.md`). The bear walks, jumps and climbs (stamina, grip).
-Smog, sun, sky and dust are built (R19). Rust makes the bear from SDF
-parts (R17) and poses them (R18): planted feet, springs, hands that
-hold the wall, and a gait from the limbs it has. A wall of dark smoke
-surrounds the zone (R14) and kills a bear that stays in it (R16).
-Nobody has seen the smog, the smoke, the animation or the scatter in
-the Mobile renderer yet. The playtest recorder (R22) writes one zip for each
-session. A dev menu (hold Back, or F10) has the dev tools and tests.
-Each zone has about 340 seeded obstacles (R23): 8 types, and (S-129)
-thorn snags, rock teeth and falling rocks, which tear seams. The draw distance follows the smog
-(767 m). An autoplay bot runs a tour in each game build and wanders
-each night. A hard hit makes the bear tumble as a Jolt ragdoll (R11);
-hits tear the seams, a limb dangles or falls off, and the bear sews it
-on again (R12). Rocks, pebbles and dead shrubs (S-108) stream in near
-the camera. The S-125 freezes come from the desktop (`research/freezes.md`).
-On Intel UHD Graphics, a frame needs about 12 to 13.4 ms of GPU time
-with the scatter (S-139: light terrain shader, cheaper shadows and sky
-light, `research/gpu-speed.md`). Seed 1 had scatter-time hitches.
+**Demo 1** (`demo-1.md`): walk, jump and climb through one biome under smog. Rust makes a zone of scorched highlands; Terrain3D shows it
+(`game/README.md`). The bear walks, jumps and climbs (stamina, grip). Smog, sun, sky and dust are built (R19). Rust makes the bear from SDF parts
+(R17) and poses them (R18): planted feet, springs, hands that hold the wall, and a gait from the limbs it has. A wall of dark smoke surrounds the zone
+(R14) and kills a bear that stays in it (R16). Nobody has seen the smog, the smoke, the animation or the scatter in the Mobile renderer yet. The
+playtest recorder (R22) writes one zip for each session. A dev menu (hold Back, or F10) has the dev tools and tests. Each zone has about 340 seeded
+obstacles (R23): 8 types, and (S-129) thorn snags, rock teeth and falling rocks, which tear seams. The draw distance follows the smog (767 m). An
+autoplay bot runs a tour in each game build and wanders each night. A hard hit makes the bear tumble as a Jolt ragdoll (R11); hits tear the seams, a
+limb dangles or falls off, and the bear sews it on again (R12). Rocks, pebbles and dead shrubs (S-108) stream in near the camera. The S-125 freezes
+come from the desktop (`research/freezes.md`). On Intel UHD Graphics, a frame needs about 12 to 13.4 ms of GPU time with the scatter (S-139: light
+terrain shader, cheaper shadows and sky light, `research/gpu-speed.md`). Seed 1 had scatter-time hitches.
 
 ## Agenda
 
-To start a session, Mikey opens the place in the "Where" column. He
-selects the model and effort, then types "Run S-NNN". At the end of a
-session, the session deletes its row. It changes the rows that it
-unblocks to **ready**. It adds follow-up rows at the bottom.
-Next number: S-144. A cloud worker of the lead Brain chat numbers its
-new rows from the range in its brief.
+To start a session, Mikey opens the place in the "Where" column. He selects the model and effort, then types "Run S-NNN". At the end of a session, the session deletes its row. It changes the rows that it unblocks to **ready**. It adds follow-up rows at the bottom.
+Next number: S-144. A cloud worker of the lead Brain chat numbers its new rows from the range in its brief.
 
 | # | Session | Where | Model, effort | Status |
 |---|---|---|---|---|
@@ -47,9 +33,23 @@ new rows from the range in its brief.
 | S-109 | **Brain** with Mikey: play the full demo 1, decide what to fix. Demo 2 planning moved to S-142. | Project chat | Opus 5.5, medium | waiting on S-137 |
 | S-134 | **Build: fix what the first nightly autoplay finds** (`diagnostics.md`, "Autoplay"). Read `autoplay-nightly.md` on the `game-latest` release and the "Autoplay" notes of the game builds. Fix the bugs that it shows (falls through the ground, errors, many stuck or climb loop events at one place). If a task of the tour is often "missed" on a seed, make the bot better (`playtest/autoplay.rs`). Also look at the small put-back (0.26 m) on seed 7 at the stepping stones near (-256, 201): the collision and the heightmap do not agree there. | Claude Code | Sonnet 5.5, medium | waiting on the first nightly run (after the push of S-133) |
 | S-141 | **Build: tune the scatter from the playtest** (`research/scatter.md`). Read Mikey's notes, the overlay line `scatter:` in the marks, and the frame time with the scatter on and off (dev menu). Change the defaults on `BfScatter` (density, size scale, ranges, collision) and `ScatterParams::default()` with them. If the draw calls or the chunk build time are too high on the Intel GPU, use the ideas in `inbox.md`. Also find the hitches of the Benchmark on seed 1 with the scatter (worst 45.8 ms, `research/gpu-speed.md`). | Claude Code | Sonnet 5.5, medium | waiting on Mikey's play (S-137) |
-| S-142 | **Brain (planner): plan demo 2, caves and water** (R3, R4, R24, R25). Write the research as articles in the wiki (R26). Write `plan/demo-2.md` (the spec) and change `plan/tech.md`. Add the build rows, so that Mikey sees water and caves early and the game stays at 60 fps on Intel graphics (R5). | Lead chat (cloud worker) | Opus 5.5, high | **in progress** |
 | S-143 | **Play: the integrated-graphics test on the Vivobook**, the same as S-137, when Mikey has the Vivobook again. | Mikey's Vivobook | Mikey | waiting on the Vivobook |
 | S-155 | **Build: check the S-135 tear and tumble values from the next playtest.** Count the lost legs and the time on the ground in `report.md`. If legs still come off more than about 3 times in 30 minutes, lower `seam_damage_per_speed` again. Add a recorder line for the speed of each limb hit, so the next tune has data. | Lead chat (cloud worker) | Sonnet 5.5, medium | blocked on the next playtest |
+| S-160 | **Build: still water, the first look** (`demo-2.md`, "Water bodies", "Water look"). Lakes and ponds from the basin records, with seeded levels and looks; `BfWater` meshes with the depth in the vertices; the water shader; a simple float in deep water. Add the Water view test and the `water` samples. Measure on the Intel GPU. Parallel: S-161. | Claude Code (local) | Opus 5.5, high | **ready** |
+| S-161 | **Build: the cave layer in `bf-worldgen`** (`demo-2.md`, "The cave layer"). Seeded cave graph, SDF from the graph, spatial grid and bound check, mouths, sky visibility, the queries, cave slices in the preview tool, determinism tests. Rust only. Parallel: S-160, S-162, S-163, S-165. | Lead chat (cloud worker) | Opus 5.5, high | **ready** |
+| S-162 | **Build: rivers with water** (`demo-2.md`, "Water bodies"). The second (wet) flow accumulation, river surfaces that never rise, river meshes with flow in the vertices, two ripple layers, rapids, damp banks. Add the river view to the Water view test. Parallel: S-161, S-164. | Claude Code (local) | Opus 5.5, high | waiting on S-160 |
+| S-163 | **Build: swimming and wet fur** (`demo-2.md`, "Swimming"). Replace the float of S-160: wade, swim, float line, viscosity, current, stamina, bank exit, climb from the water, wet parts that dry. Recorder events `swim_*`, `bank_*`. Parallel: S-161, S-162, S-164. | Claude Code (local) | Sonnet 5.5, high | waiting on S-160 |
+| S-164 | **Build: the first walkable cave** (`demo-2.md`, "Walkable caves"). Chunk meshes on threads, collision near the bear, holes and rim meshes at mouths, the put-back, ground event, camera, start point, scatter and obstacles made cave-aware. Add the Cave tour test and the `cave` samples. Parallel: S-162, S-163, S-165. **Fable 5.2 pick:** it touches the most systems (Terrain3D, threads, Jolt, bear, camera, recorder), and its bugs (falls through the floor, hitches) are the hardest to find later. | Claude Code (local) | Opus 5.5, high | waiting on S-161 |
+| S-165 | **Build: waterfalls** (`demo-2.md`, "Waterfalls"). Falls at river steps and lake outlets, one tall and one wide feature fall per zone, curtain, foam, splash, mist, the push on the bear. Add the fall views to the Water view test. Parallel: S-164, S-166. | Claude Code (local) | Opus 5.5, high | waiting on S-162 |
+| S-166 | **Build: cave light** (`demo-2.md`, "Cave light"). Sky visibility in `AO`, the cave fog, glowing minerals, the uniform on the fur and the water, the deep-cave cut (on and off in the Cave tour). Parallel: S-163, S-165. | Claude Code (local) | Sonnet 5.5, high | waiting on S-164 |
+| S-167 | **Play: the first look at water and caves.** Download the newest zip. Start it with `--gpu-index 0`. Run the Water view, the Cave tour and the Benchmark, then play for 10 minutes. Send the zip and one line each on: the water colours, the swim, the first cave, the questions in `demo-2.md`. | Mikey's TUF laptop | Mikey | waiting on S-160, S-163, S-164 |
+| S-168 | **Build: pools in caves** (`demo-2.md`, "Pools in caves"). Water at the low points of chamber floors, with the cave light. Parallel: S-169 to S-172. | Lead chat (cloud worker) | Sonnet 5.5, medium | waiting on S-160, S-166 |
+| S-169 | **Build: the far walls of big chambers.** A second level of cave chunks (2 m voxels from about 48 m), hidden seams, and occluders from the cave shells if the Cave tour shows overdraw. Parallel: the water rows. | Claude Code (local) | Opus 5.5, high | waiting on S-164 |
+| S-170 | **Build: the ragdoll, lost limbs and swim gaits in water** (R11, R12, R18). Lift and drag for each ragdoll part, floating lost limbs, a dog paddle from the limbs that the bear still has. Parallel: the cave rows. | Lead chat (cloud worker) | Sonnet 5.5, high | waiting on S-163 |
+| S-171 | **Build: autoplay for water and caves** (`diagnostics.md`, "Autoplay"). Tour tasks: swim across a lake, get out at a bank, go into the nearest mouth, reach a chamber, stand in a fall. Caves in the nightly wander. Parallel: S-168 to S-170. | Lead chat (cloud worker) | Sonnet 5.5, medium | waiting on S-163, S-164 |
+| S-172 | **Build: obstacles with water and caves** (R23). No obstacles in water or hole cells, a crumbling floor that drops the bear into a cave, stepping stones across rivers. Parallel: S-168 to S-171. | Lead chat (cloud worker) | Sonnet 5.5, high | waiting on S-132, S-162, S-164 |
+| S-173 | **Play: the demo 2 playtest.** The same as S-167, with the waterfalls, the cave light, the pools and the far walls. Play for 10 minutes and send the zip and notes. | Mikey's TUF laptop | Mikey | waiting on S-165, S-166, S-168 to S-172 |
+| S-174 | **Brain: tune demo 2 from S-167.** Read the zip and Mikey's answers. Write his decisions with him, and add tuning rows S-175 to S-179. | Claude Code (local) | Opus 5.5, medium | waiting on S-167 |
 
 ## Combined runs
 

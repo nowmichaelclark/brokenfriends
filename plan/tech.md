@@ -1,7 +1,7 @@
 # How the game is built
 
-Status: draft, 2026-11-13. This doc comes from the research on world
-generation. Items marked **proposed** need a "yes" from Mikey (see
+Status: draft, 2026-11-13, changed for demo 2 on 2026-11-15. This doc
+comes from the research on world generation. Items marked **proposed** need a "yes" from Mikey (see
 `decisions.md`).
 
 ## The structure (Option A, chosen by Mikey)
@@ -11,12 +11,18 @@ generation. Items marked **proposed** need a "yes" from Mikey (see
   around the camera. The rings near the camera have the most detail.
   This is the least expensive smooth terrain, and it makes the
   mountains.
-- **Caves (after demo 1).** Caves are a separate layer of smooth
-  voxels. Rust makes a graph of caves and changes it into a signed
-  distance field (SDF). An SDF gives the distance to the nearest
+- **Caves (demo 2, `demo-2.md`).** Caves are a separate layer of
+  smooth voxels. Rust makes a seeded graph of chambers and tunnels and
+  computes a signed distance field (SDF) from it when a chunk needs
+  it. The SDF is not stored. An SDF gives the distance to the nearest
   surface at each point. Rust makes meshes from the SDF near the
-  player (with Surface Nets) and gives them to Godot. Each cave mouth
-  is a hole in the surface.
+  player (with Surface Nets, 32 m chunks, 1 m voxels) and gives them
+  to Godot. Each cave mouth is a hole in the Terrain3D surface (the
+  hole bit of the control map), and a cave mesh fills the rim.
+- **Water (demo 2).** The drainage step gives lakes, ponds and wet
+  rivers with seeded levels and looks. Rust makes one mesh for each
+  body, with the water depth and the flow in the vertex data. The
+  water shader reads no screen or depth texture.
 - **Zones.** The world is not endless. It is a set of finite zones.
   Each zone is 2–8 km across, with its centre at the origin. The world
   seed and the zone number fully set the contents of a zone. Erosion
@@ -34,10 +40,14 @@ game/                 Godot 4.7.1 project (Mobile renderer)
   bf.gdextension      loads the Rust library, reloadable = true
 rust/                 one Cargo workspace with one target/ folder
   worldgen/           bf-worldgen: Rust only, no Godot. Noise, biome
-                      height functions, erosion. Unit tests and a
-                      preview tool that writes PNG images.
+                      height functions, erosion, drainage. Unit tests
+                      and a preview tool that writes PNG images.
+                      Demo 2 adds water bodies (water.rs) and the cave
+                      graph and SDF (caves.rs).
   game/               bf-game: the GDExtension (a cdylib). Player,
                       camera, terrain bridge, scatter, debug overlay.
+                      Demo 2 adds BfWater, swimming, waterfalls and the
+                      cave chunks with their shaders.
 ```
 
 `bf-worldgen` does not use Godot. To test the generation without
@@ -130,6 +140,16 @@ one square tile of Terrain3D data. A zone of 2048 samples uses 2 × 2
 regions of size 1024. All of these calls are in
 `rust/game/src/terrain.rs`.
 
+**Holes for cave mouths (demo 2).** The second image of
+`import_images` is the control map. It is a `FORMAT_RF` image, but
+each pixel holds the bits of a 32-bit integer, not a float. Bit 3 is
+the hole bit: write `1 << 2` into the bits of the float. The light
+terrain shader already draws no ground at a hole. In Terrain3D v1.1.0
+the collision gets NaN heights at holes, and Godot's Jolt makes holes
+from NaN, so a hole cell has no ground collision. To open a hole while
+the game runs, call `data.set_control_hole(position, true)`, then
+`data.update_maps()`.
+
 If this is too difficult, use the fallback: our own clipmap. It is a
 few ring meshes and a shader that reads a height texture. Rust owns
 all of it. This is more work, but it removes the C++ dependency.
@@ -151,7 +171,19 @@ all of it. This is more work, but it removes the C++ dependency.
   must also run Broken Friends.
 - **Time for each frame.** The limit is 16.6 ms in total. Terrain gets
   4 ms at most. Scatter gets 4 ms at most. All other work gets 5 ms at
-  most.
+  most. Demo 2 adds targets for the worst view on Intel UHD: water
+  1.0 ms, waterfalls 0.8 ms, caves 1.5 ms inside and 0.3 ms outside
+  (the table in `demo-2.md`).
+- **No depth prepass in Mobile.** Godot's Mobile renderer has no depth
+  prepass. Thus each transparent layer (water, mist, smoke) is shaded
+  in full on top of the ground. Keep transparent layers few and cheap.
+- **Water shaders read no screen texture and no depth texture.** A
+  screen-reading shader makes Godot copy the full screen. Rust bakes
+  the water depth into the vertices instead.
+- **Caves.** Cave meshes cast no shadows. The cave shader darkens the
+  ambient light and the sun with a baked sky visibility (`AO` and
+  `AO_LIGHT_AFFECT`). The Mobile renderer allows 8 omni and 8 spot
+  lights for each mesh.
 - **Draw calls.** Use a few hundred at most. A draw call is one
   request to the GPU to draw an object. Draw each repeated rock and
   shrub with MultiMesh (one draw call for many copies). Use visibility
@@ -214,7 +246,7 @@ Cloud containers usually have no GPU, and some have no Vulkan.
 | Erosion look | our port of the erosion filter by Rune Skovbo Johansen (`erosion_filter.rs`, MPL-2.0, from the CPU code in `bevy_erosion_filter`) |
 | Threads | `rayon` |
 | Maths | `glam` for the vectors of the climb maths (`climb.rs`). `detmath.rs` has `sin`, `cos` and `exp` that give the same bits on all computers. |
-| SDF meshes: the bear now, caves later | `fast-surface-nets` (MIT or Apache-2.0) |
+| SDF meshes: the bear and the caves | `fast-surface-nets` 0.2 (MIT or Apache-2.0, checked on crates.io on 2026-11-15) |
 | Preview images | `image` (dev dependency only) |
 | Playtest files (JSON) | `serde`, `serde_json` (MIT or Apache-2.0) |
 
@@ -222,6 +254,8 @@ Cloud containers usually have no GPU, and some have no Vulkan.
 
 - Erosion filter: https://blog.runevision.com/2026/03/fast-and-gorgeous-erosion-filter.html
 - Terrain3D: https://github.com/TokisanGames/Terrain3D
+- The research for demo 2 (water and caves) is in the Workshop Wiki,
+  folder `Broken Friends/`: https://github.com/nowmichaelclark/wiki
 - The godot-rust book: https://godot-rust.github.io/book/
 - Sebastian Lague, hydraulic erosion: https://www.youtube.com/watch?v=eaXk97ujbPQ
 - World generation in Veloren (Rust, GPL licence; read it, do not copy it): https://blog.jsbarretto.com/post/veloren

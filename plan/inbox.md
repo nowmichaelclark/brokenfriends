@@ -85,3 +85,8 @@ sorts them.
 - Tests page: a "GPU parts" test that writes the GPU time with each part off (terrain, shadows, fog, smoke, sky light). A change while the game runs gives order effects (`research/gpu-speed.md`), so the test may need one restart for each part.
 - Terrain: bake the shadows of far cliffs into the colour map (the sun does not move). Then the terrain can stop casting real-time shadows (about 2 ms on Intel UHD) and far slopes still get shade.
 - Recorder: also record the GPU time per render pass (`--gpu-profile` data) in the Benchmark, if Godot gives it to code.
+- Waterfalls: a cave behind a waterfall, which the bear finds when it climbs through the curtain (after S-164 and S-165).
+- Caves: underground rivers, and surface rivers that fall into a sinkhole (after S-168).
+- Bear: muddy or coloured water leaves a stain on the fur that stays after the fur dries and fades slowly.
+- Caves: use the run-length columns of `research/caves-and-sdf.md` if caves must change while the game runs (digging, collapse).
+- Swimming: diving under water, with the view and the light under the surface (demo 2 has floating only).

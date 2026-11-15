@@ -38,15 +38,15 @@ pub struct TumbleParams {
 impl Default for TumbleParams {
     fn default() -> TumbleParams {
         TumbleParams {
-            impact_speed: 7.0,
+            impact_speed: 8.0,
             let_go_speed: 3.0,
             spin_per_speed: 0.6,
             max_spin: 9.0,
-            rest_speed: 0.25,
-            rest_spin: 2.0,
-            rest_time: 0.4,
+            rest_speed: 0.4,
+            rest_spin: 2.5,
+            rest_time: 0.3,
             min_time: 0.8,
-            max_time: 6.0,
+            max_time: 4.5,
         }
     }
 }

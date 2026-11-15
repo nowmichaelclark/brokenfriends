@@ -76,9 +76,9 @@ pub struct TearParams {
 impl Default for TearParams {
     fn default() -> TearParams {
         TearParams {
-            damage_speed: 7.0,
-            damage_per_speed: 0.09,
-            thread_wear_per_m: 0.012,
+            damage_speed: 11.0,
+            damage_per_speed: 0.05,
+            thread_wear_per_m: 0.004,
         }
     }
 }
@@ -207,9 +207,10 @@ mod tests {
         let mut s = Seams::default();
         assert_eq!(s.hit(0, p.damage_speed, &p), (0.0, None));
         assert_eq!(s.health(0), 1.0);
-        // 15 m/s: 8 m/s too fast, 0.72 of the health.
-        let (amount, change) = s.hit(2, 15.0, &p);
-        assert!((amount - 0.72).abs() < 1e-5);
+        // 24 m/s: 13 m/s too fast, 0.65 of the health. One hit does not
+        // take a leg off: it tears the seam.
+        let (amount, change) = s.hit(2, 24.0, &p);
+        assert!((amount - 0.65).abs() < 1e-5);
         assert_eq!(
             change,
             Some(Change {
@@ -219,11 +220,42 @@ mod tests {
             })
         );
         // A second hit like it takes the leg off.
-        let (_, change) = s.hit(2, 15.0, &p);
+        let (_, change) = s.hit(2, 24.0, &p);
         assert_eq!(change.map(|c| c.to), Some(Stage::Detached));
         assert_eq!(s.working(), LimbSet::ALL.with(2, false));
         // A detached limb takes no more damage.
         assert_eq!(s.hit(2, 30.0, &p).1, None);
+    }
+
+    #[test]
+    fn one_landing_tears_a_seam_and_does_not_take_the_leg_off() {
+        let p = TearParams::default();
+        // The 16 m/s tumble of a launch-vent miss only frays a seam.
+        let mut s = Seams::default();
+        s.hit(2, 16.0, &p);
+        assert_eq!(s.stage(2), Stage::Intact);
+        s.hit(2, 16.0, &p);
+        assert_eq!(s.stage(2), Stage::Frayed);
+        // The fastest landing of the playtest (24.9 m/s) tears a seam.
+        let mut s = Seams::default();
+        s.hit(2, 24.9, &p);
+        assert_eq!(s.stage(2), Stage::Torn);
+        // The speed that takes a leg off in one hit is above 30 m/s.
+        let one_hit = p.damage_speed + 1.0 / p.damage_per_speed;
+        assert!(one_hit > 30.0, "{one_hit}");
+        // Four 16 m/s hits are needed to take the leg off.
+        let mut s = Seams::default();
+        let hits = (1..20)
+            .find(|_| s.hit(1, 16.0, &p).1.map(|c| c.to) == Some(Stage::Detached))
+            .unwrap();
+        assert!(hits >= 4, "{hits}");
+    }
+
+    #[test]
+    fn a_thread_lasts_about_twenty_metres() {
+        let p = TearParams::default();
+        let metres = 0.1 / p.thread_wear_per_m;
+        assert!((15.0..=40.0).contains(&metres), "{metres}");
     }
 
     #[test]

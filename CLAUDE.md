@@ -50,6 +50,11 @@ only. Do not use their code or their rules.
   next playtest. Ask Mikey only about feel and taste.
 - **Mark guesses.** If you did not check a statement about an engine,
   a crate or speed, add `[unverified]` after it.
+- **Research goes in the wiki** (R26). Write new research as articles
+  in the Workshop Wiki (`nowmichaelclark/wiki`, folder
+  `Broken Friends/`). Follow the wiki's `CLAUDE.md`. In the repo, link
+  to the article and keep only the result that the spec needs. The old
+  notes in `plan/research/` stay until a session moves them.
 
 ## Writing style: about 80% Simplified Technical English
 

@@ -32,6 +32,9 @@ version" are still valid.
 | R21 | There is a let-go button for climbing. | Mikey, 2026-11-14 |
 | R22 | Claude must not ask Mikey technical questions about play sessions. The game records everything Claude needs (a diagnostics system). If a new technical question comes up, Claude adds a test to the diagnostics instead of asking. Mikey gives notes about feel and taste only. | Mikey, 2026-11-14 |
 | R23 | Procedurally generated obstacles of many kinds, inspired by Fall Guys but made for one player. Some can rip limbs off. Some help the player, for example vanishing platforms. Obstacles can be part of the world, for example a floor that breaks apart and drops the bear into a cave. | Mikey, 2026-11-14 |
+| R24 | The world has water: rivers, ponds and waterfalls, with much variety, because the world is procedural. Waterfalls can be very tall or very wide. Water can have different colours and viscosities. Some water is easy to swim in, and some is more difficult. Generally, the bear can swim. The game must stay fast (R5). | Mikey, 2026-11-15 |
+| R25 | Start demo 2 (caves and water) now, in parallel with the tuning of demo 1. Mikey wants to see water and caves soon. | Mikey, 2026-11-15 |
+| R26 | Research goes in the Workshop Wiki (`nowmichaelclark/wiki`), not in this repo. Wiki articles can link to each other. The repo keeps the specs, the decisions and the agenda. | Mikey, 2026-11-15 |
 
 ## Proposed, Mikey must decide
 

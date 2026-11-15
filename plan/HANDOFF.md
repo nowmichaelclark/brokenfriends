@@ -74,6 +74,13 @@ of the laptop, not the game (`research/freezes.md`). The new top
 problem is speed on Intel graphics: 12 fps on the Intel GPU of the
 playtest laptop (S-139).
 
+**Update, 2026-11-15 (second Brain session, the lead chat):** S-139
+(about 70 fps on Intel UHD), S-108 (scatter) and S-140 (closed, not
+reproduced) are done. Mikey decided R24 to R26: water, demo 2 starts
+now, research goes in the wiki. The lead Brain chat runs cloud workers
+for S-132, S-135 and the demo 2 plan (S-142). `STATE.md` has the
+current order. The list below is the old order.
+
 Recommended order:
 1. **S-139**, the speed on Intel graphics (12 fps on the Intel GPU of
    the playtest laptop), and **S-140**, the desktop stalls of that

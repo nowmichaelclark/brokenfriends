@@ -3,6 +3,32 @@
 Mikey's notes from play sessions. The newest section is at the top.
 Claude sessions use these notes to change the default values.
 
+## 2026-11-15, lead Brain: the tests of S-137 on the Intel GPU, build ae685ec
+
+The lead Brain ran the three tests of the Tests page from the command
+line, with `--gpu-index 0` (Intel UHD Graphics, CML GT2, 1080p). No
+build ran at the same time. Mikey's feel play of S-137 is still open.
+The zips are in `~/Games/broken-friends-linux/playtests/`
+(10-43-00, 10-46-18, 10-50-20).
+
+- **Benchmark:** seeds 7 and 42 give 69.5 fps (1% low 50 fps, GPU 12.4
+  ms). Seed 1 gives 65.5 fps, with one 400 ms frame in part 1 and 41
+  fps in part 2 (GPU 22 ms).
+- **Draw distance test** (seed 7): 300 m 72 fps, 800 m 70 fps, 3000 m
+  68 fps. A far view costs about 1.4 ms of GPU time. Part 1 of the
+  first run was slow again (47 fps, GPU 18 ms).
+- Thus the slow part 2 of seed 1 is a warm-up of the first run, not a
+  place on seed 1 [unverified: the cause of the warm-up]. The 400 ms
+  frame came only on seed 1.
+- **Autoplay tour:** pass. Tasks reached: 14/16, 15/16, 16/16. The
+  smoke edge task missed on seeds 1 and 7, and `vent_push` missed on
+  seed 1. In play: 70 fps average, 1% low 34 fps, 9 s of 625 s below
+  55 fps. The two hitches in play were shader compiles (83 and 81 ms)
+  in the first minute.
+- Tumbles: 15 hard landings (fastest 25.2 m/s). Legs came off 13 times
+  in 10 minutes. This agrees with the S-125 note that legs come off
+  too easily (S-135).
+
 ## 2026-11-14, S-125: playtest zip, build 32a0269 (30 min)
 
 Mikey sent the zip only: no marks and no notes. Claude read

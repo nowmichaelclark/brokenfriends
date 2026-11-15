@@ -1,6 +1,6 @@
 # State
 
-Updated: 2026-11-15 (S-206: seven lead types, the cycle, the play gate, the plan check)
+Updated: 2026-11-15 (S-206: seven lead types, the cycle, the play gate, the plan check, the bug tools)
 
 Write this file again each time. Do not add to the end (90 lines at most). One line for each row. The full text of each row is in `rows.md`. `tools/check-plan.py` checks both files.
 
@@ -11,10 +11,10 @@ Write this file again each time. Do not add to the end (90 lines at most). One l
 
 ## Cycle (`sessions/lead.md`, R27, R28)
 Builder → Speed → Fix → Hygiene → Mikey plays → Feel → Bird's-eye. One lead at a time. Research runs while the cycle waits. A Fix lead can run at any time.
-- **Next lead: Fix** (S-212, Mikey's three bugs; then S-134). Then Builder. Wave: S-163, and beside it S-187 and S-186, one after the other.
+- **Next lead: Fix**, for the bug tools S-213 to S-216 (`diagnostics.md`, "Finding bugs"). Then Builder. Wave: S-163, and beside it S-187 and S-186, one after the other.
 - **Play gate: open** (1 play row is ready). It closes when S-163 is on `main` (S-167 becomes ready). Then the Builder does only rows with "–" or a ready play row in the "Play" column.
 
-Next number: S-213. A worker numbers its new rows from the range in its brief.
+Next number: S-217. A worker numbers its new rows from the range in its brief.
 
 ## Mikey plays (`sessions/play.md`). Do all ready rows in one sitting.
 | # | Row | Status |
@@ -54,7 +54,11 @@ Next number: S-213. A worker numbers its new rows from the range in its brief.
 ## Fix (`sessions/lead-fix.md`)
 | # | Row | Model, effort | Status |
 |---|---|---|---|
-| S-212 | The visual and collision bugs that Mikey sees now | Opus 5.5, high | **ready**: water edge is square, bright haze in deep caves, camera through the ground |
+| S-213 | Tool: play probes for the camera (`camera_clip`) | Sonnet 5.5, medium | **ready**: first |
+| S-215 | Tool: the look tour (one clean picture of each kind of thing) | Sonnet 5.5, high | **ready** |
+| S-214 | Tool: the world audit (shape rules on many seeds, no GPU) | Sonnet 5.5, high | **ready** |
+| S-216 | Tool: the look review (`looks.md`, reference pictures, review step) | Opus 5.5, medium | waiting on S-215 |
+| S-212 | Mikey's three bugs: square water edge, bright haze in deep caves, camera through the ground | Opus 5.5, high | waiting on S-213, S-214, S-216 |
 | S-134 | Fix what the nightly autoplay finds | Sonnet 5.5, medium | **ready** (the nightly report exists) |
 
 ## Feel (`sessions/lead-feel.md`)

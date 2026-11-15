@@ -249,7 +249,7 @@ Where: Claude Code (local). Model: Fable 5.2, medium (or Opus 5.5, high).
 
 ## S-212
 
-**Fix: the visual and collision bugs that Mikey sees now** (Mikey, 2026-11-15). Mikey gives one line for each bug in his own words (what he saw, and about where), or taps a mark in a play. For each bug: find the seed and the place (the mark, the newest zips in `~/Games/broken-friends-linux/playtests/`, or the fly camera), make a picture, and follow `sessions/lead-fix.md`. Known places to look at first: the tall vertical panels beyond the lake of seed 42 near (-331, 451) (`inbox.md`), the stepped walls at the river mouths (seed 7, river #49), the cave rim (S-186 has it), and the small put-back on seed 7 near (-256, 201) (S-134 has it).
+**Fix: the visual and collision bugs that Mikey sees now** (Mikey, 2026-11-15). Do this row after the tool rows S-213 to S-216. These three bugs are the test of the tools: a tool must show each one before a session fixes it. Mikey gives one line for each bug in his own words (what he saw, and about where), or taps a mark in a play. For each bug: find the seed and the place (the mark, the newest zips in `~/Games/broken-friends-linux/playtests/`, or the fly camera), make a picture, and follow `sessions/lead-fix.md`. Known places to look at first: the tall vertical panels beyond the lake of seed 42 near (-331, 451) (`inbox.md`), the stepped walls at the river mouths (seed 7, river #49), the cave rim (S-186 has it), and the small put-back on seed 7 near (-256, 201) (S-134 has it).
 
 Mikey's first list (2026-11-15, his words in short; he says there are more):
 
@@ -260,3 +260,27 @@ Mikey's first list (2026-11-15, his words in short; he says there are more):
 Ask Mikey for the other bugs after these three, or read his marks in the next playtest.
 
 Where: Claude Code (local). Model: Opus 5.5, high.
+
+## S-213
+
+**Fix tool: play probes for the camera** (`diagnostics.md`, "Finding bugs"). The recorder checks the camera in each physics tick: below the terrain or the cave floor, inside a collision shape, the near plane cuts the ground, the line from the camera to the bear is blocked for more than 0.5 s. Event `camera_clip` with the place and a picture. A "Camera" section in `report.md`, a count in the autoplay result, and a limit in the GitHub build. Done when the autoplay tour of seeds 1, 7 and 42 finds one or more places where the camera goes through the ground (Mikey sees this bug, S-212), or shows with data that the tour does not go to such places.
+
+Where: Claude Code (local). Model: Sonnet 5.5, medium.
+
+## S-214
+
+**Fix tool: the world audit** (`diagnostics.md`, "Finding bugs"). A command in `bf-worldgen` (no Godot) that checks rules on the data of a zone and writes `audit.md`: the count and the worst place for each rule. First rules: the distance of the water mesh edge from the true shore line (where the ground is at the water level), water above a low bank, water quads that hang in the air, scatter and obstacles that float, lie under the ground or under water, cave chunk seams and holes, a gap at a mouth rim, a start point on bad ground. Each rule has a limit as data. Run it on seeds 1, 7 and 42 in `cargo test` and on 50 seeds in the nightly GitHub job. Done when the audit shows the square water edge of S-212 as a number.
+
+Where: Claude Code (local or cloud). Model: Sonnet 5.5, high.
+
+## S-215
+
+**Fix tool: the look tour** (`diagnostics.md`, "Finding bugs"). `--bf-test=look-tour`: for each of seeds 1, 7 and 42, select from the world data one view of each kind (steep shore, flat shore, river mouth, rapids, tall fall, cave mouth from outside, tunnel, deep chamber, each obstacle type, the smoke wall, the bear near and far, a wide view). Stop the camera, hide the overlay, wait for the streaming, and save a full 1080p picture, a burst of 5 frames, and a caption file (kind, seed, place, what must be true). Add image numbers to the report: average brightness, and the change between the frames of a burst. `tools/look-tour.sh` runs it on the Intel GPU and makes one contact sheet for each kind. Done when the deep chamber pictures show the bright haze of S-212 with no overlay.
+
+Where: Claude Code (local). Model: Sonnet 5.5, high.
+
+## S-216
+
+**Fix tool: the look review** (`diagnostics.md`, "Finding bugs"). 1) `plan/looks.md`: for each kind of view, what must be true and a list of known faults (square edges, gaps, floating things, wrong fog, holes, z-fighting, popping). 2) A reference set: the pictures that Mikey approved, as `look-reference.zip` on the `game-latest` release (not in the repo). `tools/look-review.sh` compares a new look tour with it and lists the views that changed. 3) The review step: one subagent for each kind of view reads the pictures against `looks.md` and writes the faults with the picture name. Test it: the review must name Mikey's three bugs of S-212 without his words. Write the result, with what it missed, in `diagnostics.md`.
+
+Where: Claude Code (local). Model: Opus 5.5, medium.

@@ -40,6 +40,16 @@ row numbers and `STATE.md`.
 8. Keep the values that a seed could select as data (ranges and
    weights), not as constants in the code (`vision.md`).
 
+## Look at your own work
+
+Before you finish, make pictures of the new thing on seeds 1, 7 and
+42 (the look tour when it exists, S-215; until then, a test view).
+Read each picture. Write what looks wrong, as a player would see it.
+Fix it, or name it in your summary as a bug, with the seed and the
+place. "It looks close to the old one" is not a check. If your row
+adds a new kind of thing, add its view to the look tour and its rules
+to the world audit (S-214).
+
 ## Done when
 
 - The "done when" of the row is true. A test, a screenshot or a

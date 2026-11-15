@@ -14,7 +14,8 @@ Mikey the next thing to see.
    overlap.
 3. Run the workers (`lead.md`, "Workers"). Use the model of the row.
 4. After each worker: read its weak spots, check that the GitHub build
-   passes, and send its picture to Mikey.
+   passes, read its pictures yourself for faults (`lead.md`, "Look
+   before you send"), and send them to Mikey.
 5. For each weak spot about speed, add a row to the Speed table. For
    a bug, add a row to the Fix table. For docs or tests, add a row to
    the Hygiene table. Give each new Builder row a "Play" column.

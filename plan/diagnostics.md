@@ -148,6 +148,50 @@ playtest.
 good, or feels right. Mikey's notes stay the source for feel and
 taste.
 
+## Finding bugs: three layers
+
+Status: plan from S-206 (2026-11-15). The rows are S-213 to S-216.
+Mikey found three bugs that no tool found: a square water edge, a
+bright haze deep in the caves, and a camera that goes through the
+ground. The recorder and the autoplay check the bear and the speed.
+Before these rows, no tool checks the picture, the camera or the
+shape of the world. A session can read a picture, but no step told it
+to look, and no doc said what a correct picture looks like.
+
+**Layer 1: rules that a number can check.** They need no GPU, so they
+run in `cargo test`, in each GitHub build and each night on many seeds.
+- **World audit** (S-214): rules on the data of a zone. Examples: the
+  water edge is near the true shore line, no water hangs over a low
+  bank, no rock floats or lies under water, cave chunks have no holes.
+- **Play probes** (S-213): rules while the bot plays. Examples: the
+  camera is not in the ground or in a mesh, and no thing blocks the
+  line from the camera to the bear for long.
+
+**Layer 2: pictures that a session reads.** They need the Mobile
+renderer and a real GPU, so a lead runs them on the laptop.
+- **Look tour** (S-215): the game flies to one view of each kind of
+  thing on each seed: a steep shore, a flat shore, a river mouth, a
+  fall, a cave mouth, a tunnel, a deep chamber, each obstacle type,
+  the smoke wall, the bear. It saves full pictures with no overlay, a
+  short burst of frames for things that move, and a caption: what the
+  view shows and what must be true in it.
+- **Look review** (S-216): a session reads each picture against a
+  list of faults for that kind of view, and compares it with the last
+  picture that Mikey approved. Simple image numbers help: a deep
+  chamber must be dark, a still view must not change between frames.
+
+**Layer 3: Mikey.** A mark, or one line of words. Mikey is the only
+judge of taste. He is also the test of layers 1 and 2: see the rule.
+
+**The rule: each bug teaches a tool.** When Mikey finds a bug that
+layers 1 and 2 did not find, the Fix lead first adds the rule, the
+probe or the view that finds this kind of bug. Then it fixes the bug.
+A fix without such a check is not done.
+
+**What the tools cannot do.** A session can miss a small or rare
+fault in a picture. A fault that shows for one frame needs a probe,
+not a picture. No tool can say that a thing looks good.
+
 ## Later: replay
 
 The game can record the input of each physics tick. With the seed, a

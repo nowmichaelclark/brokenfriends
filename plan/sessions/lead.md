@@ -111,6 +111,11 @@ fails if the line is wrong.
 - Read the zip in the `playtests/` folder next to the game. Mikey's own
   playtests are in `~/Games/broken-friends-linux/playtests/`.
 - Send each new picture to Mikey with SendUserFile.
+- **Look before you send.** Read each picture of a worker yourself.
+  Say what is wrong in it, not only what is new. A fault in a picture
+  becomes a fix now or a row in the Fix table.
+- A weak spot that describes a fault (not a limit) is a bug. Give it a
+  row in the Fix table in the same session.
 
 ## Permissions
 

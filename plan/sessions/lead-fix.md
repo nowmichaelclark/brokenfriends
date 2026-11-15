@@ -7,6 +7,21 @@ the game prints an error. Feel and taste go to the Feel lead.
 
 The play gate does not stop a Fix lead. It can run at any time.
 
+## The tools (`diagnostics.md`, "Finding bugs")
+
+- **Layer 1, numbers:** the world audit and the play probes. They run
+  in `cargo test`, in each GitHub build and each night.
+- **Layer 2, pictures:** the look tour and the look review. Run them
+  on the laptop at the start of each Fix lead, and read the pictures.
+- **Layer 3, Mikey:** his marks and his words.
+
+The Fix lead owns these tools. The rows that make or change a tool
+are in the Fix table, and the play gate does not stop them.
+
+**Each bug teaches a tool.** If Mikey finds a bug that the tools did
+not find, first add the rule, the probe or the view that finds this
+kind of bug. Then fix the bug. Count both kinds in the handoff.
+
 ## Where bugs come from
 
 - **Mikey.** He says what he saw in one line, or he taps a mark (the
@@ -20,6 +35,7 @@ The play gate does not stop a Fix lead. It can run at any time.
 
 ## Steps for each bug
 
+0. **Ask why no tool found it.** Add the check first (the rule above).
 1. **Find it.** Get the seed and the place. Go there with the dev menu
    or a test view, on the Mobile renderer in a real window.
 2. **Show it.** Make a "before" picture, or a test that fails. If you
@@ -53,4 +69,6 @@ The play gate does not stop a Fix lead. It can run at any time.
 ## End
 
 Write `HANDOFF.md`: the bugs fixed, the bugs that you could not make
-happen, and the probes that you added.
+happen, and the checks that you added. In the commit message, write
+one line "Bug check": how many bugs the tools found, and how many
+Mikey found first. The aim is that Mikey finds fewer each round.

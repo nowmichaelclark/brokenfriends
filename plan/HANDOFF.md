@@ -1,8 +1,8 @@
 # Handoff to the next lead session
 
 Written: 2026-11-15, night, at the end of S-206 (a planning lead,
-Fable 5.2). **The next lead is a Fix lead** (S-212), then a Builder
-lead. Mikey starts it with: "Start the Fix lead. Read
+Fable 5.2). **The next lead is a Fix lead**, for the bug tools S-213
+to S-216 (not for the bugs first), then a Builder lead. Mikey starts it with: "Start the Fix lead. Read
 plan/sessions/lead.md."
 
 ## Start here
@@ -46,7 +46,16 @@ bugs now. His first three are in `rows.md`, S-212: the water edge is
 square and does not follow the ground, a bright haze shows deep in the
 caves, and the camera sometimes goes through the ground. He says there
 are more. Do not ask him for seeds or numbers (R22): one line of
-words, or a mark, for each bug. The water bug and S-181 change the
+words, or a mark, for each bug.
+
+Mikey does not want these bugs fixed first. He wants a way of working
+that finds such bugs without him. `diagnostics.md`, "Finding bugs",
+has the plan: numbers (world audit, play probes), pictures (look tour,
+look review), then Mikey. The three bugs are the test: a tool must
+show each one before a session fixes it. Evidence from S-206: the
+Cave tour pictures of 18:27 already show bright blobs and haze in the
+chambers, behind the debug overlay. No session looked at them for
+faults. The water bug and S-181 change the
 same files, so do not run them at the same time.
 
 ## The first wave

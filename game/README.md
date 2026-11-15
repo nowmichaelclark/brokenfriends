@@ -96,9 +96,10 @@ what it assumes.
     terrain hides that part. Each vertex has the depth (level minus
     ground), the deep colour and the clarity. The meshes are made when a
     zone shows, in about 30 to 60 ms.
-  - **Draw calls.** The quads go into tiles of 512 m. Each tile is one
-    mesh and one draw call: 16 at most for the full zone, and 2 to 11 in
-    the Water view. The water casts no shadows.
+  - **Draw calls.** The quads go into tiles of 1024 m (`tile_m`). A tile
+    is one mesh and one draw call: 4 at most for the full zone. Its
+    opaque quads add a second draw call: 8 at most. The water casts no
+    shadows.
   - **The shader.** It reads no screen texture and no depth texture.
     The opacity comes from the depth and the clarity. Two layers of
     ripples bend the normal (`ripple_layers`). A flat view adds opacity
@@ -107,7 +108,19 @@ what it assumes.
     shore (`shore_fade_m`). The fog of the smog applies.
   - **The cuts of the GPU budget** (`demo-2.md`): `ripple_layers` 1,
     then `shore_fade_m` 0, then `receive_shadows` off, then `shaded`
-    off. All are on the `Water` node.
+    off. All are on the `Water` node. Each is a command-line option for
+    one test process: `-- --bf-water-<name>=<value>` (`ripple_layers`,
+    `shore_fade_m`, `receive_shadows`, `shaded`, `opaque_clarities`,
+    `cell_m`, `large_cell_m`, `large_area_m2`, `tile_m`, and `fog_off`
+    for a test only).
+  - **The default look after S-180.** `shaded` is off: the shader makes
+    its own light (a Lambert term of the sun, the flat ambient light,
+    a reflection of the ambient light at a flat view and a sun glint).
+    It has no sun shadows on the water. A quad whose four corners are
+    deeper than 2 clarities (`opaque_clarities`) is opaque: it has no
+    blending and uses a second material in the same mesh. About 60% of
+    the triangles are opaque in the Water view. The other cuts stay at
+    their old values.
   - **The simple float** (on `BfBear`). Where the water is 0.25 m deep
     or more, the bear floats: a spring holds its feet 0.18 m below the
     surface (less in dense water). It paddles at 0.8 m/s (1.3 m/s with
@@ -127,9 +140,24 @@ what it assumes.
     below 0.15 m, `wade`, or `swim`) and the viscosity. The events are
     `swim_start:#<body>:<kind>` and `swim_end:shallow` or
     `swim_end:shore`. `report.md` has a "Water" section.
-  - **Cost.** 59 000 to 142 000 triangles for the full zone, 2 to 11
-    draw calls in view. Nobody measured the GPU time on the Intel GPU
-    yet [unverified]: the Water view test does it.
+  - **Cost.** 59 000 to 142 000 triangles for the full zone, 4 tiles.
+    Intel GPU (`--gpu-index 0`), Water view, release build, 3 seeds, one
+    process for each setting (S-180). A run has a noise of about 0.5 ms.
+    - Before S-180: the water cost 3.3 ms (water on 17.7 ms, off 14.4
+      ms, average of 3 runs).
+    - The cuts alone, one by one (GPU ms, water off 14.5): all on 17.4;
+      `ripple_layers` 1: 16.1; `ripple_layers` 0: 17.3; `shore_fade_m`
+      0: 17.5; `receive_shadows` off: 16.8; `shaded` off (Godot light):
+      16.2; the four cuts together: 16.2; 4 m and 8 m quads: 17.3.
+    - Opaque quads alone: all opaque 16.3; all opaque and unshaded
+      15.5; the floor (opaque, unshaded, no ripples) 15.3.
+    - Last A/B (3 runs each): water off 15.7; the old defaults 19.1
+      (+3.4 ms); the new defaults 16.9 (+1.2 ms). Tiles of 1024 m
+      instead of 512 m saved about 0.7 ms of this.
+    - What is left: the fog of the smog (about 0.5 ms; without fog the
+      water costs 0.5 ms less), the blended shore quads and the fill
+      of the water pixels. The target of 1.0 ms is not reached
+      surely: the new defaults are at 1.2 ms (range 0.5 to 1.5 ms).
 - **`BfBear`** is the teddy bear, a `CharacterBody3D`, 0.40 m tall.
   Its collision shape is a capsule. It walks, jogs and
   jumps. The jump has coyote time and a jump buffer. When a new zone
@@ -967,7 +995,7 @@ Mikey does not build on his laptop (decision R10).
   the river, so a basin with a riverbed stays filled.
 - **Water meshes are tiles, not one mesh for each lake** (S-160). This
   keeps the water at 16 draw calls or fewer. `demo-2.md` asks for one
-  mesh for each lake; a tile holds all water in 512 m × 512 m.
+  mesh for each lake; a tile holds all water in 1024 m × 1024 m (512 m before S-180).
 - **The float is simple** (S-160). The whole bear gets wet, it cannot
   jump in water, and the gait does not change the paddle. S-163 makes
   the real swim.

@@ -11,7 +11,7 @@
 //!
 //! The quads go into square tiles of the zone. Each tile is one mesh
 //! and one draw call, so the water never needs more draw calls than
-//! there are tiles (16 for a zone of 2 km with tiles of 512 m).
+//! there are tiles (4 for a zone of 2 km with tiles of 1024 m; each tile has a second draw call for its opaque quads).
 
 use bf_worldgen::water::{Water, WaterBody};
 use bf_worldgen::HeightMap;
@@ -34,6 +34,10 @@ pub struct MeshParams {
     pub tile_m: f32,
     /// The clarity in the vertex alpha is clarity / this value.
     pub clarity_scale: f32,
+    /// A quad is opaque (no blending, one cut of the GPU budget) when
+    /// all its corners are deeper than this many clarities. At 2, the
+    /// water hides 86% of the ground. 0 turns the opaque quads off.
+    pub opaque_clarities: f32,
 }
 
 impl Default for MeshParams {
@@ -43,8 +47,9 @@ impl Default for MeshParams {
             large_cell_m: 4.0,
             large_area_m2: 20_000.0,
             shore_detail_m: 1.5,
-            tile_m: 512.0,
+            tile_m: 1024.0,
             clarity_scale: 8.0,
+            opaque_clarities: 2.0,
         }
     }
 }
@@ -62,6 +67,9 @@ pub struct TileMesh {
     /// The flow vector in m/s (x, z). Still water has none.
     pub flows: Vec<[f32; 2]>,
     pub indices: Vec<i32>,
+    /// The triangles of the opaque deep quads. They use the same
+    /// vertices as `indices` and draw without blending.
+    pub deep_indices: Vec<i32>,
     /// The box around the vertices: the lowest and the highest corner.
     pub aabb: ([f32; 3], [f32; 3]),
 }
@@ -69,7 +77,7 @@ pub struct TileMesh {
 impl TileMesh {
     /// The number of triangles.
     pub fn triangles(&self) -> usize {
-        self.indices.len() / 3
+        (self.indices.len() + self.deep_indices.len()) / 3
     }
 }
 
@@ -177,7 +185,17 @@ fn add_body(
         let d = corner(xe, ze);
         // Clockwise when seen from above: Godot draws clockwise
         // triangles as front faces.
-        mesh.indices.extend([a, b, c, b, d, c]);
+        let deep_from = body.clarity_m * p.opaque_clarities;
+        let deep = p.opaque_clarities > 0.0
+            && [a, b, c, d]
+                .iter()
+                .all(|&i| mesh.uvs[i as usize][0] > deep_from);
+        let list = if deep {
+            &mut mesh.deep_indices
+        } else {
+            &mut mesh.indices
+        };
+        list.extend([a, b, c, b, d, c]);
     };
     let depth = |x: usize, z: usize| body.level - heights.get(x as isize, z as isize);
 
@@ -294,6 +312,28 @@ mod tests {
         assert!(m.uvs.iter().any(|uv| uv[0] < 0.0));
         // The clarity is in the alpha.
         assert!((m.colours[0][3] - 0.5).abs() < 1e-6);
+    }
+
+    #[test]
+    fn deep_quads_go_to_the_opaque_list() {
+        let (water, heights) = pond();
+        let off = MeshParams {
+            opaque_clarities: 0.0,
+            ..MeshParams::default()
+        };
+        let none = &build_meshes(&water, &heights, &off)[0];
+        assert!(none.deep_indices.is_empty());
+        // The pond is 1 m deep and the clarity is 4 m: 0.2 clarities
+        // are already opaque, so the centre is deep.
+        let p = MeshParams {
+            opaque_clarities: 0.2,
+            ..MeshParams::default()
+        };
+        let m = &build_meshes(&water, &heights, &p)[0];
+        assert!(!m.deep_indices.is_empty());
+        assert!(!m.indices.is_empty());
+        assert_eq!(m.triangles(), none.triangles());
+        assert!(m.deep_indices.len().is_multiple_of(6));
     }
 
     #[test]

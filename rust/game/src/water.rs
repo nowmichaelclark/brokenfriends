@@ -9,14 +9,16 @@
 //! The bear asks `BfTerrain` for the water at its feet. This node only
 //! draws.
 
+use crate::atmosphere::ATMOSPHERE_GROUP;
 use crate::terrain::{BfTerrain, TERRAIN_GROUP};
 use crate::water_mesh::{build_meshes, MeshParams, TileMesh};
 use godot::classes::geometry_instance_3d::ShadowCastingSetting;
 use godot::classes::image::Format;
+use godot::classes::light_3d::Param as LightParam;
 use godot::classes::mesh::{ArrayType, PrimitiveType};
 use godot::classes::{
-    ArrayMesh, Camera3D, INode3D, Image, ImageTexture, Material, MeshInstance3D, Os, Shader,
-    ShaderMaterial, Texture2D,
+    ArrayMesh, Camera3D, DirectionalLight3D, INode3D, Image, ImageTexture, Material,
+    MeshInstance3D, Os, Shader, ShaderMaterial, Texture2D,
 };
 use godot::prelude::*;
 use std::time::Instant;
@@ -131,21 +133,37 @@ pub struct BfWater {
     #[init(val = MeshParams::default().shore_detail_m)]
     shore_detail_m: f32,
 
-    /// The water gets the sun shadows. Off saves the shadow look-ups
-    /// for each water pixel.
+    /// The water gets the sun shadows. Only for `shaded` water. Off
+    /// saves the shadow look-ups for each water pixel.
     #[export]
     #[init(val = true)]
     receive_shadows: bool,
 
-    /// The water gets light. Off makes unshaded water (the last cut of
-    /// the GPU budget).
+    /// The water gets the lights of Godot. Off (the default) makes the
+    /// shader do a cheap light itself: a Lambert term of the sun, the
+    /// flat ambient light and a sun glint, with no shadows (the last cut
+    /// of the GPU budget, S-180).
     #[export]
-    #[init(val = true)]
+    #[init(val = false)]
     shaded: bool,
 
+    /// Quads deeper than this many clarities are opaque: no blending,
+    /// which saves GPU time. 0 turns it off. The water then hides this
+    /// share of the ground: 2 gives 86%, 3 gives 95%.
+    #[export]
+    #[init(val = MeshParams::default().opaque_clarities)]
+    opaque_clarities: f32,
+
+    /// Test only (`--bf-water-fog_off=on`): the water has no fog.
+    fog_off_test: bool,
     material: Option<Gd<ShaderMaterial>>,
+    /// The sun of the atmosphere, for the glint of unshaded water.
+    sun: Option<Gd<DirectionalLight3D>>,
     /// The render modes of the material now.
+    /// The render modes of the materials now.
     material_modes: (bool, bool),
+    /// The material of the opaque deep quads.
+    deep_material: Option<Gd<ShaderMaterial>>,
     tiles: Vec<(Gd<MeshInstance3D>, TileMesh)>,
     /// The time to make the meshes of the zone, in milliseconds.
     build_ms: f32,
@@ -159,9 +177,16 @@ impl INode3D for BfWater {
     fn ready(&mut self) {
         self.base_mut().add_to_group(WATER_GROUP);
         for arg in Os::singleton().get_cmdline_user_args().as_slice() {
-            if *arg == "--bf-water=off" {
+            let arg = arg.to_string();
+            if arg == "--bf-water=off" {
                 self.show_water = false;
                 godot_print!("BfWater: the water is off (--bf-water=off).");
+            } else if let Some(rest) = arg.strip_prefix("--bf-water-") {
+                // `--bf-water-<name>=<value>` sets one look value, so
+                // that each cut of the GPU budget is one process.
+                if let Some((name, value)) = rest.split_once('=') {
+                    self.set_by_name(name, value);
+                }
             }
         }
         let tree = self.base().get_tree();
@@ -209,23 +234,28 @@ impl BfWater {
             self.bodies = zone.water.bodies.len();
             build_meshes(&zone.water, &zone.heights, &params)
         };
-        let material = self.material();
+        let (material, deep_material) = self.materials();
         self.triangles = meshes.iter().map(TileMesh::triangles).sum();
         for tile in meshes {
             let mut node = MeshInstance3D::new_alloc();
             node.set_name(&format!("Water_{}_{}", tile.tile.0, tile.tile.1));
-            node.set_mesh(&make_mesh(&tile));
-            node.set_material_override(&material.clone().upcast::<Material>());
+            let mut mesh = make_mesh(&tile);
+            set_surface_materials(&mut mesh, &tile, &material, &deep_material);
+            node.set_mesh(&mesh);
             node.set_cast_shadows_setting(ShadowCastingSetting::OFF);
             self.base_mut().add_child(&node);
             self.tiles.push((node, tile));
         }
         self.build_ms = start.elapsed().as_secs_f32() * 1000.0;
         godot_print!(
-            "BfWater: {} bodies, {} meshes, {} triangles, {:.0} ms",
+            "BfWater: {} bodies, {} meshes, {} triangles ({} opaque), {:.0} ms",
             self.bodies,
             self.tiles.len(),
             self.triangles,
+            self.tiles
+                .iter()
+                .map(|(_, t)| t.deep_indices.len() / 3)
+                .sum::<usize>(),
             self.build_ms
         );
     }
@@ -325,6 +355,29 @@ impl BfWater {
 }
 
 impl BfWater {
+    /// Sets one exported value from a command-line text.
+    fn set_by_name(&mut self, name: &str, value: &str) {
+        let on = matches!(value, "on" | "true" | "1");
+        match name {
+            "ripple_layers" => self.ripple_layers = value.parse().unwrap_or(self.ripple_layers),
+            "shore_fade_m" => self.shore_fade_m = value.parse().unwrap_or(self.shore_fade_m),
+            "receive_shadows" => self.receive_shadows = on,
+            "shaded" => self.shaded = on,
+            "opaque_clarities" => {
+                self.opaque_clarities = value.parse().unwrap_or(self.opaque_clarities)
+            }
+            "fog_off" => self.fog_off_test = on,
+            "tile_m" => self.tile_m = value.parse().unwrap_or(self.tile_m),
+            "cell_m" => self.cell_m = value.parse().unwrap_or(self.cell_m),
+            "large_cell_m" => self.large_cell_m = value.parse().unwrap_or(self.large_cell_m),
+            "large_area_m2" => self.large_area_m2 = value.parse().unwrap_or(self.large_area_m2),
+            "fresnel_alpha" => self.fresnel_alpha = value.parse().unwrap_or(self.fresnel_alpha),
+            "specular" => self.specular = value.parse().unwrap_or(self.specular),
+            _ => godot_print!("BfWater: unknown option --bf-water-{name}"),
+        }
+        godot_print!("BfWater: --bf-water-{name}={value}");
+    }
+
     fn terrain(&self) -> Option<Gd<BfTerrain>> {
         if !self.base().is_inside_tree() {
             return None;
@@ -343,15 +396,21 @@ impl BfWater {
             large_area_m2: self.large_area_m2,
             tile_m: self.tile_m.max(32.0),
             shore_detail_m: self.shore_detail_m,
+            opaque_clarities: self.opaque_clarities.max(0.0),
             ..MeshParams::default()
         }
     }
 
-    /// Gives the material. Makes it again if a render mode changed.
-    fn material(&mut self) -> Gd<ShaderMaterial> {
+    /// Gives the materials: the blended one and the opaque one for deep
+    /// quads. Makes them again if a render mode changed.
+    fn materials(&mut self) -> (Gd<ShaderMaterial>, Gd<ShaderMaterial>) {
         let modes = (self.receive_shadows, self.shaded);
-        if let (Some(m), true) = (&self.material, self.material_modes == modes) {
-            return m.clone();
+        if let (Some(m), Some(d), true) = (
+            &self.material,
+            &self.deep_material,
+            self.material_modes == modes,
+        ) {
+            return (m.clone(), d.clone());
         }
         let mut extra = String::new();
         if !self.receive_shadows {
@@ -360,28 +419,115 @@ impl BfWater {
         if !self.shaded {
             extra.push_str(", unshaded");
         }
-        let mut shader = Shader::new_gd();
-        shader.set_code(&WATER_SHADER.replace("/*EXTRA_MODES*/", &extra));
-        let mut material = ShaderMaterial::new_gd();
-        material.set_shader(&shader);
-        if let Some(ripples) = ripple_texture() {
-            material.set_shader_parameter("ripples", &ripples.upcast::<Texture2D>().to_variant());
+        if self.fog_off_test {
+            extra.push_str(", fog_disabled");
         }
-        material.set_shader_parameter(
-            "clarity_scale",
-            &MeshParams::default().clarity_scale.to_variant(),
-        );
-        for (node, _) in &mut self.tiles {
-            node.set_material_override(&material.clone().upcast::<Material>());
+        let ripples = ripple_texture();
+        let make = |opaque: bool| {
+            let code = WATER_SHADER
+                .replace("/*EXTRA_MODES*/", &extra)
+                .replace(
+                    "/*BLEND_MODES*/",
+                    if opaque {
+                        ""
+                    } else {
+                        "blend_mix, depth_draw_never, "
+                    },
+                )
+                .replace(
+                    "/*DEFINES*/",
+                    &format!(
+                        "{}{}",
+                        if opaque { "#define OPAQUE_WATER\n" } else { "" },
+                        if self.shaded {
+                            ""
+                        } else {
+                            "#define FAKE_GLINT\n"
+                        }
+                    ),
+                );
+            let mut shader = Shader::new_gd();
+            shader.set_code(&code);
+            let mut material = ShaderMaterial::new_gd();
+            material.set_shader(&shader);
+            if let Some(ripples) = &ripples {
+                material.set_shader_parameter(
+                    "ripples",
+                    &ripples.clone().upcast::<Texture2D>().to_variant(),
+                );
+            }
+            material.set_shader_parameter(
+                "clarity_scale",
+                &MeshParams::default().clarity_scale.to_variant(),
+            );
+            material
+        };
+        let mut blend = make(false);
+        let mut deep = make(true);
+        for (node, tile) in &self.tiles {
+            if let Some(mut mesh) = node.get_mesh().and_then(|m| m.try_cast::<ArrayMesh>().ok()) {
+                set_surface_materials(&mut mesh, tile, &blend, &deep);
+            }
         }
-        self.material = Some(material.clone());
         self.material_modes = modes;
-        self.set_uniforms(&mut material);
-        material
+        self.set_uniforms(&mut blend);
+        self.set_uniforms(&mut deep);
+        self.material = Some(blend.clone());
+        self.deep_material = Some(deep.clone());
+        (blend, deep)
     }
 
-    fn set_uniforms(&self, material: &mut Gd<ShaderMaterial>) {
-        let values: [(&str, Variant); 12] = [
+    /// Gives the direction toward the sun and its light colour for the
+    /// glint of unshaded water.
+    fn sun_values(&mut self) -> (Vector3, Vector3, Vector3) {
+        if self.sun.is_none() && self.base().is_inside_tree() {
+            self.sun = self
+                .base()
+                .get_tree()
+                .get_first_node_in_group(ATMOSPHERE_GROUP)
+                .and_then(|a| {
+                    a.get_children()
+                        .iter_shared()
+                        .find_map(|c| c.try_cast::<DirectionalLight3D>().ok())
+                });
+        }
+        match &self.sun {
+            Some(sun) if sun.is_instance_valid() => {
+                let c = sun.get_color();
+                let e = sun.get_param(LightParam::ENERGY);
+                (
+                    sun.get_global_transform().basis * Vector3::BACK,
+                    Vector3::new(c.r, c.g, c.b) * e,
+                    self.ambient(),
+                )
+            }
+            _ => (Vector3::UP, Vector3::ONE, Vector3::splat(0.5)),
+        }
+    }
+
+    /// Gives the flat ambient light of the environment.
+    fn ambient(&self) -> Vector3 {
+        let env = self
+            .base()
+            .get_viewport()
+            .and_then(|v| v.get_world_3d())
+            .and_then(|w| w.get_environment());
+        match env {
+            Some(env) => {
+                let c = env.get_ambient_light_color();
+                Vector3::new(c.r, c.g, c.b) * env.get_ambient_light_energy()
+            }
+            None => Vector3::splat(0.5),
+        }
+    }
+
+    fn set_uniforms(&mut self, material: &mut Gd<ShaderMaterial>) {
+        let (sun_dir, sun_light, ambient) = if self.shaded {
+            (Vector3::UP, Vector3::ONE, Vector3::splat(0.5))
+        } else {
+            self.sun_values()
+        };
+        let values: [(&str, Variant); 15] = [
             ("sky_colour", self.sky_colour.to_variant()),
             ("sky_reflect", self.sky_reflect.to_variant()),
             ("ripple_layers", self.ripple_layers.clamp(0, 2).to_variant()),
@@ -397,6 +543,9 @@ impl BfWater {
                 "clarity_scale",
                 MeshParams::default().clarity_scale.to_variant(),
             ),
+            ("sun_dir", sun_dir.to_variant()),
+            ("sun_light", sun_light.to_variant()),
+            ("ambient_light", ambient.to_variant()),
         ];
         for (name, value) in values {
             if material.get_shader_parameter(name) != value {
@@ -411,8 +560,9 @@ impl BfWater {
         if self.tiles.is_empty() {
             return;
         }
-        let mut material = self.material();
-        self.set_uniforms(&mut material);
+        let (mut blend, mut deep) = self.materials();
+        self.set_uniforms(&mut blend);
+        self.set_uniforms(&mut deep);
     }
 }
 
@@ -452,7 +602,6 @@ fn make_mesh(t: &TileMesh) -> Gd<ArrayMesh> {
         .collect();
     let uvs: PackedVector2Array = t.uvs.iter().map(|u| Vector2::new(u[0], u[1])).collect();
     let flows: PackedVector2Array = t.flows.iter().map(|f| Vector2::new(f[0], f[1])).collect();
-    let indices = PackedInt32Array::from(t.indices.as_slice());
     let mut arrays = VarArray::new();
     arrays.resize(ArrayType::MAX.ord() as usize, &Variant::nil());
     arrays.set(ArrayType::VERTEX.ord() as usize, &positions.to_variant());
@@ -460,10 +609,35 @@ fn make_mesh(t: &TileMesh) -> Gd<ArrayMesh> {
     arrays.set(ArrayType::COLOR.ord() as usize, &colours.to_variant());
     arrays.set(ArrayType::TEX_UV.ord() as usize, &uvs.to_variant());
     arrays.set(ArrayType::TEX_UV2.ord() as usize, &flows.to_variant());
-    arrays.set(ArrayType::INDEX.ord() as usize, &indices.to_variant());
     let mut mesh = ArrayMesh::new_gd();
-    mesh.add_surface_from_arrays(PrimitiveType::TRIANGLES, &arrays);
+    // Surface 0 blends. The opaque deep quads are the next surface.
+    for list in [&t.indices, &t.deep_indices] {
+        if list.is_empty() {
+            continue;
+        }
+        let indices = PackedInt32Array::from(list.as_slice());
+        arrays.set(ArrayType::INDEX.ord() as usize, &indices.to_variant());
+        mesh.add_surface_from_arrays(PrimitiveType::TRIANGLES, &arrays);
+    }
     mesh
+}
+
+/// Gives the materials to the surfaces of a tile mesh. A surface exists
+/// only if it has triangles.
+fn set_surface_materials(
+    mesh: &mut Gd<ArrayMesh>,
+    t: &TileMesh,
+    blend: &Gd<ShaderMaterial>,
+    deep: &Gd<ShaderMaterial>,
+) {
+    let mut surface = 0;
+    if !t.indices.is_empty() {
+        mesh.surface_set_material(surface, &blend.clone().upcast::<Material>());
+        surface += 1;
+    }
+    if !t.deep_indices.is_empty() {
+        mesh.surface_set_material(surface, &deep.clone().upcast::<Material>());
+    }
 }
 
 /// Makes the ripple texture: a normal map from the repeating noise of

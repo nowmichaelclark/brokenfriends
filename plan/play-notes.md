@@ -3,6 +3,24 @@
 Mikey's notes from play sessions. The newest section is at the top.
 Claude sessions use these notes to change the default values.
 
+## 2026-11-15, lead Brain: the Water view on the Intel GPU, build 393c26b
+
+The lead Brain ran `--bf-test=water-view` twice on the Intel GPU
+(`--gpu-index 0`), once with `--bf-water=off`. No build ran at the
+same time. Each view lasts 6 s, so the numbers are rough.
+
+| View | GPU ms, water on | GPU ms, water off | Water cost |
+|---|---|---|---|
+| Seed 1, lake #20 (clear spring, 27 685 m2) | 18.8 | 15.4 | 3.4 ms |
+| Seed 7, lake #21 (silty brown, 24 007 m2) | 17.8 | 14.3 | 3.5 ms |
+| Seed 42, lake #42 (silty brown, 390 268 m2) | 19.5 | 16.0 | 3.5 ms |
+
+- The water costs about 3.5 ms. The budget is 1.0 ms (`demo-2.md`).
+- With the water on, the views give 48 to 51 fps. With it off, they
+  give 55 to 58 fps. These lake views cost more than the Benchmark
+  path (about 12.5 ms) even without water.
+- The water adds 75 to 90 k primitives and 10 to 13 draw calls.
+
 ## 2026-11-15, lead Brain: the tests of S-137 on the Intel GPU, build ae685ec
 
 The lead Brain ran the three tests of the Tests page from the command

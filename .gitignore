@@ -2,6 +2,8 @@
 rust/target/
 rust/preview/
 preview/
+# The preview tool itself is code, not output.
+!rust/worldgen/examples/preview/
 
 # Godot
 game/.godot/

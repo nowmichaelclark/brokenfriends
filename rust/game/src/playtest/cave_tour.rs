@@ -14,8 +14,8 @@ use std::fmt::Write;
 pub const INTRO: &str = "The camera flies from 50 m outside the widest hillside mouth to the \
 mouth, down the tunnels to the widest chamber within 400 m, once around that chamber at half \
 of its radius, and the same way back. The parts are: outside, tunnel, chamber, back. The cave \
-table gives the cave chunks of each part. The cave light and the deep-cave cut come in S-166, \
-so this test has one setting only.";
+table gives the cave chunks of each part. Run it twice, each in a new process: with the \
+deep-cave cut (the normal game) and with `--bf-cave-cut=off`. The report names the setting.";
 
 /// A frame longer than this is a hitch, in milliseconds.
 pub const HITCH_MS: f32 = 50.0;

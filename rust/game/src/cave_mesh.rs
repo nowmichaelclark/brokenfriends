@@ -62,6 +62,17 @@ pub struct CaveMeshParams {
     /// The colour changes from the ground colour to the rock colour in
     /// this depth below the ground, in metres.
     pub colour_depth_m: f32,
+    /// The sky visibility is read this far from the wall, along the
+    /// normal, in metres (a point on the wall itself is in the rock).
+    pub sky_probe_m: f32,
+    /// The size of the cells that can hold a glowing mineral, in metres.
+    pub mineral_cell_m: f32,
+    /// The share of the cells that hold a mineral (0 to 1).
+    pub mineral_chance: f32,
+    /// The radius of the glow of one mineral, in metres.
+    pub mineral_radius_m: f32,
+    /// Minerals grow only where the sky visibility is below this value.
+    pub mineral_sky_max: f32,
 }
 
 impl Default for CaveMeshParams {
@@ -71,6 +82,11 @@ impl Default for CaveMeshParams {
             rim_sink_m: 0.08,
             rock_colour: [0.16, 0.085, 0.05],
             colour_depth_m: 4.0,
+            sky_probe_m: 0.5,
+            mineral_cell_m: 4.0,
+            mineral_chance: 0.05,
+            mineral_radius_m: 2.0,
+            mineral_sky_max: 0.5,
         }
     }
 }
@@ -169,8 +185,12 @@ pub struct ChunkMesh {
     pub positions: Vec<[f32; 3]>,
     /// The normals, length 1, pointing into the air.
     pub normals: Vec<[f32; 3]>,
-    /// The vertex colours (linear light, alpha 1).
+    /// The vertex colours (linear light). The alpha is the sky
+    /// visibility (0 to 1).
     pub colours: Vec<[f32; 4]>,
+    /// The first UV is the glow of a mineral (0 to 1) and its hue (0 to
+    /// 1). The shader does not use it for a texture.
+    pub uvs: Vec<[f32; 2]>,
     /// Three indices for each triangle, clockwise seen from the air
     /// (the front face in Godot).
     pub indices: Vec<u32>,
@@ -290,6 +310,58 @@ pub fn build_chunk(input: &ChunkInput, key: ChunkKey) -> ChunkMesh {
     apply_ground_rules(input, key, &raw)
 }
 
+/// Gives a number from 0 to 1 for a cell of the mineral grid. `salt`
+/// gives each use of the same cell its own number.
+fn cell_hash(cell: [i32; 3], salt: u32) -> f32 {
+    let mut h = salt.wrapping_mul(0x9E37_79B1);
+    for c in cell {
+        h ^= (c as u32).wrapping_add(0x7F4A_7C15);
+        h = h.wrapping_mul(0x85EB_CA6B);
+        h ^= h >> 15;
+    }
+    h = h.wrapping_mul(0xC2B2_AE35);
+    h ^= h >> 13;
+    (h & 0xFFFF) as f32 / 65535.0
+}
+
+/// Gives the glow and the hue of the glowing minerals at a point. A
+/// seeded cell grid holds the minerals: the same cave always gets the
+/// same minerals. They grow only where the sky does not shine.
+pub fn mineral(pos: [f32; 3], sky: f32, p: &CaveMeshParams) -> [f32; 2] {
+    if sky >= p.mineral_sky_max || p.mineral_chance <= 0.0 {
+        return [0.0, 0.0];
+    }
+    let cell = p.mineral_cell_m.max(0.5);
+    let base = [0, 1, 2].map(|a| (pos[a] / cell).floor() as i32);
+    let mut best = [0.0, 0.0];
+    // A mineral can sit in a neighbour cell and still reach this point.
+    for dx in -1..=1 {
+        for dy in -1..=1 {
+            for dz in -1..=1 {
+                let c = [base[0] + dx, base[1] + dy, base[2] + dz];
+                if cell_hash(c, 1) >= p.mineral_chance {
+                    continue;
+                }
+                let at = [
+                    (c[0] as f32 + cell_hash(c, 2)) * cell,
+                    (c[1] as f32 + cell_hash(c, 3)) * cell,
+                    (c[2] as f32 + cell_hash(c, 4)) * cell,
+                ];
+                let d = ((pos[0] - at[0]).powi(2)
+                    + (pos[1] - at[1]).powi(2)
+                    + (pos[2] - at[2]).powi(2))
+                .sqrt();
+                let t = (1.0 - d / p.mineral_radius_m.max(0.1)).clamp(0.0, 1.0);
+                let glow = t * t * (3.0 - 2.0 * t) * (1.0 - sky / p.mineral_sky_max);
+                if glow > best[0] {
+                    best = [glow, cell_hash(c, 5)];
+                }
+            }
+        }
+    }
+    best
+}
+
 /// Keeps the ground part of a raw mesh only near the mouths, sinks the
 /// ring and gives the colours.
 pub fn apply_ground_rules(input: &ChunkInput, key: ChunkKey, raw: &RawMesh) -> ChunkMesh {
@@ -341,7 +413,18 @@ pub fn apply_ground_rules(input: &ChunkInput, key: ChunkKey, raw: &RawMesh) -> C
         remap[i] = out.positions.len() as u32;
         out.positions.push(pos);
         out.normals.push(nrm);
-        out.colours.push([c[0], c[1], c[2], 1.0]);
+        let sky = if on_ground {
+            1.0
+        } else {
+            let q = [
+                pos[0] + nrm[0] * p.sky_probe_m,
+                pos[1] + nrm[1] * p.sky_probe_m,
+                pos[2] + nrm[2] * p.sky_probe_m,
+            ];
+            input.caves.sky_visibility(g, q)
+        };
+        out.colours.push([c[0], c[1], c[2], sky]);
+        out.uvs.push(mineral(pos, sky, p));
     }
     out.indices.reserve(raw.indices.len());
     for tri in raw.indices.chunks_exact(3) {
@@ -541,6 +624,28 @@ mod zone_tests {
     use bf_worldgen::caves::{CaveParams, Caves, MouthKind};
     use bf_worldgen::highlands::{generate, HighlandsParams};
     use bf_worldgen::smoke::SmokeParams;
+
+    #[test]
+    fn minerals_are_seeded_and_stay_in_the_dark() {
+        let p = CaveMeshParams {
+            mineral_chance: 1.0,
+            ..CaveMeshParams::default()
+        };
+        let a = mineral([3.0, -20.0, 7.0], 0.0, &p);
+        assert_eq!(a, mineral([3.0, -20.0, 7.0], 0.0, &p));
+        assert!(a[0] >= 0.0 && a[0] <= 1.0 && a[1] >= 0.0 && a[1] <= 1.0);
+        // No glow where the sky shines.
+        assert_eq!(mineral([3.0, -20.0, 7.0], 0.9, &p), [0.0, 0.0]);
+        // With a share of 1 some point near by glows.
+        let any = (0..40).any(|i| mineral([i as f32 * 0.7, -20.0, 7.0], 0.0, &p)[0] > 0.2);
+        assert!(any);
+        // With a share of 0 no point glows.
+        let off = CaveMeshParams {
+            mineral_chance: 0.0,
+            ..p
+        };
+        assert_eq!(mineral([3.0, -20.0, 7.0], 0.0, &off), [0.0, 0.0]);
+    }
 
     #[test]
     fn mouth_chunks_fill_the_hole_and_drop_the_far_ground() {

@@ -117,6 +117,30 @@ what it assumes.
     the collision, the queue, the triangles and the CPU time of the cave
     work. `--bf-caves=off` on the command line turns the caves (and the
     holes) off for one process.
+  - **Cave light** (S-166). The cave is dark and has its own fog.
+    - Each vertex has the sky visibility (`Caves::sky_visibility`, read
+      0.5 m from the wall) in the alpha of its vertex colour. The cave
+      shader writes it to `AO` (floor `dark_level`) and sets
+      `AO_LIGHT_AFFECT = 1`, so the sun and the sky light fall in a cave.
+    - The shader has `fog_disabled` and its own fog: dense and dark
+      (`cave_fog_*`) where the sky is zero, the smog colour
+      (`smog_fog_*`) near a mouth.
+    - **Glowing minerals.** A seeded grid of cells (`mineral_cell_m`)
+      holds a mineral in `mineral_chance` of the cells, only where the
+      sky visibility is below `mineral_sky_max`. The glow and the hue
+      (cyan or amber) are in the first UV of the mesh. There is no real
+      light: the shader makes only the emission.
+    - **The bear.** `BfCaves` reads the sky visibility at the bear each
+      frame (smooth, only near a cave) and writes the global uniform
+      `bf_cave_sky`. The fur shader reads it for `AO`. The water gets
+      the same uniform later (a follow-up row).
+    - **The deep-cave cut.** If the camera is in a cave, the sky
+      visibility there is below `cut_sky` (0.02; 0.04 to stop) and no
+      mouth is in view (`cut_mouth_view_m`, with a frustum test and a
+      ray through the cave field), the terrain node hides and the sun
+      makes no shadows (`BfAtmosphere::set_shadows_cut`). Events
+      `cave_cut_on` and `cave_cut_off`. `--bf-cave-cut=off` turns the
+      cut off for one process. The Cave tour report names the setting.
   - **Recorder.** Each sample has `cave` when the bear is in a cave: the
     sky visibility, the chunks with a mesh and with collision, the queue
     and the CPU ms. The events are `cave_enter`, `cave_leave` and
@@ -1254,9 +1278,16 @@ Mikey does not build on his laptop (decision R10).
     value for all of its air.
   - The caves come from the heights before the obstacles dig their
     pits.
+- **Cave light (S-166).** These are first guesses. Mikey: how dark
+  should a deep cave be?
+  - A cave with no sky is dim, not black (`dark_level` 0.35), so the
+    bear can see the walls. There is no light on the bear.
+  - Glowing minerals are the only light source, until Mikey selects
+    others. They are cyan and amber, and they make no light on other
+    things.
+  - The deep-cave cut is on in the normal game. It is a saving, not a
+    need.
 - **Walkable caves (S-164).** These are first guesses too:
-  - The caves are lit like the outside, and the smog fog fills them.
-    S-166 makes them dark (the cave light and the cave fog).
   - The cave rock is a warm brown (`rock_colour`). Near a mouth, the
     walls have the colour of the ground above them.
   - The cave walls have the grip 0.85. Mikey: are the cave walls easy

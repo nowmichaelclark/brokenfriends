@@ -714,10 +714,14 @@ impl BfTestRunner {
         let caves_on = self
             .node(CAVES_GROUP)
             .is_some_and(|mut c| c.call("is_caves_enabled", &[]).booleanize());
+        let cut_on = self
+            .node(CAVES_GROUP)
+            .is_some_and(|mut c| c.call("is_deep_cut_enabled", &[]).booleanize());
         let settings = format!(
-            "water {}, caves {}",
+            "water {}, caves {}, deep-cave cut {}",
             if water_on { "on" } else { "off" },
-            if caves_on { "on" } else { "off" }
+            if caves_on { "on" } else { "off" },
+            if cut_on { "on" } else { "off" }
         );
         let report = TestReport {
             kind: active.kind,

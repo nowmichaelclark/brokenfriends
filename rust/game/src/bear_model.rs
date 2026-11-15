@@ -24,6 +24,11 @@ const FUR_SHADER: &str = r#"
 shader_type spatial;
 render_mode diffuse_lambert_wrap, specular_schlick_ggx;
 
+// The sky visibility at the bear (S-166): 1 in the open, less in a cave.
+global uniform float bf_cave_sky;
+// The light of a cave with no sky (AO).
+uniform float cave_dark : hint_range(0.0, 1.0) = 0.35;
+
 uniform vec3 fur_colour : source_color = vec3(0.45, 0.32, 0.19);
 uniform vec3 pale_colour : source_color = vec3(0.66, 0.57, 0.42);
 uniform vec3 dark_colour : source_color = vec3(0.06, 0.045, 0.035);
@@ -88,6 +93,8 @@ void fragment() {
     colour *= mix(1.0, 0.55, wet);
 
     ALBEDO = colour;
+    AO = mix(cave_dark, 1.0, clamp(bf_cave_sky, 0.0, 1.0));
+    AO_LIGHT_AFFECT = 1.0;
     ROUGHNESS = mix(mix(0.95, 0.2, COLOR.a), 0.45, wet);
     SPECULAR = mix(mix(0.12, 0.7, COLOR.a), 0.4, wet);
     RIM = rim * fur * (1.0 - 0.8 * wet);
@@ -914,6 +921,7 @@ impl BfBearModel {
         };
         let parts = bear_shape::build(&recipe);
 
+        crate::caves::register_cave_sky_global();
         let mut shader = Shader::new_gd();
         shader.set_code(FUR_SHADER);
         let texture = fur_texture();

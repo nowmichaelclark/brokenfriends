@@ -228,6 +228,8 @@ pub struct BfAtmosphere {
 
     environment: Option<Gd<Environment>>,
     sky_material: Option<Gd<ProceduralSkyMaterial>>,
+    /// The deep-cave cut is on: the sun makes no shadows (S-166).
+    shadows_cut: bool,
     /// The shadow map size that the renderer has now (0: not set yet).
     applied_shadow_map_size: i32,
     /// The shadow filter that the renderer has now (None: not set yet).
@@ -270,6 +272,14 @@ impl BfAtmosphere {
         self.apply_environment();
         self.apply_sun();
         self.apply_dust();
+    }
+
+    /// Turns the sun shadows off (`true`) or on (`false`). The deep-cave
+    /// cut of `BfCaves` uses it (S-166).
+    #[func]
+    pub fn set_shadows_cut(&mut self, cut: bool) {
+        self.shadows_cut = cut;
+        self.apply_sun();
     }
 
     /// Sets how thick the smoke of the zone edge is around the bear, from
@@ -425,6 +435,9 @@ impl BfAtmosphere {
         }
         set_light_param(sun, Param::ENERGY, self.sun_energy);
         set_light_param(sun, Param::SIZE, self.sun_disc_degrees * 0.5);
+        if sun.has_shadow() == self.shadows_cut {
+            sun.set_shadow(!self.shadows_cut);
+        }
         set_light_param(sun, Param::SHADOW_MAX_DISTANCE, self.shadow_distance);
         let mode = if self.shadow_cascades <= 1 {
             ShadowMode::ORTHOGONAL

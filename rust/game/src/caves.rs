@@ -21,6 +21,7 @@
 //!   `cave_no_collision` (the bear is near a cave chunk with no
 //!   collision).
 
+use crate::atmosphere::{BfAtmosphere, ATMOSPHERE_GROUP};
 use crate::bear::{BEAR_GROUP, GRIP_META, SOFT_META};
 use crate::cave_mesh::{
     build_chunk, chunk_distance, CaveMeshParams, CaveWorld, ChunkInput, ChunkKey, ChunkMesh,
@@ -29,9 +30,10 @@ use crate::terrain::{BfTerrain, TERRAIN_GROUP};
 use bf_worldgen::caves::{Tour, TOUR_REACH_M};
 use godot::classes::geometry_instance_3d::ShadowCastingSetting;
 use godot::classes::mesh::{ArrayType, PrimitiveType};
+use godot::classes::rendering_server::GlobalShaderParameterType;
 use godot::classes::{
-    ArrayMesh, CollisionShape3D, ConcavePolygonShape3D, INode3D, MeshInstance3D, Node3D, Os,
-    Shader, ShaderMaterial, StaticBody3D, Time,
+    ArrayMesh, Camera3D, CollisionShape3D, ConcavePolygonShape3D, INode3D, MeshInstance3D, Node3D,
+    Os, RenderingServer, Shader, ShaderMaterial, StaticBody3D, Time,
 };
 use godot::prelude::*;
 use std::collections::HashMap;
@@ -44,6 +46,26 @@ pub const CAVES_GROUP: &str = "bf_caves";
 
 /// The shader of the cave walls.
 const CAVE_SHADER: &str = include_str!("cave.gdshader");
+
+/// The name of the global shader uniform with the sky visibility at the
+/// bear (0 to 1). The fur shader reads it (`global uniform float`).
+pub const CAVE_SKY_GLOBAL: &str = "bf_cave_sky";
+
+/// Makes the global shader uniform `bf_cave_sky` (1: open sky) if it does
+/// not exist. Call it before a shader that reads it is compiled.
+pub fn register_cave_sky_global() {
+    static DONE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+    // Godot prints an error if a name is added twice, and a lookup of the
+    // name is for the editor only. So the game keeps its own flag.
+    if DONE.swap(true, std::sync::atomic::Ordering::SeqCst) {
+        return;
+    }
+    RenderingServer::singleton().global_shader_parameter_add(
+        &StringName::from(CAVE_SKY_GLOBAL),
+        GlobalShaderParameterType::FLOAT,
+        &1.0f32.to_variant(),
+    );
+}
 
 /// A chunk stays this much longer than its radius, so a chunk at the
 /// edge does not go and come all the time, in metres.
@@ -197,6 +219,93 @@ pub struct BfCaves {
     #[init(val = 4.0)]
     no_collision_m: f32,
 
+    /// The light of a cave with no sky, 0 (black) to 1. It is the AO
+    /// floor of the cave walls and of the bear.
+    #[export]
+    #[init(val = 0.35)]
+    dark_level: f32,
+
+    /// The colour of the cave fog with no sky (sRGB).
+    #[export]
+    #[init(val = Color::from_rgb(0.025, 0.028, 0.035))]
+    cave_fog_colour: Color,
+
+    /// The density of the cave fog with no sky, for each metre.
+    #[export]
+    #[init(val = 0.012)]
+    cave_fog_density: f32,
+
+    /// The fog colour of the cave walls near the sky. It matches the
+    /// smog outside (sRGB).
+    #[export]
+    #[init(val = Color::from_rgb(0.74, 0.60, 0.42))]
+    smog_fog_colour: Color,
+
+    /// The fog density of the cave walls near the sky, for each metre.
+    /// It matches the smog outside.
+    #[export]
+    #[init(val = 0.006)]
+    smog_fog_density: f32,
+
+    /// The size of the cells that can hold a glowing mineral, in metres.
+    #[export]
+    #[init(val = CaveMeshParams::default().mineral_cell_m)]
+    mineral_cell_m: f32,
+
+    /// The share of the cells that hold a glowing mineral (0 to 1).
+    #[export]
+    #[init(val = CaveMeshParams::default().mineral_chance)]
+    mineral_chance: f32,
+
+    /// The radius of the glow of one mineral, in metres.
+    #[export]
+    #[init(val = CaveMeshParams::default().mineral_radius_m)]
+    mineral_radius_m: f32,
+
+    /// Minerals grow only where the sky visibility is below this value.
+    #[export]
+    #[init(val = CaveMeshParams::default().mineral_sky_max)]
+    mineral_sky_max: f32,
+
+    /// The light of a mineral. The colour is cyan or amber (sRGB).
+    #[export]
+    #[init(val = 2.0)]
+    mineral_strength: f32,
+
+    /// The first colour of the minerals (sRGB).
+    #[export]
+    #[init(val = Color::from_rgb(0.15, 0.85, 0.75))]
+    mineral_colour_a: Color,
+
+    /// The second colour of the minerals (sRGB).
+    #[export]
+    #[init(val = Color::from_rgb(0.95, 0.55, 0.15))]
+    mineral_colour_b: Color,
+
+    /// The deep-cave cut (S-166). If this is on, the camera is in a cave
+    /// with a sky visibility below `cut_sky` and no mouth is in view: the
+    /// terrain hides and the sun makes no shadows. `--bf-cave-cut=off`
+    /// turns it off for one process.
+    #[export]
+    #[init(val = true)]
+    deep_cut: bool,
+
+    /// The cut starts when the sky visibility at the camera is below
+    /// this value.
+    #[export]
+    #[init(val = 0.02)]
+    cut_sky: f32,
+
+    /// A mouth that is nearer than this and in view stops the cut, in
+    /// metres.
+    #[export]
+    #[init(val = 90.0)]
+    cut_mouth_view_m: f32,
+
+    /// The sky visibility at the bear that the fur shader gets (smooth).
+    sky_at_bear: f32,
+    /// The deep-cave cut is on now.
+    cut_on: bool,
     world: Option<Arc<CaveWorld>>,
     params: Arc<CaveMeshParams>,
     generation: u64,
@@ -227,8 +336,12 @@ impl INode3D for BfCaves {
         for arg in Os::singleton().get_cmdline_user_args().as_slice() {
             if *arg == "--bf-caves=off" {
                 self.enabled = false;
+            } else if *arg == "--bf-cave-cut=off" {
+                self.deep_cut = false;
             }
         }
+        register_cave_sky_global();
+        self.sky_at_bear = 1.0;
         let (sender, receiver) = channel();
         self.sender = Some(sender);
         self.receiver = Some(receiver);
@@ -242,6 +355,9 @@ impl INode3D for BfCaves {
 
     fn process(&mut self, _delta: f64) {
         self.receive();
+        if (!self.enabled || self.world.is_none()) && (self.cut_on || self.sky_at_bear < 1.0) {
+            self.reset_light();
+        }
         if !self.enabled || self.world.is_none() {
             let any = self
                 .chunks
@@ -266,6 +382,7 @@ impl INode3D for BfCaves {
             .unwrap_or(cam);
         let start = Instant::now();
         self.update(cam, bear);
+        self.update_light(&camera, cam, bear, _delta as f32);
         self.stats.upload_ms = start.elapsed().as_secs_f32() * 1000.0;
         self.stats.max_upload_ms = self.stats.max_upload_ms.max(self.stats.upload_ms);
         self.watch_bear(bear);
@@ -289,6 +406,7 @@ impl BfCaves {
         self.stats = CaveStats::default();
         self.inside_shown = true;
         self.bear_in_cave = false;
+        self.reset_light();
         self.world = self
             .terrain
             .as_ref()
@@ -330,6 +448,12 @@ impl BfCaves {
     #[func]
     pub fn set_caves_enabled(&mut self, on: bool) {
         self.enabled = on;
+    }
+
+    /// Tells if the deep-cave cut is allowed (`--bf-cave-cut=off`).
+    #[func]
+    pub fn is_deep_cut_enabled(&self) -> bool {
+        self.deep_cut
     }
 
     /// Tells if the caves are on.
@@ -444,6 +568,11 @@ impl BfCaves {
             rim_sink_m: self.rim_sink_m.max(0.0),
             rock_colour: [lin(c.r), lin(c.g), lin(c.b)],
             colour_depth_m: self.colour_depth_m.max(0.1),
+            mineral_cell_m: self.mineral_cell_m.max(0.5),
+            mineral_chance: self.mineral_chance.clamp(0.0, 1.0),
+            mineral_radius_m: self.mineral_radius_m.max(0.1),
+            mineral_sky_max: self.mineral_sky_max.clamp(0.01, 1.0),
+            ..CaveMeshParams::default()
         }
     }
 
@@ -642,6 +771,24 @@ impl BfCaves {
         let mut material = ShaderMaterial::new_gd();
         material.set_shader(&shader);
         material.set_shader_parameter("brightness", &self.brightness.to_variant());
+        material.set_shader_parameter("dark_level", &self.dark_level.clamp(0.0, 1.0).to_variant());
+        let rgb = |c: Color| Vector3::new(c.r, c.g, c.b).to_variant();
+        material.set_shader_parameter("cave_fog_colour", &rgb(self.cave_fog_colour));
+        material.set_shader_parameter(
+            "cave_fog_density",
+            &self.cave_fog_density.max(0.0).to_variant(),
+        );
+        material.set_shader_parameter("smog_fog_colour", &rgb(self.smog_fog_colour));
+        material.set_shader_parameter(
+            "smog_fog_density",
+            &self.smog_fog_density.max(0.0).to_variant(),
+        );
+        material.set_shader_parameter("mineral_colour_a", &rgb(self.mineral_colour_a));
+        material.set_shader_parameter("mineral_colour_b", &rgb(self.mineral_colour_b));
+        material.set_shader_parameter(
+            "mineral_strength",
+            &self.mineral_strength.max(0.0).to_variant(),
+        );
         material.set_shader_parameter(
             "grain_strength",
             &self.grain_strength.clamp(0.0, 1.0).to_variant(),
@@ -686,6 +833,8 @@ impl BfCaves {
         arrays.set(ArrayType::VERTEX.ord() as usize, &positions.to_variant());
         arrays.set(ArrayType::NORMAL.ord() as usize, &normals.to_variant());
         arrays.set(ArrayType::COLOR.ord() as usize, &colours.to_variant());
+        let uvs: PackedVector2Array = data.uvs.iter().map(|u| Vector2::new(u[0], u[1])).collect();
+        arrays.set(ArrayType::TEX_UV.ord() as usize, &uvs.to_variant());
         arrays.set(ArrayType::INDEX.ord() as usize, &indices.to_variant());
         let mut mesh = ArrayMesh::new_gd();
         mesh.add_surface_from_arrays(PrimitiveType::TRIANGLES, &arrays);
@@ -740,6 +889,97 @@ impl BfCaves {
                 b.queue_free();
             }
         }
+    }
+
+    /// Gives the light back to the open-air state: the sky uniform is 1,
+    /// the terrain shows and the sun makes shadows.
+    fn reset_light(&mut self) {
+        self.sky_at_bear = 1.0;
+        RenderingServer::singleton()
+            .global_shader_parameter_set(&StringName::from(CAVE_SKY_GLOBAL), &1.0f32.to_variant());
+        if self.cut_on {
+            self.set_cut(false);
+        }
+    }
+
+    /// Turns the deep-cave cut on or off: the terrain node and the sun
+    /// shadows.
+    fn set_cut(&mut self, on: bool) {
+        self.cut_on = on;
+        if let Some(terrain) = &self.terrain {
+            if let Some(node) = terrain
+                .clone()
+                .upcast::<Node>()
+                .get_node_or_null("Terrain3D")
+            {
+                if let Ok(mut node) = node.try_cast::<Node3D>() {
+                    node.set_visible(!on);
+                }
+            }
+        }
+        let tree = self.base().get_tree();
+        if let Some(node) = tree.get_first_node_in_group(ATMOSPHERE_GROUP) {
+            if let Ok(mut atmosphere) = node.try_cast::<BfAtmosphere>() {
+                atmosphere.bind_mut().set_shadows_cut(on);
+            }
+        }
+    }
+
+    /// The cave light of one frame: the sky uniform of the bear and the
+    /// deep-cave cut.
+    fn update_light(&mut self, camera: &Gd<Camera3D>, cam: Vector3, bear: Vector3, delta: f32) {
+        let Some(world) = self.world.clone() else {
+            return;
+        };
+        // The bear. Far from a cave, the sky is open and the work is none.
+        let b = [bear.x, bear.y, bear.z];
+        let target = if world.caves.near_cave(b) {
+            world.caves.sky_visibility(&world.ground, b)
+        } else {
+            1.0
+        };
+        // A smooth change, so the fur does not jump at a mouth.
+        let k = 1.0 - (-delta * 6.0).exp();
+        self.sky_at_bear += (target - self.sky_at_bear) * k;
+        RenderingServer::singleton().global_shader_parameter_set(
+            &StringName::from(CAVE_SKY_GLOBAL),
+            &self.sky_at_bear.to_variant(),
+        );
+        // The cut. Stop at once if a mouth is in view; start only in the dark.
+        let c = [cam.x, cam.y, cam.z];
+        let dark = self.deep_cut
+            && world.caves.in_cave(&world.ground, c)
+            && world.caves.sky_visibility(&world.ground, c)
+                < self.cut_sky * if self.cut_on { 2.0 } else { 1.0 };
+        let want = dark && !self.mouth_in_view(&world, camera, c);
+        if want != self.cut_on {
+            self.set_cut(want);
+            self.events
+                .push(if want { "cave_cut_on" } else { "cave_cut_off" }.to_string());
+        }
+    }
+
+    /// Tells if a mouth is in the view of the camera and open to it.
+    fn mouth_in_view(&self, world: &CaveWorld, camera: &Gd<Camera3D>, c: [f32; 3]) -> bool {
+        let r = self.cut_mouth_view_m.max(0.0);
+        world.caves.mouths().any(|m| {
+            let p = [m.pos[0], m.pos[1] + m.radius_m * 0.5, m.pos[2]];
+            let d = [p[0] - c[0], p[1] - c[1], p[2] - c[2]];
+            let len = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt();
+            if len > r || !camera.is_position_in_frustum(Vector3::new(p[0], p[1], p[2])) {
+                return false;
+            }
+            let dir = [
+                d[0] / len.max(1e-3),
+                d[1] / len.max(1e-3),
+                d[2] / len.max(1e-3),
+            ];
+            // No rock between the camera and the mouth.
+            world
+                .caves
+                .ray_hit(&world.ground, c, dir, (len - 1.0).max(0.0))
+                .is_none()
+        })
     }
 
     /// The events of the bear: in a cave or not, and a cave chunk near

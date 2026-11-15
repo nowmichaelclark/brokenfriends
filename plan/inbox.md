@@ -103,3 +103,6 @@ sorts them.
 - Caves: merge the cave chunks into fewer meshes (2 × 2 × 2 chunks) if the Cave tour shows more than 80 cave draw calls in a chamber.
 - Caves: build the collision faces of a chunk from a coarser mesh or split them, if `ConcavePolygonShape3D::set_faces` makes upload frames over 1 ms on the TUF.
 - Caves: the deep cave rock has the smog fog of the outside; S-166 gives it its own fog. Until then, the chambers look flat and pale.
+- Rivers: a recorder line with the flow at the bear (`water.flow`), so S-163 and the playtest show the current that the bear feels.
+- Rivers: "rust orange" more often below ash rock (`demo-2.md`, "Look kinds"); now the look of a river does not read the ground.
+- Rivers: a test that counts the dry samples next to a river that are lower than its level (water that hangs over a low bank).

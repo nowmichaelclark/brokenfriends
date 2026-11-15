@@ -6,14 +6,17 @@
 //! 3. The erosion filter cuts gullies into the slopes.
 //! 4. Fine noise makes the ground a little rough.
 //! 5. The drainage step fills closed basins (dry lake beds) and cuts
-//!    dry riverbeds where much rain came together.
+//!    riverbeds where much rain came together.
+//! 6. The water step fills the lakes and ponds (S-160) and the large
+//!    riverbeds (S-162, `rivers.rs`).
 
 use crate::detmath::smoothstep;
-use crate::drainage::{flow, partial_fill_basins, PartialFill};
+use crate::drainage::{flow, partial_fill_basins, Basin, PartialFill};
 use crate::erosion_filter::{erosion_filter, ErosionParams};
 use crate::heightmap::HeightMap;
 use crate::noise::{fbm, gradient_noise};
-use crate::water::{choose_ponds, make_water, Candidate, Water, WaterKind, WaterParams};
+use crate::rivers::{add_rivers, RiverInput};
+use crate::water::{choose_ponds, lake_part, make_water, Candidate, Water, WaterKind, WaterParams};
 use rayon::prelude::*;
 
 /// The settings of the scorched-highlands generator. Lengths are in
@@ -344,7 +347,16 @@ pub fn generate(seed: u32, size: usize, spacing: f32, params: &HighlandsParams) 
         params.lake_floor_part,
     );
     let surface: Vec<f32> = coarse.iter().zip(&fill).map(|(h, f)| h + f).collect();
-    let rain = flow(&surface, csize);
+    // The wet flow (S-162): a full lake passes its water on at its spill
+    // cell, and a closed lake keeps it. The riverbeds and the rivers use
+    // this flow.
+    let full = full_lake_plateaus(&basins, csize, seed, &params.water, 0.0005 * cell_m);
+    let routing: Vec<f32> = surface
+        .iter()
+        .zip(&full)
+        .map(|(&s, &f)| if f.is_nan() { s } else { f })
+        .collect();
+    let rain = flow(&routing, csize);
 
     // Some shallow basins away from the rivers keep their hollow: they
     // become ponds. The flow above still uses the filled surface, thus
@@ -398,8 +410,8 @@ pub fn generate(seed: u32, size: usize, spacing: f32, params: &HighlandsParams) 
     // stamps does not change the result.
     let river_width = |i: usize| {
         let area = rain.area[i] * cell_area;
-        // A river stops at the shore of a dry lake.
-        if area < params.river_min_area_m2 || lake[i] {
+        // A river stops at the shore of a dry lake and of a full lake.
+        if area < params.river_min_area_m2 || lake[i] || !full[i].is_nan() {
             return 0.0;
         }
         (params.river_min_width_m * (area / params.river_min_area_m2).sqrt())
@@ -410,7 +422,7 @@ pub fn generate(seed: u32, size: usize, spacing: f32, params: &HighlandsParams) 
     // The level of each riverbed. Go from the lowest cell to the highest
     // cell. A bed is never lower than the bed after it, thus a river
     // does not cut a hole where it stops.
-    let mut bed_level = surface.clone();
+    let mut bed_level = routing.clone();
     for &i in rain.order.iter().rev() {
         let i = i as usize;
         let width = river_width(i);
@@ -421,6 +433,8 @@ pub fn generate(seed: u32, size: usize, spacing: f32, params: &HighlandsParams) 
     }
     let mut best_f = vec![0.0f32; size * size];
     let mut best_bed = vec![0.0f32; size * size];
+    // The river cell whose stamp wins at each sample (S-162).
+    let mut best_cell = vec![u32::MAX; size * size];
     let mut riverbed = vec![0u8; size * size];
     for (i, &bed) in bed_level.iter().enumerate() {
         let width = river_width(i);
@@ -450,6 +464,7 @@ pub fn generate(seed: u32, size: usize, spacing: f32, params: &HighlandsParams) 
                 if f > best_f[idx] || (f == best_f[idx] && bed < best_bed[idx]) {
                     best_f[idx] = f;
                     best_bed[idx] = bed;
+                    best_cell[idx] = i as u32;
                 }
                 let mask = 1.0 - smoothstep(inner * 0.8, inner * 1.6 + spacing, dist);
                 let mask = (mask * 255.0) as u8;
@@ -481,7 +496,27 @@ pub fn generate(seed: u32, size: usize, spacing: f32, params: &HighlandsParams) 
         basin: &basins[p],
         kind: WaterKind::Pond,
     }));
-    let water = make_water(&heights, &candidates, csize, step, seed, &params.water);
+    let mut water = make_water(&heights, &candidates, csize, step, seed, &params.water);
+
+    // The large riverbeds get water (S-162).
+    let widths: Vec<f32> = (0..csize * csize).map(river_width).collect();
+    add_rivers(
+        &mut water,
+        &heights,
+        &RiverInput {
+            coarse_size: csize,
+            step,
+            receiver: &rain.receiver,
+            order: &rain.order,
+            area_cells: &rain.area,
+            width: &widths,
+            bed: &bed_level,
+            depth_ratio: params.river_depth_ratio,
+            stamp_cell: &best_cell,
+        },
+        seed,
+        &params.water,
+    );
 
     Zone {
         seed,
@@ -490,6 +525,85 @@ pub fn generate(seed: u32, size: usize, spacing: f32, params: &HighlandsParams) 
         lakebed,
         water,
     }
+}
+
+/// Gives the routing height of each cell of a full lake, or NaN (S-162).
+///
+/// A full lake is flat at its spill height, with a small rise of
+/// `epsilon` for each cell away from its spill cell. Thus the wet flow
+/// crosses the lake to its spill cell. The higher lakes come last, so a
+/// full lake inside a higher full lake does not keep the water.
+fn full_lake_plateaus(
+    basins: &[Basin],
+    size: usize,
+    seed: u32,
+    params: &WaterParams,
+    epsilon: f32,
+) -> Vec<f32> {
+    let n = size * size;
+    let mut out = vec![f32::NAN; n];
+    let mut full: Vec<&Basin> = basins
+        .iter()
+        .filter(|b| b.deep && lake_part(b, seed, params) >= 1.0)
+        .collect();
+    full.sort_by(|a, b| {
+        a.spill
+            .total_cmp(&b.spill)
+            .then(a.spill_cell.cmp(&b.spill_cell))
+    });
+    let mut steps = vec![u32::MAX; n];
+    let mut queue = std::collections::VecDeque::new();
+    for b in full {
+        // The distance in cells from the spill cell, inside the basin.
+        for &c in &b.cells {
+            steps[c as usize] = u32::MAX - 1;
+        }
+        let (sx, sz) = (b.spill_cell as usize % size, b.spill_cell as usize / size);
+        let around = |x: usize, z: usize| {
+            let mut v = Vec::with_capacity(8);
+            for dz in -1isize..=1 {
+                for dx in -1isize..=1 {
+                    let (nx, nz) = (x as isize + dx, z as isize + dz);
+                    if (dx, dz) != (0, 0)
+                        && nx >= 0
+                        && nz >= 0
+                        && (nx as usize) < size
+                        && (nz as usize) < size
+                    {
+                        v.push(nz as usize * size + nx as usize);
+                    }
+                }
+            }
+            v
+        };
+        for c in around(sx, sz) {
+            if steps[c] == u32::MAX - 1 {
+                steps[c] = 1;
+                queue.push_back(c);
+            }
+        }
+        if queue.is_empty() {
+            let f = b.floor_cell as usize;
+            steps[f] = 1;
+            queue.push_back(f);
+        }
+        while let Some(c) = queue.pop_front() {
+            out[c] = b.spill + epsilon * steps[c] as f32;
+            for nc in around(c % size, c / size) {
+                if steps[nc] == u32::MAX - 1 {
+                    steps[nc] = steps[c] + 1;
+                    queue.push_back(nc);
+                }
+            }
+        }
+        // A cell that the search did not reach keeps its height.
+        for &c in &b.cells {
+            if steps[c as usize] == u32::MAX - 1 {
+                steps[c as usize] = u32::MAX;
+            }
+        }
+    }
+    out
 }
 
 impl Zone {

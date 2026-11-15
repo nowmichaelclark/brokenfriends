@@ -1,5 +1,5 @@
-//! `BfWater` shows the lakes and ponds of the zone (S-160,
-//! `plan/demo-2.md`, "Water look").
+//! `BfWater` shows the lakes, ponds (S-160) and rivers (S-162) of the
+//! zone (`plan/demo-2.md`, "Water look").
 //!
 //! `bf-worldgen` (`water.rs`) makes the bodies with the zone. This node
 //! makes their meshes (`water_mesh.rs`) when a new zone shows. All water
@@ -12,6 +12,7 @@
 use crate::atmosphere::ATMOSPHERE_GROUP;
 use crate::terrain::{BfTerrain, TERRAIN_GROUP};
 use crate::water_mesh::{build_meshes, MeshParams, TileMesh};
+use bf_worldgen::water::WaterKind;
 use godot::classes::geometry_instance_3d::ShadowCastingSetting;
 use godot::classes::image::Format;
 use godot::classes::light_3d::Param as LightParam;
@@ -30,15 +31,15 @@ pub const WATER_GROUP: &str = "bf_water";
 /// exported switches.
 const WATER_SHADER: &str = include_str!("water.gdshader");
 
-/// The Water view test uses the largest lake nearer to the centre than
-/// this, in metres: inside the smoke wall (at least 590 m). The view
+/// The Water view test uses the largest lake (and a river rapid) nearer
+/// to the centre than this, in metres: inside the smoke wall (at least 590 m). The view
 /// looks toward the centre of the zone, away from the wall.
 const TEST_LAKE_RADIUS_M: f32 = 580.0;
 
 /// The size of the ripple texture in pixels.
 const RIPPLE_SIZE: usize = 128;
 
-/// Draws the still water of the zone.
+/// Draws the water of the zone: lakes, ponds and rivers.
 #[derive(GodotClass)]
 #[class(base = Node3D, init)]
 pub struct BfWater {
@@ -67,6 +68,23 @@ pub struct BfWater {
     #[export]
     #[init(val = MeshParams::default().tile_m)]
     tile_m: f32,
+
+    /// The size of one quad of a river, in metres.
+    #[export]
+    #[init(val = MeshParams::default().river_cell_m)]
+    river_cell_m: f32,
+
+    /// A river quad whose corners differ by more than this in height is
+    /// left out (a waterfall; S-165 draws it), in metres.
+    #[export]
+    #[init(val = MeshParams::default().max_quad_drop_m)]
+    max_quad_drop_m: f32,
+
+    /// A river vertex averages the river levels up to this many samples
+    /// away, so the surface has no steps between the river cells.
+    #[export]
+    #[init(val = MeshParams::default().river_smooth_samples as i32)]
+    river_smooth_samples: i32,
 
     /// The number of ripple layers: 2, 1 (the first cut of the GPU
     /// budget) or 0.
@@ -154,6 +172,28 @@ pub struct BfWater {
     #[init(val = MeshParams::default().opaque_clarities)]
     opaque_clarities: f32,
 
+    /// The time of one cycle of the river ripples, in seconds. A long
+    /// cycle stretches the ripples more.
+    #[export]
+    #[init(val = 1.5)]
+    flow_cycle_s: f32,
+
+    /// Fast water bends the light more: extra ripple strength for each
+    /// metre per second of flow.
+    #[export]
+    #[init(val = 0.25)]
+    flow_ripple_gain: f32,
+
+    /// The colour of the foam on rapids.
+    #[export]
+    #[init(val = Color::from_rgb(0.86, 0.84, 0.78))]
+    foam_colour: Color,
+
+    /// How much the foam on rapids shows, 0 to 1.
+    #[export]
+    #[init(val = 0.85)]
+    foam_strength: f32,
+
     /// Test only (`--bf-water-fog_off=on`): the water has no fog.
     fog_off_test: bool,
     material: Option<Gd<ShaderMaterial>>,
@@ -169,6 +209,7 @@ pub struct BfWater {
     build_ms: f32,
     triangles: usize,
     bodies: usize,
+    rivers: usize,
     base: Base<Node3D>,
 }
 
@@ -232,6 +273,12 @@ impl BfWater {
                 return;
             };
             self.bodies = zone.water.bodies.len();
+            self.rivers = zone
+                .water
+                .bodies
+                .iter()
+                .filter(|b| b.kind == WaterKind::River)
+                .count();
             build_meshes(&zone.water, &zone.heights, &params)
         };
         let (material, deep_material) = self.materials();
@@ -248,8 +295,9 @@ impl BfWater {
         }
         self.build_ms = start.elapsed().as_secs_f32() * 1000.0;
         godot_print!(
-            "BfWater: {} bodies, {} meshes, {} triangles ({} opaque), {:.0} ms",
+            "BfWater: {} bodies ({} rivers), {} meshes, {} triangles ({} opaque), {:.0} ms",
             self.bodies,
+            self.rivers,
             self.tiles.len(),
             self.triangles,
             self.tiles
@@ -296,8 +344,9 @@ impl BfWater {
             return GString::from("off");
         }
         GString::from(&format!(
-            "{} bodies, {} meshes ({} in view), {} triangles, built in {:.0} ms",
+            "{} bodies ({} rivers), {} meshes ({} in view), {} triangles, built in {:.0} ms",
             self.bodies,
+            self.rivers,
             self.tiles.len(),
             self.drawn_meshes(),
             self.triangles,
@@ -306,8 +355,8 @@ impl BfWater {
     }
 
     /// Gives a fixed camera view for the Water view test: the eye and
-    /// the target. `name` is "largest_lake". An empty array means that
-    /// the zone has no such place.
+    /// the target. `name` is "largest_lake" or "river_rapids". An empty
+    /// array means that the zone has no such place.
     #[func]
     pub fn test_view(&self, name: GString) -> PackedVector3Array {
         let mut out = PackedVector3Array::new();
@@ -321,6 +370,11 @@ impl BfWater {
         if name == "largest_lake" {
             if let Some(lake) = zone.water.largest_lake_within(TEST_LAKE_RADIUS_M) {
                 let v = zone.water.view_across(lake, 4.0);
+                out.push(Vector3::new(v.eye[0], v.eye[1], v.eye[2]));
+                out.push(Vector3::new(v.target[0], v.target[1], v.target[2]));
+            }
+        } else if name == "river_rapids" {
+            if let Some(v) = zone.water.river_view(TEST_LAKE_RADIUS_M, 3.0) {
                 out.push(Vector3::new(v.eye[0], v.eye[1], v.eye[2]));
                 out.push(Vector3::new(v.target[0], v.target[1], v.target[2]));
             }
@@ -349,6 +403,22 @@ impl BfWater {
                     lake.max_depth_m
                 ));
             }
+        } else if name == "river_rapids" {
+            if let Some(v) = zone.water.river_view(TEST_LAKE_RADIUS_M, 3.0) {
+                let river = &zone.water.bodies[v.body as usize];
+                let rapid = if v.drop_m > 0.0 {
+                    format!("rapid of {:.1} m", v.drop_m)
+                } else {
+                    "no rapid".to_string()
+                };
+                return GString::from(&format!(
+                    "river #{} ({}, {:.0} m2, {rapid}, flow {:.1} m/s)",
+                    river.number,
+                    river.look.name(),
+                    river.area_m2,
+                    river.flow_mps
+                ));
+            }
         }
         GString::new()
     }
@@ -369,10 +439,16 @@ impl BfWater {
             "fog_off" => self.fog_off_test = on,
             "tile_m" => self.tile_m = value.parse().unwrap_or(self.tile_m),
             "cell_m" => self.cell_m = value.parse().unwrap_or(self.cell_m),
+            "river_cell_m" => self.river_cell_m = value.parse().unwrap_or(self.river_cell_m),
+            "max_quad_drop_m" => {
+                self.max_quad_drop_m = value.parse().unwrap_or(self.max_quad_drop_m)
+            }
             "large_cell_m" => self.large_cell_m = value.parse().unwrap_or(self.large_cell_m),
             "large_area_m2" => self.large_area_m2 = value.parse().unwrap_or(self.large_area_m2),
             "fresnel_alpha" => self.fresnel_alpha = value.parse().unwrap_or(self.fresnel_alpha),
             "specular" => self.specular = value.parse().unwrap_or(self.specular),
+            "flow_cycle_s" => self.flow_cycle_s = value.parse().unwrap_or(self.flow_cycle_s),
+            "foam_strength" => self.foam_strength = value.parse().unwrap_or(self.foam_strength),
             _ => godot_print!("BfWater: unknown option --bf-water-{name}"),
         }
         godot_print!("BfWater: --bf-water-{name}={value}");
@@ -395,6 +471,9 @@ impl BfWater {
             large_cell_m: self.large_cell_m.max(0.5),
             large_area_m2: self.large_area_m2,
             tile_m: self.tile_m.max(32.0),
+            river_cell_m: self.river_cell_m.max(0.5),
+            max_quad_drop_m: self.max_quad_drop_m,
+            river_smooth_samples: self.river_smooth_samples.clamp(0, 8) as usize,
             shore_detail_m: self.shore_detail_m,
             opaque_clarities: self.opaque_clarities.max(0.0),
             ..MeshParams::default()
@@ -527,7 +606,7 @@ impl BfWater {
         } else {
             self.sun_values()
         };
-        let values: [(&str, Variant); 15] = [
+        let values: [(&str, Variant); 19] = [
             ("sky_colour", self.sky_colour.to_variant()),
             ("sky_reflect", self.sky_reflect.to_variant()),
             ("ripple_layers", self.ripple_layers.clamp(0, 2).to_variant()),
@@ -546,6 +625,10 @@ impl BfWater {
             ("sun_dir", sun_dir.to_variant()),
             ("sun_light", sun_light.to_variant()),
             ("ambient_light", ambient.to_variant()),
+            ("flow_cycle_s", self.flow_cycle_s.max(0.1).to_variant()),
+            ("flow_ripple_gain", self.flow_ripple_gain.to_variant()),
+            ("foam_colour", self.foam_colour.to_variant()),
+            ("foam_strength", self.foam_strength.to_variant()),
         ];
         for (name, value) in values {
             if material.get_shader_parameter(name) != value {

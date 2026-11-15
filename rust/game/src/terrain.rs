@@ -660,7 +660,7 @@ impl BfTerrain {
         Some(WaterAt {
             number: b.number,
             kind: b.kind.name(),
-            level: b.level,
+            level: here.level,
             depth: here.depth,
             viscosity: b.viscosity,
             density: b.density,

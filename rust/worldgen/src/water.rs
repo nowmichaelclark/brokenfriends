@@ -1,5 +1,6 @@
 //! Still water: lakes and ponds from the basin records (S-160,
-//! `plan/demo-2.md`, "Water bodies").
+//! `plan/demo-2.md`, "Water bodies"). The rivers (S-162) are in
+//! `rivers.rs`; their bodies are in the same list, after the still water.
 //!
 //! The drainage step (`drainage.rs`) gives a record for each closed
 //! basin. A deep basin becomes a lake with a seeded level. Some shallow
@@ -14,6 +15,7 @@
 use crate::drainage::{fill_basins, Basin};
 use crate::heightmap::HeightMap;
 use crate::noise::hash01;
+pub use crate::rivers::{RiverCell, RiverStep};
 use std::collections::VecDeque;
 
 /// The settings of the water bodies. Lengths are in metres.
@@ -43,6 +45,44 @@ pub struct WaterParams {
     pub min_area_m2: f32,
     /// The ground is damp up to this height above the water level.
     pub damp_height_m: f32,
+    /// A riverbed has water if its wet area is more than this, in square
+    /// metres (S-162). The wet area does not count the rain that a closed
+    /// lake keeps.
+    pub wet_min_area_m2: f32,
+    /// The lowest seeded part of the bed depth that a river fills (0 to 1).
+    pub river_part_min: f32,
+    /// The highest seeded part of the bed depth that a river fills.
+    pub river_part_max: f32,
+    /// A river is at least this deep at the centre of its bed, in metres.
+    pub river_min_depth_m: f32,
+    /// A steep river is deeper: this part of the drop of the bed to the
+    /// next cell is added to the least depth. Thus the ground does not
+    /// show through the water of a rapid.
+    pub steep_depth_part: f32,
+    /// A river stays this much below the lowest bank next to it, in
+    /// metres. Thus the water never stands above the ground beside it.
+    pub bank_margin_m: f32,
+    /// Near its mouth, a river gets this much deeper for each metre away
+    /// from the water that it flows into. Thus its surface comes down to
+    /// the lake.
+    pub mouth_slope: f32,
+    /// A drop of more than this from one river cell to the next is a
+    /// rapid, in metres.
+    pub rapid_drop_m: f32,
+    /// A drop of more than this is a waterfall, in metres (S-165 draws it).
+    pub fall_drop_m: f32,
+    /// A drop steeper than this (rise divided by run, 1 is 45 degrees) is
+    /// a waterfall.
+    pub fall_slope: f32,
+    /// The slowest river flow, in metres each second.
+    pub flow_min_mps: f32,
+    /// The flow gets this much faster for each unit of the square root
+    /// of the slope of the water surface.
+    pub flow_slope_k: f32,
+    /// The fastest river flow, in metres each second.
+    pub flow_max_mps: f32,
+    /// A river with fewer coarse cells than this is left out.
+    pub river_min_cells: u32,
 }
 
 impl Default for WaterParams {
@@ -58,6 +98,20 @@ impl Default for WaterParams {
             min_depth_m: 0.3,
             min_area_m2: 25.0,
             damp_height_m: 0.6,
+            wet_min_area_m2: 50_000.0,
+            river_part_min: 0.4,
+            river_part_max: 0.8,
+            river_min_depth_m: 0.25,
+            steep_depth_part: 0.5,
+            bank_margin_m: 0.1,
+            mouth_slope: 0.05,
+            rapid_drop_m: 0.5,
+            fall_drop_m: 2.5,
+            fall_slope: 1.0,
+            flow_min_mps: 0.3,
+            flow_slope_k: 6.0,
+            flow_max_mps: 3.5,
+            river_min_cells: 6,
         }
     }
 }
@@ -69,6 +123,8 @@ pub enum WaterKind {
     Lake,
     /// Water in a shallow hollow.
     Pond,
+    /// One river system: a tree of riverbeds with water (S-162).
+    River,
 }
 
 impl WaterKind {
@@ -76,6 +132,7 @@ impl WaterKind {
         match self {
             WaterKind::Lake => "lake",
             WaterKind::Pond => "pond",
+            WaterKind::River => "river",
         }
     }
 }
@@ -144,7 +201,7 @@ impl Look {
 
     /// The range of the clarity: the depth in metres at which the water
     /// hides about 63% of the ground below it.
-    fn clarity(self) -> (f32, f32) {
+    pub(crate) fn clarity(self) -> (f32, f32) {
         match self {
             Look::ClearSpring => (4.0, 8.0),
             Look::SiltyBrown => (0.4, 1.0),
@@ -157,7 +214,7 @@ impl Look {
     }
 
     /// The range of the density (1 is water).
-    fn density(self) -> (f32, f32) {
+    pub(crate) fn density(self) -> (f32, f32) {
         match self {
             Look::GreyMud => (1.3, 1.6),
             Look::BlackTar => (1.15, 1.35),
@@ -167,18 +224,23 @@ impl Look {
     }
 }
 
-/// One lake or pond.
+/// One lake, pond or river system.
 #[derive(Clone, Debug, PartialEq)]
 pub struct WaterBody {
-    /// The number of the body. The bodies are numbered in the order of
-    /// their spill cells.
+    /// The number of the body. The lakes and ponds are numbered in the
+    /// order of their spill cells. The rivers come after them, in the
+    /// order of their mouths.
     pub number: u32,
     pub kind: WaterKind,
-    /// The height of the water surface in metres.
+    /// The height of the water surface in metres. A river has a level
+    /// for each cell (`Water::level_at_sample`); this is the level at
+    /// its mouth, the lowest one.
     pub level: f32,
-    /// The spill height of the basin in metres.
+    /// The spill height of the basin in metres. For a river: the highest
+    /// level (at its sources).
     pub spill: f32,
-    /// The sample where water leaves the basin (x, z).
+    /// The sample where water leaves the basin (x, z). For a river: its
+    /// mouth.
     pub spill_sample: (u32, u32),
     /// The deepest sample (x, z).
     pub deepest_sample: (u32, u32),
@@ -192,7 +254,8 @@ pub struct WaterBody {
     pub area_m2: f32,
     /// The largest depth of the water in metres.
     pub max_depth_m: f32,
-    /// The part of the basin that is filled (1: the lake spills).
+    /// The part of the basin that is filled (1: the lake spills). For a
+    /// river: the seeded part of the bed depth.
     pub fill_part: f32,
     pub look: Look,
     /// The colour of deep water (sRGB, 0 to 1).
@@ -206,9 +269,11 @@ pub struct WaterBody {
     pub density: f32,
     /// From 0 (cold) to 1 (hot). Above 0.7 the water steams (later).
     pub temperature: f32,
+    /// The mean flow speed in metres each second (0 for still water).
+    pub flow_mps: f32,
 }
 
-/// All still water of a zone.
+/// All water of a zone: the lakes, the ponds and the rivers.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Water {
     /// The number of samples on each side of the zone.
@@ -222,18 +287,32 @@ pub struct Water {
     pub owner: Vec<u16>,
     /// The ground is damp up to this height above the water level.
     pub damp_height_m: f32,
+    /// The coarse cells of the rivers that have water (S-162), in the
+    /// order of their cell indexes.
+    pub river_cells: Vec<RiverCell>,
+    /// The wet samples of the rivers (`z * size + x`), from low to high.
+    pub river_samples: Vec<u32>,
+    /// For each item of `river_samples`: its index in `river_cells`.
+    pub river_sample_cell: Vec<u32>,
+    /// The rapids and the waterfalls of the rivers.
+    pub river_steps: Vec<RiverStep>,
 }
 
 /// The water at one place.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct WaterHere<'a> {
     pub body: &'a WaterBody,
+    /// The height of the water surface here, in metres.
+    pub level: f32,
     /// The water level minus the ground height, in metres.
     pub depth: f32,
+    /// The flow of the water in metres each second (x, z). Still water
+    /// has none.
+    pub flow: [f32; 2],
 }
 
 /// A seeded number from 0 to 1 for a body. `salt` selects which one.
-fn rand(key: u32, seed: u32, salt: u32) -> f32 {
+pub(crate) fn rand(key: u32, seed: u32, salt: u32) -> f32 {
     hash01(
         key as i32,
         salt as i32,
@@ -264,6 +343,18 @@ pub fn choose_ponds(
         })
         .map(|(i, _)| i)
         .collect()
+}
+
+/// Gives the seeded fill part of the lake in a deep basin (0 to 1). A
+/// lake with part 1 is full: it spills at its spill cell.
+pub fn lake_part(basin: &Basin, seed: u32, params: &WaterParams) -> f32 {
+    let key = basin.spill_cell;
+    if rand(key, seed, 2) < params.full_lake_chance {
+        1.0
+    } else {
+        let lo = params.lake_part_min.clamp(0.0, 1.0);
+        lo + (1.0 - lo) * rand(key, seed, 3)
+    }
 }
 
 /// A basin that can hold water, with the grid of the drainage step.
@@ -309,12 +400,7 @@ pub fn make_water(
         let key = b.spill_cell;
         let (target, part) = match cand.kind {
             WaterKind::Lake => {
-                let part = if rand(key, seed, 2) < params.full_lake_chance {
-                    1.0
-                } else {
-                    let lo = params.lake_part_min.clamp(0.0, 1.0);
-                    lo + (1.0 - lo) * rand(key, seed, 3)
-                };
+                let part = lake_part(b, seed, params);
                 (b.floor + part * (b.spill - b.floor), part)
             }
             WaterKind::Pond => {
@@ -324,6 +410,8 @@ pub fn make_water(
                 let drop = drop.min(b.depth * 0.5);
                 (b.spill - drop, 1.0 - drop / b.depth.max(0.01))
             }
+            // Rivers do not come from basins (`rivers.rs`).
+            WaterKind::River => continue,
         };
 
         // The window: the box of the basin cells and a margin.
@@ -492,11 +580,7 @@ pub fn make_water(
             }
             let key = spill_index(&f) as u32;
             let look = pick_look(&f, spacing, key, seed);
-            let colour = look.colour();
-            let vary = |salt: u32| 0.92 + 0.16 * rand(key, seed, salt);
-            let (c0, c1) = look.clarity();
-            let (d0, d1) = look.density();
-            let t = rand(key, seed, 14);
+            let v = look_values(look, key, seed);
             WaterBody {
                 number: number as u32,
                 kind: f.kind,
@@ -511,16 +595,12 @@ pub fn make_water(
                 max_depth_m: f.max_depth,
                 fill_part: f.fill_part,
                 look,
-                deep_colour: [
-                    (colour[0] * vary(10)).min(1.0),
-                    (colour[1] * vary(11)).min(1.0),
-                    (colour[2] * vary(12)).min(1.0),
-                ],
-                clarity_m: c0 + (c1 - c0) * rand(key, seed, 13),
+                deep_colour: v.deep_colour,
+                clarity_m: v.clarity_m,
                 viscosity: look.viscosity(),
-                density: d0 + (d1 - d0) * rand(key, seed, 15),
-                // Most water is cool. A few bodies are warm.
-                temperature: t * t,
+                density: v.density,
+                temperature: v.temperature,
+                flow_mps: 0.0,
             }
         })
         .collect();
@@ -530,6 +610,36 @@ pub fn make_water(
         bodies,
         owner,
         damp_height_m: params.damp_height_m,
+        ..Water::default()
+    }
+}
+
+/// The seeded values of a look for one body.
+pub(crate) struct LookValues {
+    pub deep_colour: [f32; 3],
+    pub clarity_m: f32,
+    pub density: f32,
+    pub temperature: f32,
+}
+
+/// Gives the seeded colour, clarity, density and temperature of a body.
+/// `key` is the sample of the spill cell (or the mouth of a river).
+pub(crate) fn look_values(look: Look, key: u32, seed: u32) -> LookValues {
+    let colour = look.colour();
+    let vary = |salt: u32| 0.92 + 0.16 * rand(key, seed, salt);
+    let (c0, c1) = look.clarity();
+    let (d0, d1) = look.density();
+    let t = rand(key, seed, 14);
+    LookValues {
+        deep_colour: [
+            (colour[0] * vary(10)).min(1.0),
+            (colour[1] * vary(11)).min(1.0),
+            (colour[2] * vary(12)).min(1.0),
+        ],
+        clarity_m: c0 + (c1 - c0) * rand(key, seed, 13),
+        density: d0 + (d1 - d0) * rand(key, seed, 15),
+        // Most water is cool. A few bodies are warm.
+        temperature: t * t,
     }
 }
 
@@ -549,10 +659,16 @@ fn pick_look(f: &Found, spacing: f32, key: u32, seed: u32) -> Look {
         WaterKind::Pond if f.max_depth < 1.0 => [0.8, 1.0, 0.5, 0.5, 2.0, 3.0, 0.3],
         WaterKind::Pond if area < 400.0 => [3.0, 1.0, 0.5, 0.5, 2.5, 1.5, 0.2],
         WaterKind::Pond => [2.0, 1.5, 1.0, 0.8, 3.0, 1.0, 0.2],
+        WaterKind::River => crate::rivers::RIVER_LOOK_WEIGHTS,
     };
+    look_from_weights(&weights, key, seed)
+}
+
+/// Selects a seeded look from weights in the order of `LOOKS`.
+pub(crate) fn look_from_weights(weights: &[f32; 7], key: u32, seed: u32) -> Look {
     let total: f32 = weights.iter().sum();
     let mut r = rand(key, seed, 9) * total;
-    for (look, w) in LOOKS.iter().zip(weights) {
+    for (look, &w) in LOOKS.iter().zip(weights) {
         if r < w {
             return *look;
         }
@@ -589,11 +705,52 @@ impl Water {
 
     /// Gives the water at a world position, with the depth from the
     /// ground of `heights`. A place at the shore with no water gives
-    /// `None`.
+    /// `None`. In a river, the level and the flow are those of the
+    /// nearest sample.
     pub fn at(&self, heights: &HeightMap, wx: f32, wz: f32) -> Option<WaterHere<'_>> {
-        let body = self.body_at(wx, wz)?;
-        let depth = body.level - heights.sample_world(wx, wz);
-        (depth > 0.0).then_some(WaterHere { body, depth })
+        let (x, z) = self.nearest_sample(wx, wz)?;
+        let body = self.body_at_sample(x, z)?;
+        let (level, flow) = match body.kind {
+            WaterKind::River => {
+                let cell = self.river_cell_at_sample(x, z)?;
+                (cell.level, cell.flow)
+            }
+            _ => (body.level, [0.0, 0.0]),
+        };
+        let depth = level - heights.sample_world(wx, wz);
+        (depth > 0.0).then_some(WaterHere {
+            body,
+            level,
+            depth,
+            flow,
+        })
+    }
+
+    /// Gives the nearest sample (x, z) of a world position, if it is in
+    /// the zone.
+    fn nearest_sample(&self, wx: f32, wz: f32) -> Option<(usize, usize)> {
+        let half = self.size as f32 * 0.5;
+        let index = |w: f32| (w / self.spacing + half).round();
+        let (x, z) = (index(wx), index(wz));
+        (x >= 0.0 && z >= 0.0 && (x as usize) < self.size && (z as usize) < self.size)
+            .then_some((x as usize, z as usize))
+    }
+
+    /// Gives the river cell of a wet river sample.
+    pub fn river_cell_at_sample(&self, x: usize, z: usize) -> Option<&RiverCell> {
+        let s = (z * self.size + x) as u32;
+        let i = self.river_samples.binary_search(&s).ok()?;
+        self.river_cells.get(self.river_sample_cell[i] as usize)
+    }
+
+    /// Gives the water level at a wet sample: the level of the lake or
+    /// pond, or the level of the river cell there.
+    pub fn level_at_sample(&self, x: usize, z: usize) -> Option<f32> {
+        let body = self.body_at_sample(x, z)?;
+        match body.kind {
+            WaterKind::River => self.river_cell_at_sample(x, z).map(|c| c.level),
+            _ => Some(body.level),
+        }
     }
 
     /// Gives the world position (x, z) of a sample.
@@ -648,6 +805,13 @@ impl Water {
         for &o in &self.owner {
             eat(u32::from(o));
         }
+        for c in &self.river_cells {
+            eat(c.body);
+            eat(c.level.to_bits());
+            eat(c.foam.to_bits());
+            eat(c.flow[0].to_bits());
+        }
+        eat(self.river_steps.len() as u32);
         h
     }
 
@@ -661,7 +825,9 @@ impl Water {
         let size = self.size;
         // The damp band is at most a few samples wide.
         let reach = (damp_height_m.max(1.0) * 4.0 / self.spacing).ceil() as usize;
-        for b in &self.bodies {
+        // A river spans much of the zone: it has its own, faster pass.
+        self.damp_river_shores(heights, colours, reach);
+        for b in self.bodies.iter().filter(|b| b.kind != WaterKind::River) {
             let x0 = (b.min.0 as usize).saturating_sub(reach);
             let z0 = (b.min.1 as usize).saturating_sub(reach);
             let x1 = (b.max.0 as usize + reach).min(size - 1);
@@ -967,10 +1133,16 @@ mod zone_tests {
             // The water level is above the ground in each wet sample.
             for (i, &o) in w.owner.iter().enumerate() {
                 if o != 0 {
-                    let b = &w.bodies[o as usize - 1];
-                    assert!(zone.heights.data[i] < b.level, "seed {seed}");
+                    let level = w.level_at_sample(i % w.size, i / w.size).unwrap();
+                    assert!(zone.heights.data[i] < level, "seed {seed}");
                 }
             }
+            // Each test seed has a wet river inside the smoke wall
+            // (`demo-2.md`, "Done when").
+            assert!(
+                w.river_view(580.0, 3.0).is_some(),
+                "seed {seed} has no wet river inside the smoke wall"
+            );
             // The bear does not start in the water.
             let (sx, sz) = zone.start_point();
             assert!(w.body_at(sx, sz).is_none(), "seed {seed}");
@@ -1001,24 +1173,49 @@ mod zone_tests {
                 .iter()
                 .filter(|b| b.kind == WaterKind::Lake)
                 .collect();
-            let ponds = w.bodies.len() - lakes.len();
+            let rivers = w
+                .bodies
+                .iter()
+                .filter(|b| b.kind == WaterKind::River)
+                .count();
+            let ponds = w.bodies.len() - lakes.len() - rivers;
             let area: f32 = w.bodies.iter().map(|b| b.area_m2).sum();
+            let river_area: f32 = w
+                .bodies
+                .iter()
+                .filter(|b| b.kind == WaterKind::River)
+                .map(|b| b.area_m2)
+                .sum();
+            let rapids = w.river_steps.iter().filter(|s| !s.fall).count();
+            let falls = w.river_steps.len() - rapids;
             println!(
-                "seed {seed}: {secs:.2} s, {} lakes, {ponds} ponds, {:.0} m2 of water",
+                "seed {seed}: {secs:.2} s, {} lakes, {ponds} ponds, {rivers} rivers \
+                 ({} cells, {rapids} rapids, {falls} falls, {river_area:.0} m2), {:.0} m2 of water",
                 lakes.len(),
+                w.river_cells.len(),
                 area
             );
             for b in &w.bodies {
                 let (x, z) = w.world(b.deepest_sample.0, b.deepest_sample.1);
                 println!(
-                    "  #{} {} {} at ({x:.0}, {z:.0}): {:.0} m2, deep {:.1} m, part {:.2}, clarity {:.1}",
+                    "  #{} {} {} at ({x:.0}, {z:.0}): {:.0} m2, deep {:.1} m, part {:.2}, \
+                     clarity {:.1}, level {:.1} to {:.1}, flow {:.1} m/s",
                     b.number,
                     b.kind.name(),
                     b.look.name(),
                     b.area_m2,
                     b.max_depth_m,
                     b.fill_part,
-                    b.clarity_m
+                    b.clarity_m,
+                    b.level,
+                    b.spill,
+                    b.flow_mps
+                );
+            }
+            if let Some(v) = w.river_view(580.0, 3.0) {
+                println!(
+                    "  river view: river #{}, rapid {:.2} m, eye {:?}, target {:?}",
+                    v.body, v.drop_m, v.eye, v.target
                 );
             }
             let (sx, sz) = zone.start_point();

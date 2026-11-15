@@ -28,9 +28,12 @@ pub enum TestKind {
 }
 
 /// The views of the Water view test: the name for `BfWater::test_view`
-/// and the text for the report. S-162 adds a river with rapids and
-/// S-165 the tallest and the widest fall.
-pub const WATER_VIEWS: [(&str, &str); 1] = [("largest_lake", "the largest lake")];
+/// and the text for the report. S-165 adds the tallest and the widest
+/// fall.
+pub const WATER_VIEWS: [(&str, &str); 2] = [
+    ("largest_lake", "the largest lake"),
+    ("river_rapids", "a river with rapids"),
+];
 
 /// The time of each view of the Water view test, in seconds.
 pub const VIEW_SECONDS: f32 = 6.0;
@@ -370,8 +373,9 @@ pub fn make_markdown(t: &TestReport) -> String {
         let _ = writeln!(
             out,
             "The camera stops at fixed views of the water: {}. Each view lasts {:.0} s; \
-             the numbers start after {:.0} s. The camera is 4 m above the water near the \
-             shore and looks across the longest stretch of water.",
+             the numbers start after {:.0} s. At the lake, the camera is 4 m above the water \
+             near the shore and looks across the longest stretch of water. At the river, the \
+             camera is 3 m above the water about 14 m below a rapid and looks up the river.",
             names.join(", "),
             VIEW_SECONDS,
             VIEW_WARM_SECONDS

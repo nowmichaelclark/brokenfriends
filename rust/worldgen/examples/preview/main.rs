@@ -13,6 +13,9 @@
 //! - `seed_N_relief.png`: a map with ground colours and shadows.
 //! - `seed_N_air.png`: a view from the air through haze.
 //! - `seed_N_ground.png`: a view from the eyes of the bear.
+//! - `seed_N_water.png` (S-162): the relief with the water. Lakes and
+//!   ponds have their deep colour. Rivers are cyan, rapids are orange
+//!   and waterfalls are red.
 //!
 //! It also writes images of the caves (S-161). Cave air is blue where
 //! it sees no sky and yellow where it sees the sky. Rock is brown and
@@ -78,6 +81,7 @@ fn main() {
             &colours,
             &out.join(format!("seed_{seed}_relief.png")),
         );
+        write_water(&zone, &colours, &out.join(format!("seed_{seed}_water.png")));
 
         // A camera in the air, near one corner. It looks at the centre.
         let edge = zone.heights.world_size() * 0.5;
@@ -379,4 +383,52 @@ fn write_view(
         });
     image::save_buffer(path, &bytes, W as u32, H as u32, image::ColorType::Rgb8)
         .expect("could not write the view image");
+}
+
+/// Writes the relief with the water on it (S-162).
+fn write_water(zone: &Zone, colours: &[[u8; 3]], path: &std::path::Path) {
+    use bf_worldgen::water::WaterKind;
+    let size = zone.heights.size;
+    let w = &zone.water;
+    let mut bytes = vec![0u8; size * size * 3];
+    bytes
+        .par_chunks_mut(size * 3)
+        .enumerate()
+        .for_each(|(z, row)| {
+            for x in 0..size {
+                let lit = shade(colours[z * size + x], normal_at(zone, x, z), 1.0);
+                let mut c = [lit[0] * lit[0], lit[1] * lit[1], lit[2] * lit[2]];
+                if let Some(b) = w.body_at_sample(x, z) {
+                    c = match b.kind {
+                        WaterKind::River => {
+                            let foam = w.river_cell_at_sample(x, z).map_or(0.0, |c| c.foam);
+                            [0.1 + 0.9 * foam, 0.85 - 0.4 * foam, 0.95 - 0.8 * foam]
+                        }
+                        _ => b.deep_colour,
+                    };
+                }
+                row[x * 3..x * 3 + 3].copy_from_slice(&to_bytes(c));
+            }
+        });
+    // The waterfalls: red squares.
+    for s in w.river_steps.iter().filter(|s| s.fall) {
+        let (cx, cz) = w.river_cells[s.from as usize].sample;
+        for dz in -2i32..=2 {
+            for dx in -2i32..=2 {
+                let (x, z) = (cx as i32 + dx, cz as i32 + dz);
+                if x >= 0 && z >= 0 && (x as usize) < size && (z as usize) < size {
+                    let i = (z as usize * size + x as usize) * 3;
+                    bytes[i..i + 3].copy_from_slice(&[230, 20, 20]);
+                }
+            }
+        }
+    }
+    image::save_buffer(
+        path,
+        &bytes,
+        size as u32,
+        size as u32,
+        image::ColorType::Rgb8,
+    )
+    .expect("could not write the water image");
 }

@@ -19,11 +19,14 @@ what it assumes.
   3. The erosion filter cuts gullies into the slopes.
   4. Fine noise makes the ground a little rough.
   5. The drainage step finds where rain goes. Deep closed basins get a
-     flat dry lake bed. Paths that collect much rain become dry
-     riverbeds. A river stops at the shore of a dry lake.
+     flat dry lake bed. Paths that collect much rain become riverbeds.
+     The flow is wet (S-162): a full lake passes its water on at its
+     spill cell, and a closed lake keeps it. A riverbed stops at the
+     shore of a lake.
   6. The water step (S-160, `water.rs`) fills the basins. Each deep
      basin becomes a lake, and some shallow basins keep their hollow and
-     become ponds (see "`BfWater`" below).
+     become ponds. Large riverbeds get water (S-162, `rivers.rs`). See
+     "`BfWater`" below.
 - **The cave layer** (S-161, `bf-worldgen`, `caves/`). `BfCaves` shows
   it (S-164, see below). It makes two to five cave systems in each
   zone, from the zone heights and the seed:
@@ -118,9 +121,9 @@ what it assumes.
     sky visibility, the chunks with a mesh and with collision, the queue
     and the CPU ms. The events are `cave_enter`, `cave_leave` and
     `cave_no_collision`. `report.md` has a "Caves" section.
-- **`BfWater`** shows the still water: lakes and ponds (S-160,
-  `rust/game/src/water.rs`, `water_mesh.rs`, `water.gdshader`, and
-  `rust/worldgen/src/water.rs`). Rivers stay dry until S-162.
+- **`BfWater`** shows the water: lakes and ponds (S-160) and rivers
+  (S-162). The code is in `rust/game/src/water.rs`, `water_mesh.rs`,
+  `water.gdshader`, and `rust/worldgen/src/water.rs` and `rivers.rs`.
   - **Basins.** The drainage step gives a record for each closed basin:
     its cells, floor, spill height and spill cell (`drainage.rs`).
   - **Lakes.** Each deep basin gets a seeded fill part. One lake in four
@@ -134,10 +137,47 @@ what it assumes.
     so the water never leaks through a narrow gap. Then it marks the wet
     samples below the level. A body under the water of a higher body is
     left out. The bodies have numbers in the order of their spill cells.
+  - **Rivers** (S-162, `rivers.rs`). A riverbed has water if its wet
+    area is 50 000 m² or more (`wet_min_area_m2`). A river system is a
+    tree of wet cells (2 m) that ends at its mouth: a lake, the zone
+    border or the end of the bed.
+    - The surface of a cell is its bed plus a seeded part (0.4 to 0.8,
+      one for each system) of the bed depth. Near the mouth, the river
+      gets less deep (`mouth_slope`, 0.05 m for each metre), so it comes
+      down to the lake. A river that leaves a full lake starts at the
+      lake level.
+    - The water is never higher than the lowest bank to its left and
+      right (`bank_margin_m`). At the bed it is at least 0.25 m deep,
+      plus half of the drop of the bed to the next cell
+      (`steep_depth_part`), so the ground does not show through a
+      rapid. The surface never rises downstream.
+    - A drop of more than 0.5 m from one cell to the next is a rapid. A
+      drop of more than 2.5 m, or steeper than 45 degrees, is a
+      waterfall (`river_steps`; S-165 draws the falls). A river quad
+      that drops more than 1 m (`max_quad_drop_m`, 45 degrees) is left
+      out, so a fall has a gap in the water until S-165.
+    - Each cell has a flow vector: the direction down the river and a
+      speed of 0.3 to 3.5 m/s from the slope of the surface, averaged
+      with the cells before and after it. Each cell has foam from 0 to 1:
+      0.2 for a rapid of 0.5 m, 0.7 for one of 2.5 m, 1 at a fall, and up
+      to 0.3 for fast water.
+    - The rivers come after the lakes and ponds in the list of bodies,
+      in the order of their mouths. `Water::at` gives the level and the
+      flow of the river at a place; the float of the bear uses the
+      level.
+    - Numbers (2048 m zone): seed 1 has 15 rivers (1832 cells, about
+      43 000 m² of water), seed 7 has 13 (875 cells, 17 000 m²) and
+      seed 42 has 14 (1355 cells, 32 000 m²). Most of them are short,
+      steep streams that run down into a lake. About half of the cells
+      are rapids. Each seed has a rapid within 580 m of the centre. The
+      rivers add about 0.1 s to a zone.
+    - The preview tool writes `seed_N_water.png`: rivers are cyan,
+      rapids orange and falls red.
   - **Looks.** Each body gets a seeded look: clear spring, silty brown,
     milky alkaline, rust orange, green algae, grey mud or black tar. The
     look gives the deep colour, the clarity (0.2 to 8 m), the viscosity
     and the density. A lake larger than 20 000 m² is never mud or tar.
+    Rivers are mostly silty brown and are never tar.
     The temperature (0 to 1) is in the data; nothing uses it yet.
   - **Numbers.** Seeds 1, 7 and 42 have 35 to 43 bodies (about 20 to 27
     lakes) and 380 000 to 650 000 m² of water. The water step adds
@@ -159,6 +199,25 @@ what it assumes.
     (Fresnel) and a pale sky colour, because the water has no
     reflections. The sun makes a glint. The water fades out at the
     shore (`shore_fade_m`). The fog of the smog applies.
+  - **The river look** (S-162). The rivers are in the same tiles and use
+    the same two materials: they add no draw calls. Each river vertex
+    has its level, its flow vector (`UV2`) and its foam (`UV.y`). The
+    two ripple layers move with the flow (the flow-map method of Portal
+    2): each layer jumps back after `flow_cycle_s` (1.5 s), half a cycle
+    after the other, with no weight at the jump. Fast water gets
+    stronger ripples (`flow_ripple_gain`). Foam whitens the water and
+    makes it less clear (`foam_colour`, `foam_strength`). A little foam
+    shows only on the ripple crests. This needs no more texture reads
+    than the still water. Rivers use 1 m quads (`river_cell_m`): they
+    are shallow, and 2 m quads let the 1 m detail of the ground show
+    through. Each river vertex averages the level and the flow of the
+    wet samples in a square of 5 × 5 samples (`river_smooth_samples`),
+    so the surface has no steps between the 2 m river cells.
+  - **The cost of the rivers** (S-162, not measured on the Intel GPU;
+    the lead measures it in S-190). With the rivers, the water of a
+    full zone has 165 000 to 181 000 triangles in 4 tiles (seeds 1, 7,
+    42), and the meshes take 60 to 150 ms to make on the main thread
+    when a zone shows (a busy laptop). The draw calls do not change.
   - **The cuts of the GPU budget** (`demo-2.md`): `ripple_layers` 1,
     then `shore_fade_m` 0, then `receive_shadows` off, then `shaded`
     off. All are on the `Water` node. Each is a command-line option for
@@ -442,8 +501,11 @@ what it assumes.
   - **Water view** (S-160): for seeds 1, 7 and 42, the camera stops at
     the largest lake within 580 m of the centre. It is 4 m above the
     water near the shore and looks across the longest stretch of water,
-    toward the centre of the zone. The view lasts 6 s; the numbers start
-    after 2 s. S-162 and S-165 add the river and the falls.
+    toward the centre of the zone. Then (S-162) it stops 3 m above a
+    river, about 14 m below a rapid within 580 m of the centre, and
+    looks up the river at the rapid. It uses the largest river that has
+    a rapid of 1.2 m or less there. Each view lasts 6 s; the numbers start after 2 s.
+    S-165 adds the falls.
   - **Cave tour** (S-164): for seeds 1, 7 and 42, the camera flies at
     10 m/s from 50 m outside the widest hillside mouth to the mouth,
     down the tunnels to the widest chamber within 400 m, once around it
@@ -1061,6 +1123,17 @@ Mikey does not build on his laptop (decision R10).
 - **The float is simple** (S-160). The whole bear gets wet, it cannot
   jump in water, and the gait does not change the paddle. S-163 makes
   the real swim.
+- **Rivers need 50 000 m² of wet area** (S-162). `demo-2.md` proposes
+  150 000 m². With that value, seeds 7 and 42 had no river inside the
+  smoke wall, and seed 1 had 216 m of river. Closed lakes catch most of
+  the rain in this zone. Mikey: are short, steep streams enough, or
+  should the zone have longer rivers (more full lakes, or less steep
+  valleys)?
+- **Rivers are numbered after the lakes and ponds** (S-162). Thus the
+  numbers of the lakes stay the same as in S-160.
+- **A riverbed now runs out of each full lake** (S-162). The wet flow
+  passes the water of a full lake on, so the bed below its spill cell
+  is wider. This changes the ground below full lakes a little.
 - **Things under water** (S-160). Obstacles and rocks can be under the
   water now. Dead shrubs are not. S-172 moves the obstacles out of the
   water.

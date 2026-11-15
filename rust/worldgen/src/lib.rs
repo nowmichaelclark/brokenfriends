@@ -13,6 +13,7 @@ pub mod highlands;
 pub mod noise;
 pub mod obstacles;
 pub mod props;
+pub mod rivers;
 pub mod scatter;
 pub mod smoke;
 pub mod water;

@@ -194,7 +194,7 @@ impl MenuState {
                 "Ground scatter (rocks, pebbles, shrubs): {}",
                 on(self.scatter)
             ),
-            Kind::Water => format!("Water (lakes, ponds): {}", on(self.water)),
+            Kind::Water => format!("Water (lakes, ponds, rivers): {}", on(self.water)),
             Kind::Seed => format!(
                 "Seed: {}   (left, right: change. A: make the zone)",
                 self.seed

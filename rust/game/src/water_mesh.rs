@@ -1,6 +1,10 @@
-//! The meshes of the still water (S-160). This module has no Godot code,
-//! so it has unit tests. `crate::water::BfWater` gives the meshes to
-//! Godot.
+//! The meshes of the water (S-160, rivers S-162). This module has no
+//! Godot code, so it has unit tests. `crate::water::BfWater` gives the
+//! meshes to Godot.
+//!
+//! A river is a grid of 1 m quads over its wet samples. Each vertex has
+//! the level, the flow vector and the foam of the river cell at that
+//! place, so the surface slopes down the river.
 //!
 //! Each body is a flat grid of quads at its level. A quad is in the mesh
 //! if one of its samples is wet. The quads at the shore reach a little
@@ -13,7 +17,7 @@
 //! and one draw call, so the water never needs more draw calls than
 //! there are tiles (4 for a zone of 2 km with tiles of 1024 m; each tile has a second draw call for its opaque quads).
 
-use bf_worldgen::water::{Water, WaterBody};
+use bf_worldgen::water::{Water, WaterBody, WaterKind};
 use bf_worldgen::HeightMap;
 use std::collections::HashMap;
 
@@ -32,6 +36,16 @@ pub struct MeshParams {
     pub shore_detail_m: f32,
     /// The size of one tile (one mesh, one draw call), in metres.
     pub tile_m: f32,
+    /// The size of one quad of a river, in metres. Rivers are shallow, so
+    /// their quads follow the 1 m detail of the ground.
+    pub river_cell_m: f32,
+    /// A river quad whose corners differ by more than this in height is
+    /// left out, in metres: it is a waterfall (S-165 draws it). 1 m on a
+    /// quad of 1 m is 45 degrees, the slope of a fall in `WaterParams`.
+    pub max_quad_drop_m: f32,
+    /// A river vertex averages the wet samples up to this many samples
+    /// away (2: a square of 5 x 5 samples).
+    pub river_smooth_samples: usize,
     /// The clarity in the vertex alpha is clarity / this value.
     pub clarity_scale: f32,
     /// A quad is opaque (no blending, one cut of the GPU budget) when
@@ -48,6 +62,9 @@ impl Default for MeshParams {
             large_area_m2: 20_000.0,
             shore_detail_m: 1.5,
             tile_m: 1024.0,
+            river_cell_m: 1.0,
+            max_quad_drop_m: 1.0,
+            river_smooth_samples: 2,
             clarity_scale: 8.0,
             opaque_clarities: 2.0,
         }
@@ -94,7 +111,11 @@ fn linear(c: f32) -> f32 {
 pub fn build_meshes(water: &Water, heights: &HeightMap, p: &MeshParams) -> Vec<TileMesh> {
     let mut tiles: HashMap<(i32, i32), TileMesh> = HashMap::new();
     for (index, body) in water.bodies.iter().enumerate() {
-        add_body(&mut tiles, water, heights, p, index, body);
+        if body.kind == WaterKind::River {
+            add_river(&mut tiles, water, heights, p, index);
+        } else {
+            add_body(&mut tiles, water, heights, p, index, body);
+        }
     }
     let mut out: Vec<TileMesh> = tiles.into_values().collect();
     out.sort_by_key(|t| t.tile);
@@ -148,13 +169,6 @@ fn add_body(
     ];
     let half = size as f32 * 0.5;
     let world = |s: usize| (s as f32 - half) * spacing;
-    let tile_of = |wx: f32, wz: f32| {
-        let corner = half * spacing;
-        (
-            ((wx + corner) / p.tile_m).floor() as i32,
-            ((wz + corner) / p.tile_m).floor() as i32,
-        )
-    };
     // One vertex for each lattice corner and tile.
     let mut vertex_of: HashMap<((i32, i32), usize, usize), i32> = HashMap::new();
 
@@ -164,7 +178,7 @@ fn add_body(
         if xe == x || ze == z || !(z..=ze).any(|zz| (x..=xe).any(|xx| wet(xx, zz))) {
             return;
         }
-        let tile = tile_of(world((x + xe) / 2), world((z + ze) / 2));
+        let tile = tile_of(water, p, world((x + xe) / 2), world((z + ze) / 2));
         let mesh = tiles.entry(tile).or_insert_with(|| TileMesh {
             tile,
             ..TileMesh::default()
@@ -226,6 +240,161 @@ fn add_body(
     }
 }
 
+/// Gives the tile (x, z) of a world position.
+fn tile_of(water: &Water, p: &MeshParams, wx: f32, wz: f32) -> (i32, i32) {
+    let corner = water.size as f32 * 0.5 * water.spacing;
+    (
+        ((wx + corner) / p.tile_m).floor() as i32,
+        ((wz + corner) / p.tile_m).floor() as i32,
+    )
+}
+
+/// The values of a river vertex: the level, the flow and the foam.
+#[derive(Clone, Copy)]
+struct RiverVertex {
+    level: f32,
+    flow: [f32; 2],
+    foam: f32,
+}
+
+/// Adds the quads of one river. A quad is in the mesh if one of its
+/// samples is wet. Each vertex averages the level, the flow and the foam
+/// of the wet samples near it (`river_smooth_samples`), so the surface
+/// has no steps from one river cell to the next. A quad that drops more
+/// than `max_quad_drop_m` is a waterfall and is left out.
+fn add_river(
+    tiles: &mut HashMap<(i32, i32), TileMesh>,
+    water: &Water,
+    heights: &HeightMap,
+    p: &MeshParams,
+    index: usize,
+) {
+    let size = water.size;
+    let spacing = water.spacing;
+    let body = &water.bodies[index];
+    let k = ((p.river_cell_m / spacing).round() as usize).max(1);
+    let r = p.river_smooth_samples;
+    let colour = [
+        linear(body.deep_colour[0]),
+        linear(body.deep_colour[1]),
+        linear(body.deep_colour[2]),
+        (body.clarity_m / p.clarity_scale.max(0.01)).clamp(0.0, 1.0),
+    ];
+    let half = size as f32 * 0.5;
+    let world = |s: usize| (s as f32 - half) * spacing;
+
+    // A dense grid of the river cells in the box of the river, with a
+    // margin: fast look-ups for the averages.
+    let margin = k + r + 1;
+    let gx0 = (body.min.0 as usize).saturating_sub(margin);
+    let gz0 = (body.min.1 as usize).saturating_sub(margin);
+    let gx1 = (body.max.0 as usize + margin).min(size - 1);
+    let gz1 = (body.max.1 as usize + margin).min(size - 1);
+    let gw = gx1 - gx0 + 1;
+    let mut grid = vec![u32::MAX; gw * (gz1 - gz0 + 1)];
+    let mut quads: Vec<(usize, usize)> = Vec::new();
+    for (&s, &c) in water.river_samples.iter().zip(&water.river_sample_cell) {
+        if water.river_cells[c as usize].body as usize != index {
+            continue;
+        }
+        let (x, z) = (s as usize % size, s as usize / size);
+        grid[(z - gz0) * gw + (x - gx0)] = c;
+        // The quads that have this sample as a corner.
+        let (qx, qz) = (x / k * k, z / k * k);
+        for (ax, az) in [(0, 0), (1, 0), (0, 1), (1, 1)] {
+            let (ox, oz) = (qx as isize - ax * k as isize, qz as isize - az * k as isize);
+            if (ax == 1 && x % k != 0) || (az == 1 && z % k != 0) || ox < 0 || oz < 0 {
+                continue;
+            }
+            quads.push((ox as usize, oz as usize));
+        }
+    }
+    quads.sort_unstable_by_key(|&(x, z)| (z, x));
+    quads.dedup();
+    let cell_at = |x: usize, z: usize| -> Option<&bf_worldgen::water::RiverCell> {
+        if x < gx0 || z < gz0 || x > gx1 || z > gz1 {
+            return None;
+        }
+        match grid[(z - gz0) * gw + (x - gx0)] {
+            u32::MAX => None,
+            c => water.river_cells.get(c as usize),
+        }
+    };
+    // The average of the wet samples near a vertex.
+    let vertex = |cx: usize, cz: usize| -> Option<RiverVertex> {
+        let mut sum = RiverVertex {
+            level: 0.0,
+            flow: [0.0; 2],
+            foam: 0.0,
+        };
+        let mut n = 0.0f32;
+        for z in cz.saturating_sub(r)..=(cz + r).min(size - 1) {
+            for x in cx.saturating_sub(r)..=(cx + r).min(size - 1) {
+                if let Some(c) = cell_at(x, z) {
+                    sum.level += c.level;
+                    sum.flow[0] += c.flow[0];
+                    sum.flow[1] += c.flow[1];
+                    sum.foam = sum.foam.max(c.foam);
+                    n += 1.0;
+                }
+            }
+        }
+        (n > 0.0).then(|| RiverVertex {
+            level: sum.level / n,
+            flow: [sum.flow[0] / n, sum.flow[1] / n],
+            foam: sum.foam,
+        })
+    };
+
+    let mut vertex_of: HashMap<((i32, i32), usize, usize), i32> = HashMap::new();
+    for (x, z) in quads {
+        let (xe, ze) = ((x + k).min(size - 1), (z + k).min(size - 1));
+        if xe == x || ze == z {
+            continue;
+        }
+        let corners = [(x, z), (xe, z), (x, ze), (xe, ze)];
+        let values: Vec<RiverVertex> = corners
+            .iter()
+            .filter_map(|&(cx, cz)| vertex(cx, cz))
+            .collect();
+        if values.len() < 4 {
+            continue;
+        }
+        // A steep quad is a waterfall: leave it out.
+        let lo = values.iter().map(|v| v.level).fold(f32::MAX, f32::min);
+        let hi = values.iter().map(|v| v.level).fold(f32::MIN, f32::max);
+        if hi - lo > p.max_quad_drop_m {
+            continue;
+        }
+        let tile = tile_of(water, p, world((x + xe) / 2), world((z + ze) / 2));
+        let mesh = tiles.entry(tile).or_insert_with(|| TileMesh {
+            tile,
+            ..TileMesh::default()
+        });
+        let mut ids = [0i32; 4];
+        for (j, (&(cx, cz), v)) in corners.iter().zip(&values).enumerate() {
+            ids[j] = *vertex_of.entry((tile, cx, cz)).or_insert_with(|| {
+                let ground = heights.get(cx as isize, cz as isize);
+                mesh.positions.push([world(cx), v.level, world(cz)]);
+                mesh.colours.push(colour);
+                mesh.uvs.push([v.level - ground, v.foam]);
+                mesh.flows.push(v.flow);
+                mesh.positions.len() as i32 - 1
+            });
+        }
+        let [a, b, c, d] = ids;
+        let deep_from = body.clarity_m * p.opaque_clarities;
+        let deep =
+            p.opaque_clarities > 0.0 && ids.iter().all(|&i| mesh.uvs[i as usize][0] > deep_from);
+        let list = if deep {
+            &mut mesh.deep_indices
+        } else {
+            &mut mesh.indices
+        };
+        list.extend([a, b, c, b, d, c]);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -275,6 +444,7 @@ mod tests {
             viscosity: 0.0,
             density: 1.0,
             temperature: 0.1,
+            flow_mps: 0.0,
         };
         let water = Water {
             size,
@@ -282,6 +452,7 @@ mod tests {
             bodies: vec![body],
             owner,
             damp_height_m: 0.6,
+            ..Water::default()
         };
         (water, heights)
     }
@@ -366,6 +537,44 @@ mod tests {
         let all: usize = meshes.iter().map(TileMesh::triangles).sum();
         let one = build_meshes(&water, &heights, &MeshParams::default())[0].triangles();
         assert_eq!(all, one);
+    }
+
+    #[test]
+    fn a_river_mesh_slopes_and_flows() {
+        use bf_worldgen::highlands::{generate, HighlandsParams};
+        let zone = generate(7, 1024, 2.0, &HighlandsParams::default());
+        let w = &zone.water;
+        let p = MeshParams {
+            river_cell_m: 2.0,
+            ..MeshParams::default()
+        };
+        let meshes = build_meshes(w, &zone.heights, &p);
+        let flowing = meshes
+            .iter()
+            .flat_map(|m| &m.flows)
+            .filter(|f| f[0] != 0.0 || f[1] != 0.0)
+            .count();
+        assert!(flowing > 100, "flowing vertices {flowing}");
+        // Each river vertex is within the levels of the river cells.
+        let lo = w
+            .river_cells
+            .iter()
+            .map(|c| c.level)
+            .fold(f32::MAX, f32::min);
+        let hi = w
+            .river_cells
+            .iter()
+            .map(|c| c.level)
+            .fold(f32::MIN, f32::max);
+        for m in &meshes {
+            for (v, f) in m.positions.iter().zip(&m.flows) {
+                if f[0] != 0.0 || f[1] != 0.0 {
+                    assert!(v[1] >= lo && v[1] <= hi);
+                }
+            }
+            assert!(m.indices.iter().all(|&i| (i as usize) < m.positions.len()));
+            assert!(m.uvs.iter().all(|uv| (0.0..=1.0).contains(&uv[1])));
+        }
     }
 
     #[test]

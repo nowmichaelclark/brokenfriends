@@ -1,4 +1,5 @@
-// The still water of Broken Friends (S-160, plan/demo-2.md, "Water look").
+// The water of Broken Friends: lakes, ponds (S-160) and rivers (S-162,
+// plan/demo-2.md, "Water look").
 //
 // Rust (water_mesh.rs) bakes the look into the vertices:
 //   COLOR.rgb  the deep colour of the body (linear)
@@ -6,8 +7,13 @@
 //              about 63% of the ground)
 //   UV.x       the water depth at the vertex: level minus ground (negative
 //              on dry ground at the shore)
-//   UV.y       foam (0 for still water, later rows use it)
-//   UV2        the flow vector in m/s (0 for still water, rivers use it)
+//   UV.y       foam, 0 to 1 (rapids and falls of the rivers)
+//   UV2        the flow vector in m/s (0 for still water)
+//
+// Rivers use the flow-map method of Portal 2 (Vlachos 2010): two ripple
+// layers move with the flow. Each layer jumps back after one cycle, and
+// their phases are half a cycle apart. A layer has no weight when it
+// jumps, so the jump does not show. Still water keeps its slow drift.
 //
 // Cost (S-180): the render mode of the blended water is `blend_mix`. The
 // opaque deep quads use the same code with OPAQUE_WATER (no blending).
@@ -52,27 +58,61 @@ uniform vec3 sun_light = vec3(1.0);
 // The flat ambient light, for the diffuse light of unshaded water.
 uniform vec3 ambient_light = vec3(0.5);
 
+// The time of one cycle of the river ripples, in seconds. A long cycle
+// stretches the ripples more.
+uniform float flow_cycle_s = 1.5;
+// Flow faster than this (m/s) uses the flow-map ripples fully.
+uniform float flow_full_mps = 0.3;
+// Fast water bends the normal more: the ripple strength for each m/s.
+uniform float flow_ripple_gain = 0.25;
+// The colour of the foam on rapids, and how much the foam shows.
+uniform vec3 foam_colour : source_color = vec3(0.86, 0.84, 0.78);
+uniform float foam_strength = 0.85;
+
 varying vec3 world_pos;
 varying float depth;
 varying vec4 look;
+varying vec2 flow;
+varying float foam;
 
 void vertex() {
 	world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	depth = UV.x;
+	foam = UV.y;
+	flow = UV2;
 	look = COLOR;
 }
 
-vec3 ripple_normal(vec2 p) {
+// Gives the normal of the ripples. `pattern` gets the ripple height of
+// the first layer (0 to 1) for the foam.
+vec3 ripple_normal(vec2 p, out float pattern) {
 	vec3 n = vec3(0.0, 1.0, 0.0);
+	pattern = 0.5;
 	vec2 uv = p / ripple_scale_m;
 	float t = TIME * ripple_speed;
+	float speed = length(flow);
+	float river = clamp(speed / flow_full_mps, 0.0, 1.0);
+	float phase = TIME / flow_cycle_s;
+	float t0 = fract(phase);
+	float t1 = fract(phase + 0.5);
+	// A triangle weight: 0 when the layer jumps back, 1 in the middle.
+	float w0 = mix(1.0, 1.0 - abs(1.0 - 2.0 * t0), river);
+	float w1 = mix(0.6, 1.0 - abs(1.0 - 2.0 * t1), river);
+	if (ripple_layers < 2) {
+		w0 = 1.0;
+	}
+	vec2 move0 = flow * (t0 * flow_cycle_s) / ripple_scale_m;
+	vec2 move1 = flow * (t1 * flow_cycle_s) / ripple_scale_m;
+	float strength = ripple_strength * (1.0 + speed * flow_ripple_gain);
 	if (ripple_layers > 0) {
-		vec2 a = texture(ripples, uv + vec2(t, t * 0.6)).xy * 2.0 - 1.0;
-		n.xz += a * ripple_strength;
+		vec3 a = texture(ripples, uv + vec2(t, t * 0.6) - move0).xyz;
+		n.xz += (a.xy * 2.0 - 1.0) * strength * w0;
+		pattern = a.x;
 	}
 	if (ripple_layers > 1) {
-		vec2 b = texture(ripples, uv * 2.3 + vec2(-t * 0.8, t * 1.1)).xy * 2.0 - 1.0;
-		n.xz += b * ripple_strength * 0.6;
+		vec3 b = texture(ripples, (uv - move1) * 2.3 + vec2(-t * 0.8, t * 1.1) + vec2(0.37, 0.61)).xyz;
+		n.xz += (b.xy * 2.0 - 1.0) * strength * w1;
+		pattern = mix(pattern, b.x, w1 / (w0 + w1));
 	}
 	return normalize(n);
 }
@@ -81,7 +121,12 @@ void fragment() {
 	float clarity = max(look.a * clarity_scale, 0.05);
 	float d = max(depth, 0.0);
 	float opacity = 1.0 - exp(-d / clarity);
-	vec3 world_normal = ripple_normal(world_pos.xz);
+	float pattern;
+	vec3 world_normal = ripple_normal(world_pos.xz, pattern);
+	// Foam: white patches on rapids that move with the ripples. Little
+	// foam shows only on the ripple crests; foam 1 covers nearly all.
+	float froth = clamp((pattern - 0.5) * 3.0 + foam * 2.0 - 1.0, 0.0, 1.0) * foam_strength * step(0.01, foam);
+	vec3 base = mix(look.rgb, foam_colour, froth);
 	NORMAL = normalize((VIEW_MATRIX * vec4(world_normal, 0.0)).xyz);
 	float facing = clamp(dot(NORMAL, VIEW), 0.0, 1.0);
 	float fresnel = pow(1.0 - facing, 5.0);
@@ -92,12 +137,12 @@ void fragment() {
 	// The shaded water also reflects the flat ambient light, more at a
 	// flat view.
 	float reflectance = 0.04 + 0.96 * pow(1.0 - facing, 3.0);
-	ALBEDO = look.rgb * (ambient_light + sun_light * max(dot(world_normal, sun_dir), 0.0)) * (0.75 * (1.0 - reflectance));
+	ALBEDO = base * (ambient_light + sun_light * max(dot(world_normal, sun_dir), 0.0)) * (0.75 * (1.0 - reflectance));
 #else
-	ALBEDO = look.rgb;
+	ALBEDO = base;
 #endif
 #ifndef OPAQUE_WATER
-	ALPHA = clamp(max(opacity, min_alpha) + fresnel * fresnel_alpha, 0.0, 1.0) * shore;
+	ALPHA = clamp(max(max(opacity, froth), min_alpha) + fresnel * fresnel_alpha, 0.0, 1.0) * shore;
 #endif
 	EMISSION = sky_colour * fresnel * sky_reflect;
 #ifdef FAKE_GLINT

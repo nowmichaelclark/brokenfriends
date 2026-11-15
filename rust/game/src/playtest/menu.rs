@@ -46,6 +46,8 @@ pub enum Action {
     NextObstacle,
     /// Turn the ground scatter (rocks, pebbles, shrubs) on or off.
     ToggleScatter,
+    /// Show or hide the lakes and ponds (S-160).
+    ToggleWater,
     /// Throw the bear, so it tumbles. `true` is a hard throw that can
     /// tear limbs.
     Tumble(bool),
@@ -64,6 +66,7 @@ enum Kind {
     LimbsPage,
     NextObstacle,
     Scatter,
+    Water,
     Limb(usize),
     RestoreLimbs,
     Tumble(bool),
@@ -84,6 +87,8 @@ pub struct MenuState {
     pub overlay: bool,
     /// The ground scatter shows.
     pub scatter: bool,
+    /// The lakes and ponds show.
+    pub water: bool,
     /// The index in `VIEW_STEPS`.
     view: usize,
     /// The distance of the smog in metres, for the label of "auto".
@@ -102,6 +107,7 @@ impl Default for MenuState {
             fly_camera: false,
             overlay: true,
             scatter: true,
+            water: true,
             view: 0,
             smog_distance_m: 0.0,
             test_running: false,
@@ -129,6 +135,7 @@ impl MenuState {
                 Kind::LimbsPage,
                 Kind::Save,
                 Kind::TestsPage,
+                Kind::Water,
                 Kind::NextObstacle,
                 Kind::Scatter,
             ],
@@ -147,6 +154,7 @@ impl MenuState {
                     Kind::Run(TestKind::Benchmark),
                     Kind::Run(TestKind::DrawDistance),
                     Kind::Autoplay,
+                    Kind::Run(TestKind::WaterView),
                 ];
                 if self.test_running {
                     v.push(Kind::Stop);
@@ -185,6 +193,7 @@ impl MenuState {
                 "Ground scatter (rocks, pebbles, shrubs): {}",
                 on(self.scatter)
             ),
+            Kind::Water => format!("Water (lakes, ponds): {}", on(self.water)),
             Kind::Seed => format!(
                 "Seed: {}   (left, right: change. A: make the zone)",
                 self.seed
@@ -218,6 +227,13 @@ impl MenuState {
                     "Draw distance test (a test is running)".into()
                 } else {
                     "Draw distance test: 300, 800, 3000 m and the smog".into()
+                }
+            }
+            Kind::Run(TestKind::WaterView) => {
+                if self.test_running {
+                    "Water view (a test is running)".into()
+                } else {
+                    "Water view: the largest lake of seeds 1, 7 and 42".into()
                 }
             }
             Kind::Autoplay => {
@@ -283,6 +299,7 @@ impl MenuState {
             Kind::NewZone => Action::NewZone,
             Kind::NextObstacle => Action::NextObstacle,
             Kind::Scatter => Action::ToggleScatter,
+            Kind::Water => Action::ToggleWater,
             Kind::Seed => Action::MakeZone(self.seed),
             Kind::View => self.adjust(1),
             Kind::Save => Action::SavePlaytest,
@@ -493,16 +510,16 @@ mod tests {
             page: Page::Tests,
             ..MenuState::default()
         };
-        assert_eq!(m.lines().0.len(), 4);
+        assert_eq!(m.lines().0.len(), 5);
         m.test_running = true;
         let (lines, _) = m.lines();
-        assert_eq!(lines.len(), 5);
+        assert_eq!(lines.len(), 6);
         assert_eq!(m.activate(), Action::None);
-        m.down();
-        m.down();
-        m.down();
+        for _ in 0..4 {
+            m.down();
+        }
         assert_eq!(m.activate(), Action::StopTest);
-        assert!(lines[3].contains("Stop"));
+        assert!(lines[4].contains("Stop"));
     }
 
     #[test]
@@ -515,5 +532,24 @@ mod tests {
         m.open();
         assert_eq!(m.page, Page::Main);
         assert_eq!(m.lines().1, 0);
+    }
+
+    #[test]
+    fn water_toggle_and_water_view() {
+        let mut m = MenuState::default();
+        // Up from the first item: scatter, next obstacle, water.
+        m.up();
+        m.up();
+        m.up();
+        assert_eq!(m.activate(), Action::ToggleWater);
+        assert!(m.lines().0[m.lines().1].contains("Water"));
+        let mut t = MenuState {
+            page: Page::Tests,
+            ..Default::default()
+        };
+        for _ in 0..3 {
+            t.down();
+        }
+        assert_eq!(t.activate(), Action::StartTest(TestKind::WaterView));
     }
 }

@@ -93,3 +93,9 @@ sorts them.
 - Caves: bake the sky visibility with a few ray casts for each chunk (S-166) if the value from the tunnel distance looks wrong, mainly under sinkholes.
 - Caves: chambers with more shape (two or three joined balls, pillars, fallen blocks) after Mikey sees the first chamber.
 - Caves: a min-height pyramid for the roof checks in `caves/build.rs` if zones get larger than 2 km.
+- Water: one mesh for each lake (as `demo-2.md` says) with a visibility range, if the tiles of 512 m draw too much water that is out of view.
+- Water: a lake mesh with large quads in deep water and small quads at the shore only, with stitched edges, if the triangles of the large lakes cost vertex time on the Intel GPU.
+- Water: steam over hot bodies (temperature above 0.7) with a few cards, after the GPU budget allows it.
+- Water: the colour of the smog for `sky_colour` from `BfAtmosphere`, so the water follows a change of the smog.
+- Seed 42: the Water view (largest lake near (-331, 451)) shows tall vertical panels with the ground grain beyond the lake. They are not water. Check what they are (terrain rings, the zone edge, an obstacle) with the fly camera.
+- Scatter: no rocks and pebbles under the water of ponds and lakes, or a darker, wet look for them.

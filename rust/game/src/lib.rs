@@ -35,6 +35,8 @@ mod test_runner;
 mod tumble;
 mod verlet;
 mod view_distance;
+mod water;
+mod water_mesh;
 
 struct BfExtension;
 

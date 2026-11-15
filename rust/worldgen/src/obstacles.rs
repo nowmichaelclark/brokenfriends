@@ -309,6 +309,13 @@ impl Zone {
         for iz in -10..=10 {
             for ix in -10..=10 {
                 let (x, z) = (ix as f32 * 20.0, iz as f32 * 20.0);
+                // The bear does not start in a lake or a pond (S-160).
+                let wet = [(0.0, 0.0), (2.0, 0.0), (0.0, 2.0), (-2.0, 0.0), (0.0, -2.0)]
+                    .iter()
+                    .any(|(dx, dz)| self.water.body_at(x + dx, z + dz).is_some());
+                if wet {
+                    continue;
+                }
                 let h0 = h(x, z);
                 let rise = (h(x + 2.0, z) - h0).abs() + (h(x, z + 2.0) - h0).abs();
                 let score = rise + (x.abs() + z.abs()) * 0.0005;
@@ -989,6 +996,7 @@ mod tests {
             heights,
             riverbed: vec![0; size * size],
             lakebed: vec![0; size * size],
+            water: Default::default(),
         }
     }
 

@@ -21,6 +21,9 @@ what it assumes.
   5. The drainage step finds where rain goes. Deep closed basins get a
      flat dry lake bed. Paths that collect much rain become dry
      riverbeds. A river stops at the shore of a dry lake.
+  6. The water step (S-160, `water.rs`) fills the basins. Each deep
+     basin becomes a lake, and some shallow basins keep their hollow and
+     become ponds (see "`BfWater`" below).
 - **The cave layer** (S-161, `bf-worldgen`, `caves/`). The game does
   not use it yet (S-164 does). It makes two to five cave systems in each
   zone, from the zone heights and the seed:
@@ -62,6 +65,71 @@ what it assumes.
   - **Exports for speed:** `light_shader`, `grain_strength`,
     `mesh_size` (48, the most detailed ring of Terrain3D) and
     `casts_shadows` (on). `apply_look()` gives a change to Terrain3D.
+- **`BfWater`** shows the still water: lakes and ponds (S-160,
+  `rust/game/src/water.rs`, `water_mesh.rs`, `water.gdshader`, and
+  `rust/worldgen/src/water.rs`). Rivers stay dry until S-162.
+  - **Basins.** The drainage step gives a record for each closed basin:
+    its cells, floor, spill height and spill cell (`drainage.rs`).
+  - **Lakes.** Each deep basin gets a seeded fill part. One lake in four
+    is full (part 1); the others get 0.2 to 1. The level is
+    `floor + part × (spill − floor)`. The floor is the dry lake bed.
+  - **Ponds.** 30% of the shallow basins that are 0.6 m deep or more,
+    60 m² or more and not on a river keep their hollow. The level is the
+    spill height minus 0.1 to 0.5 m (at most half of the depth).
+  - **The full grid.** The drainage runs on a grid of 2 m. The water
+    step fills a small window around each basin again on the 1 m grid,
+    so the water never leaks through a narrow gap. Then it marks the wet
+    samples below the level. A body under the water of a higher body is
+    left out. The bodies have numbers in the order of their spill cells.
+  - **Looks.** Each body gets a seeded look: clear spring, silty brown,
+    milky alkaline, rust orange, green algae, grey mud or black tar. The
+    look gives the deep colour, the clarity (0.2 to 8 m), the viscosity
+    and the density. A lake larger than 20 000 m² is never mud or tar.
+    The temperature (0 to 1) is in the data; nothing uses it yet.
+  - **Numbers.** Seeds 1, 7 and 42 have 35 to 43 bodies (about 20 to 27
+    lakes) and 380 000 to 650 000 m² of water. The water step adds
+    about 0.22 s to a zone (2.52 s to 2.74 s, release build).
+  - **Meshes.** Each body is a flat grid of quads at its level: 2 m
+    quads, or 4 m quads for a lake larger than 20 000 m². A 4 m quad at
+    the shore (a corner less than 1.5 m deep) becomes four 2 m quads.
+    The quads at the shore reach a little over the dry ground: the
+    terrain hides that part. Each vertex has the depth (level minus
+    ground), the deep colour and the clarity. The meshes are made when a
+    zone shows, in about 30 to 60 ms.
+  - **Draw calls.** The quads go into tiles of 512 m. Each tile is one
+    mesh and one draw call: 16 at most for the full zone, and 2 to 11 in
+    the Water view. The water casts no shadows.
+  - **The shader.** It reads no screen texture and no depth texture.
+    The opacity comes from the depth and the clarity. Two layers of
+    ripples bend the normal (`ripple_layers`). A flat view adds opacity
+    (Fresnel) and a pale sky colour, because the water has no
+    reflections. The sun makes a glint. The water fades out at the
+    shore (`shore_fade_m`). The fog of the smog applies.
+  - **The cuts of the GPU budget** (`demo-2.md`): `ripple_layers` 1,
+    then `shore_fade_m` 0, then `receive_shadows` off, then `shaded`
+    off. All are on the `Water` node.
+  - **The simple float** (on `BfBear`). Where the water is 0.25 m deep
+    or more, the bear floats: a spring holds its feet 0.18 m below the
+    surface (less in dense water). It paddles at 0.8 m/s (1.3 m/s with
+    jog). Thick water is slower: at viscosity 1, the speed is 25%. A
+    bear that falls into deep water slows to 1.5 m/s at once, so the
+    water stops a tumble. Below 0.22 m, the bear walks again. A floating
+    bear cannot jump. It can grab a steep bank. Its fur gets wet. S-163
+    replaces this with the real swim.
+  - **The camera** stays 0.2 m above the water (`water_clearance_m`).
+  - **The start point** is never in the water.
+  - **Debug.** The overlay line `water:` shows the bodies, the meshes
+    (and the meshes in view), the triangles and the build time. The dev
+    menu has "Water (lakes, ponds): on/off". `--bf-water=off` on the
+    command line hides the water.
+  - **Recorder.** Each sample has `bear.water` when the feet are in
+    water: the body number, the kind, the depth, the state (`shallow`
+    below 0.15 m, `wade`, or `swim`) and the viscosity. The events are
+    `swim_start:#<body>:<kind>` and `swim_end:shallow` or
+    `swim_end:shore`. `report.md` has a "Water" section.
+  - **Cost.** 59 000 to 142 000 triangles for the full zone, 2 to 11
+    draw calls in view. Nobody measured the GPU time on the Intel GPU
+    yet [unverified]: the Water view test does it.
 - **`BfBear`** is the teddy bear, a `CharacterBody3D`, 0.40 m tall.
   Its collision shape is a capsule. It walks, jogs and
   jumps. The jump has coyote time and a jump buffer. When a new zone
@@ -290,6 +358,13 @@ what it assumes.
   primitives, render time) into the `## Tests` section of `report.md`
   and into `tests/*.json` in the zip.
   - **Benchmark:** the path over seeds 1, 7 and 42.
+  - **Water view** (S-160): for seeds 1, 7 and 42, the camera stops at
+    the largest lake within 580 m of the centre. It is 4 m above the
+    water near the shore and looks across the longest stretch of water,
+    toward the centre of the zone. The view lasts 6 s; the numbers start
+    after 2 s. S-162 and S-165 add the river and the falls.
+  - **Water draw calls.** Each test row has `water draws`: the water
+    meshes in the view of the camera.
   - **Draw distance test:** the path over seed 7 at the view distances
     300, 800 and 3000 m, and at the distance of the smog (the normal
     game).
@@ -297,10 +372,12 @@ what it assumes.
     a test, the camera, the seed and the view distance go back.
   - **While a test runs,** the recorder takes no screenshots and marks
     its hitches as "loading", so they do not disturb the numbers.
-  - **From the command line** (cloud, CI): `-- --bf-test=benchmark` or
-    `-- --bf-test=draw-distance` starts the test when the first zone
-    shows and quits the game at the end. Add `--bf-record` for a
-    recording without a window.
+  - **From the command line** (cloud, CI): `-- --bf-test=benchmark`,
+    `-- --bf-test=draw-distance` or `-- --bf-test=water-view` starts the
+    test when the first zone shows and quits the game at the end. Add
+    `--bf-record` for a recording without a window. Add `--bf-water=off`
+    to measure the same views without water (run each setting in a new
+    process). The report writes the setting ("water on" or "water off").
 - **`BfAutoplay`** is the autoplay bot (S-133, `plan/diagnostics.md`,
   `rust/game/src/autoplay.rs`). It plays the bear through virtual
   gamepad input: it sends joypad events to Godot (left stick, A, B and
@@ -575,8 +652,8 @@ what it assumes.
     `:dy=<m>:off=<m>`: the height above the ledge and the distance to the
     place of the ledge), and
     which bears crossed or fell off the stepping stones.
-- **`main.tscn`** is the start scene: atmosphere, terrain, obstacles,
-  scatter, bear, cameras, overlay and recorder.
+- **`main.tscn`** is the start scene: atmosphere, terrain, water,
+  obstacles, scatter, bear, cameras, overlay and recorder.
 
 ## Play the latest build (Mikey)
 
@@ -648,6 +725,8 @@ movement maths is in `rust/game/src/motion.rs` and
 The ground colours are: pale ochre on flat ground, rust and ash bands
 on rock (steeper than about 35 to 50 degrees), and pale sand in
 riverbeds and lake beds. One plain texture and a colour map make them.
+The ground just above a lake or a pond is darker: it is damp up to
+0.6 m above the water (S-160).
 
 ## Preview images without Godot
 
@@ -730,6 +809,8 @@ Mikey does not build on his laptop (decision R10).
 - Load test without a window:
   `godot --headless --path game --quit-after 300`. On a new clone, run
   `godot --headless --path game --import` one time before this.
+- Water view test without a window (the times are not valid):
+  `godot --headless --path game -- --bf-test=water-view`.
 - Autoplay tour without a window (about 15 s for one seed):
   `godot --headless --path game --fixed-fps 60 -- --bf-autoplay=tour --bf-autoplay-seeds=7`.
   `tools/check.sh` runs it too.
@@ -872,7 +953,27 @@ Mikey does not build on his laptop (decision R10).
   says. His code has the MPL-2.0 licence, thus the port keeps it. All
   other files stay MIT. See `THIRD-PARTY-NOTICES.md`.
 - **Dry lakes.** A closed basin deeper than 6 m keeps its shape. The
-  lowest 20% of its depth is a flat dry lake bed.
+  lowest 20% of its depth is a flat dry lake bed. Now each deep basin
+  also has water above the bed (S-160), so the bed shows only under
+  clear water.
+- **Most water looks natural** (S-160, question 1 in `demo-2.md`). The
+  weights of the looks make silty brown, milky alkaline and clear water
+  the most common. Mud and tar are rare and only in small bodies. Mikey:
+  should more water look strange?
+- **One lake in four is full** (S-160). A full lake reaches its spill
+  height. The others get a seeded part from 0.2 to 1 of their depth.
+  `full_lake_chance` and `lake_part_min` are in `WaterParams`.
+- **Ponds are only off the rivers** (S-160). A pond on a river would cut
+  the river, so a basin with a riverbed stays filled.
+- **Water meshes are tiles, not one mesh for each lake** (S-160). This
+  keeps the water at 16 draw calls or fewer. `demo-2.md` asks for one
+  mesh for each lake; a tile holds all water in 512 m × 512 m.
+- **The float is simple** (S-160). The whole bear gets wet, it cannot
+  jump in water, and the gait does not change the paddle. S-163 makes
+  the real swim.
+- **Things under water** (S-160). Obstacles and rocks can be under the
+  water now. Dead shrubs are not. S-172 moves the obstacles out of the
+  water.
 - **Steep zones.** With peaks 300 to 600 m high in a zone of 2 km,
   the bear can walk on about 20 to 35% of the ground and must climb
   on about 35 to 50%. Lower `relief_m` or `valley_at` for more flat

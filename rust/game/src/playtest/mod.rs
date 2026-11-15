@@ -51,6 +51,24 @@ pub struct BearSample {
     /// The lowest seam health of the limbs, 0 to 1 (1: all seams are new).
     #[serde(default)]
     pub seam_min: f32,
+    /// The water at the feet (S-160). Not in the sample on dry ground.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub water: Option<WaterSample>,
+}
+
+/// The lake or pond at the feet of the bear in one sample (S-160).
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct WaterSample {
+    /// The number of the body.
+    pub body: u32,
+    /// "lake" or "pond".
+    pub kind: String,
+    /// The water level minus the ground height, in metres.
+    pub depth: f32,
+    /// "shallow" (below 0.15 m), "wade" or "swim" (the bear floats).
+    pub state: String,
+    /// From 0 (water) to 1 (thick tar).
+    pub viscosity: f32,
 }
 
 /// The camera in one sample.

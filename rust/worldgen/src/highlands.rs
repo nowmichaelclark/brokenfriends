@@ -9,10 +9,11 @@
 //!    dry riverbeds where much rain came together.
 
 use crate::detmath::smoothstep;
-use crate::drainage::{flow, partial_fill};
+use crate::drainage::{flow, partial_fill_basins, PartialFill};
 use crate::erosion_filter::{erosion_filter, ErosionParams};
 use crate::heightmap::HeightMap;
 use crate::noise::{fbm, gradient_noise};
+use crate::water::{choose_ponds, make_water, Candidate, Water, WaterKind, WaterParams};
 use rayon::prelude::*;
 
 /// The settings of the scorched-highlands generator. Lengths are in
@@ -76,6 +77,8 @@ pub struct HighlandsParams {
     pub river_max_width_m: f32,
     /// The depth of a riverbed, as a part of its width.
     pub river_depth_ratio: f32,
+    /// The settings of the lakes and ponds (S-160).
+    pub water: WaterParams,
 }
 
 impl Default for HighlandsParams {
@@ -112,6 +115,7 @@ impl Default for HighlandsParams {
             river_min_width_m: 3.0,
             river_max_width_m: 18.0,
             river_depth_ratio: 0.22,
+            water: WaterParams::default(),
         }
     }
 }
@@ -127,6 +131,8 @@ pub struct Zone {
     pub riverbed: Vec<u8>,
     /// For each sample: 255 on a dry lake bed, 0 away from it.
     pub lakebed: Vec<u8>,
+    /// The lakes and ponds (S-160).
+    pub water: Water,
 }
 
 /// The ground types at one place. Each value is a part from 0 to 1.
@@ -141,6 +147,8 @@ pub struct Ground {
     pub lake: f32,
     /// 1 on the sand of a dry riverbed.
     pub sand: f32,
+    /// 1 under the water of a lake or a pond.
+    pub water: f32,
 }
 
 impl Ground {
@@ -152,10 +160,12 @@ impl Ground {
         ground + (sand - ground) * self.sand
     }
 
-    /// Gives the name of the main ground type: "sand", "lake bed",
-    /// "ash rock", "rust rock" or "soil".
+    /// Gives the name of the main ground type: "water", "sand", "lake
+    /// bed", "ash rock", "rust rock" or "soil".
     pub fn name(&self) -> &'static str {
-        if self.sand >= 0.5 {
+        if self.water >= 0.5 {
+            "water"
+        } else if self.sand >= 0.5 {
             "sand"
         } else if self.lake >= 0.5 {
             "lake bed"
@@ -322,7 +332,11 @@ pub fn generate(seed: u32, size: usize, spacing: f32, params: &HighlandsParams) 
     let coarse: Vec<f32> = (0..csize * csize)
         .map(|i| eroded.get(((i % csize) * step) as isize, ((i / csize) * step) as isize))
         .collect();
-    let (fill, lake) = partial_fill(
+    let PartialFill {
+        mut fill,
+        lake,
+        basins,
+    } = partial_fill_basins(
         &coarse,
         csize,
         0.0005 * cell_m,
@@ -331,6 +345,19 @@ pub fn generate(seed: u32, size: usize, spacing: f32, params: &HighlandsParams) 
     );
     let surface: Vec<f32> = coarse.iter().zip(&fill).map(|(h, f)| h + f).collect();
     let rain = flow(&surface, csize);
+
+    // Some shallow basins away from the rivers keep their hollow: they
+    // become ponds. The flow above still uses the filled surface, thus
+    // the rivers do not change.
+    let cell_area = cell_m * cell_m;
+    let ponds = choose_ponds(&basins, cell_area, seed, &params.water, |c| {
+        rain.area[c as usize] * cell_area >= params.river_min_area_m2
+    });
+    for &p in &ponds {
+        for &c in &basins[p].cells {
+            fill[c as usize] = 0.0;
+        }
+    }
 
     // Put the fill on the full grid. `fill_at` gives the depth of the fill.
     let cell = |cx: isize, cz: isize| {
@@ -369,7 +396,6 @@ pub fn generate(seed: u32, size: usize, spacing: f32, params: &HighlandsParams) 
     // For each sample, the stamp with the most effect wins. If two stamps
     // have the same effect, the lower bed wins. Thus the order of the
     // stamps does not change the result.
-    let cell_area = cell_m * cell_m;
     let river_width = |i: usize| {
         let area = rain.area[i] * cell_area;
         // A river stops at the shore of a dry lake.
@@ -442,11 +468,27 @@ pub fn generate(seed: u32, size: usize, spacing: f32, params: &HighlandsParams) 
         }
     }
 
+    // The lakes (all deep basins) and the ponds get their water.
+    let mut candidates: Vec<Candidate> = basins
+        .iter()
+        .filter(|b| b.deep)
+        .map(|basin| Candidate {
+            basin,
+            kind: WaterKind::Lake,
+        })
+        .collect();
+    candidates.extend(ponds.iter().map(|&p| Candidate {
+        basin: &basins[p],
+        kind: WaterKind::Pond,
+    }));
+    let water = make_water(&heights, &candidates, csize, step, seed, &params.water);
+
     Zone {
         seed,
         heights,
         riverbed,
         lakebed,
+        water,
     }
 }
 
@@ -483,6 +525,11 @@ impl Zone {
             ash: smoothstep(-0.25, 0.35, band),
             lake: f32::from(self.lakebed[z * size + x]) / 255.0,
             sand: f32::from(self.riverbed[z * size + x]) / 255.0,
+            water: if self.water.body_at_sample(x, z).is_some() {
+                1.0
+            } else {
+                0.0
+            },
         }
     }
 
@@ -535,6 +582,7 @@ impl Zone {
                 ];
             }
         });
+        self.water.damp_shores(&self.heights, &mut out);
         out
     }
 }
@@ -549,12 +597,18 @@ mod tests {
             ash,
             lake,
             sand,
+            water: 0.0,
         };
         assert_eq!(g(0.0, 0.0, 0.0, 0.0).name(), "soil");
         assert_eq!(g(1.0, 0.2, 0.0, 0.0).name(), "rust rock");
         assert_eq!(g(1.0, 0.8, 0.0, 0.0).name(), "ash rock");
         assert_eq!(g(1.0, 0.8, 0.0, 0.9).name(), "sand");
         assert_eq!(g(0.0, 0.0, 1.0, 0.0).name(), "lake bed");
+        let wet = Ground {
+            water: 1.0,
+            ..g(0.0, 0.0, 1.0, 0.0)
+        };
+        assert_eq!(wet.name(), "water");
     }
 
     use super::*;
@@ -577,6 +631,7 @@ mod tests {
             ash,
             lake: 0.0,
             sand,
+            water: 0.0,
         };
         assert!((g(1.0, 0.0, 0.0).grip(1.0, 0.4, 0.8, 0.1) - 1.0).abs() < 1e-6);
         assert!((g(1.0, 1.0, 0.0).grip(1.0, 0.4, 0.8, 0.1) - 0.4).abs() < 1e-6);

@@ -29,6 +29,23 @@ const LIGHT_SHADER: &str = include_str!("terrain_light.gdshader");
 /// Terrain3D can hold 32 x 32 regions.
 const REGION_MAP_SIZE: i32 = 32;
 
+/// The water at one place (S-160).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct WaterAt {
+    /// The number of the body.
+    pub number: u32,
+    /// "lake" or "pond".
+    pub kind: &'static str,
+    /// The height of the water surface in metres.
+    pub level: f32,
+    /// The level minus the ground height, in metres.
+    pub depth: f32,
+    /// From 0 (water) to 1 (thick tar).
+    pub viscosity: f32,
+    /// 1.0 to 1.6.
+    pub density: f32,
+}
+
 /// A zone that a worker thread made.
 struct Generated {
     zone: Zone,
@@ -411,6 +428,13 @@ impl BfTerrain {
         self.pending.is_some()
     }
 
+    /// Gives the height of the water surface at a place, or NaN if the
+    /// place is dry (S-160).
+    #[func]
+    pub fn water_level_at(&self, x: f32, z: f32) -> f32 {
+        self.water_at(x, z).map_or(f32::NAN, |w| w.level)
+    }
+
     /// Gives the ground height at a world position in metres.
     /// The value comes from the Rust heightmap, not from Terrain3D.
     #[func]
@@ -486,6 +510,22 @@ impl BfTerrain {
     /// Gives the current zone, if there is one.
     pub fn zone(&self) -> Option<&Zone> {
         self.zone.as_ref()
+    }
+
+    /// Gives the lake or pond at a place, with the depth of the water
+    /// (S-160). `None` if the place is dry.
+    pub fn water_at(&self, x: f32, z: f32) -> Option<WaterAt> {
+        let zone = self.zone.as_ref()?;
+        let here = zone.water.at(&zone.heights, x, z)?;
+        let b = here.body;
+        Some(WaterAt {
+            number: b.number,
+            kind: b.kind.name(),
+            level: b.level,
+            depth: here.depth,
+            viscosity: b.viscosity,
+            density: b.density,
+        })
     }
 
     /// Gives the obstacles of the current zone.
@@ -702,8 +742,10 @@ impl BfTerrain {
         let show_ms = start.elapsed().as_secs_f64() * 1000.0;
         godot_print!(
             "BfTerrain: seed {}, {size} x {size} samples, heights {lo:.0} to {hi:.0} m, \
-             generation {seconds:.1} s, Terrain3D import {show_ms:.0} ms, obstacles: {}",
+             generation {seconds:.1} s, Terrain3D import {show_ms:.0} ms, water bodies: {}, \
+             obstacles: {}",
             zone.seed,
+            zone.water.bodies.len(),
             self.obstacle_text()
         );
         self.zone = Some(zone);

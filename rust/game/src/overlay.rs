@@ -5,6 +5,7 @@ use crate::obstacles::OBSTACLES_GROUP;
 use crate::scatter::SCATTER_GROUP;
 use crate::smoke_edge::SMOKE_GROUP;
 use crate::terrain::TERRAIN_GROUP;
+use crate::water::WATER_GROUP;
 use godot::classes::performance::Monitor;
 use godot::classes::{CanvasLayer, ICanvasLayer, InputEvent, InputEventKey, Label, Performance};
 use godot::global::Key;
@@ -112,6 +113,7 @@ impl BfDebugOverlay {
         let mut smoke = String::from("no smoke edge");
         let mut obstacles = String::from("none");
         let mut scatter = String::from("none");
+        let mut water = String::from("none");
         if self.base().is_inside_tree() {
             let tree = self.base().get_tree();
             if let Some(mut node) = tree.get_first_node_in_group(BEAR_GROUP) {
@@ -125,6 +127,9 @@ impl BfDebugOverlay {
             }
             if let Some(mut node) = tree.get_first_node_in_group(SCATTER_GROUP) {
                 scatter = node.call("debug_text", &[]).to_string();
+            }
+            if let Some(mut node) = tree.get_first_node_in_group(WATER_GROUP) {
+                water = node.call("debug_text", &[]).to_string();
             }
             if let Some(mut terrain) = tree.get_first_node_in_group(TERRAIN_GROUP) {
                 seed = terrain.call("current_seed", &[]).to_string();
@@ -143,6 +148,7 @@ impl BfDebugOverlay {
              smoke: {smoke}\n\
              obstacles: {obstacles}\n\
              scatter: {scatter}\n\
+             water: {water}\n\
              F2: fly camera   F3: hide   F4: new zone   F6: next obstacle   F9: mark   F10: menu (pad: hold Back)"
         )
     }

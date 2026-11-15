@@ -35,6 +35,11 @@ pub struct BfFollowCamera {
     #[init(val = 0.15)]
     ground_clearance: f32,
 
+    /// The least height of the camera above a lake or a pond, in metres.
+    #[export]
+    #[init(val = 0.2)]
+    water_clearance_m: f32,
+
     /// The turn for each pixel of mouse movement, in degrees.
     #[export]
     #[init(val = 0.12)]
@@ -156,7 +161,19 @@ impl ICamera3D for BfFollowCamera {
             (self.current_distance + self.zoom_out_speed * delta).min(wanted)
         };
 
-        let position = target + dir * self.current_distance.max(0.05);
+        let mut position = target + dir * self.current_distance.max(0.05);
+        // Stay above a lake or a pond (S-160): the water has no under side.
+        if let Some(mut terrain) = tree.get_first_node_in_group(TERRAIN_GROUP) {
+            let level = terrain
+                .call(
+                    "water_level_at",
+                    &[position.x.to_variant(), position.z.to_variant()],
+                )
+                .to::<f32>();
+            if level.is_finite() {
+                position.y = position.y.max(level + self.water_clearance_m);
+            }
+        }
         self.base_mut().set_global_position(position);
         self.base_mut().look_at(target);
     }

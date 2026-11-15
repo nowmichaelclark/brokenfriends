@@ -19,6 +19,30 @@ pub enum TestKind {
     /// The camera flies the path over seed 7 at three view distances
     /// and at the distance of the smog (the normal game).
     DrawDistance,
+    /// The camera stops at fixed views of the water over seeds 1, 7 and
+    /// 42 (S-160, `demo-2.md`, "Speed tests").
+    WaterView,
+}
+
+/// The views of the Water view test: the name for `BfWater::test_view`
+/// and the text for the report. S-162 adds a river with rapids and
+/// S-165 the tallest and the widest fall.
+pub const WATER_VIEWS: [(&str, &str); 1] = [("largest_lake", "the largest lake")];
+
+/// The time of each view of the Water view test, in seconds.
+pub const VIEW_SECONDS: f32 = 6.0;
+
+/// The frames of the first seconds of each view are not measured.
+pub const VIEW_WARM_SECONDS: f32 = 2.0;
+
+/// Where the Water view test is after this time in a run: the view and
+/// if the frame counts. `None` after the last view.
+pub fn view_at(elapsed_s: f32, views: usize) -> Option<(usize, bool)> {
+    let index = (elapsed_s.max(0.0) / VIEW_SECONDS) as usize;
+    (index < views).then(|| {
+        let t = elapsed_s - index as f32 * VIEW_SECONDS;
+        (index, t >= VIEW_WARM_SECONDS)
+    })
 }
 
 impl TestKind {
@@ -27,6 +51,7 @@ impl TestKind {
         match self {
             TestKind::Benchmark => "benchmark",
             TestKind::DrawDistance => "draw-distance",
+            TestKind::WaterView => "water-view",
         }
     }
 
@@ -35,6 +60,7 @@ impl TestKind {
         match self {
             TestKind::Benchmark => "Benchmark",
             TestKind::DrawDistance => "Draw distance test",
+            TestKind::WaterView => "Water view",
         }
     }
 
@@ -43,6 +69,7 @@ impl TestKind {
         match name {
             "benchmark" | "bench" => Some(TestKind::Benchmark),
             "draw-distance" | "draw" => Some(TestKind::DrawDistance),
+            "water-view" | "water" => Some(TestKind::WaterView),
             _ => None,
         }
     }
@@ -60,7 +87,7 @@ pub struct RunSpec {
 /// Gives the runs of a test, in order.
 pub fn plan(kind: TestKind) -> Vec<RunSpec> {
     match kind {
-        TestKind::Benchmark => [1, 7, 42]
+        TestKind::Benchmark | TestKind::WaterView => [1, 7, 42]
             .into_iter()
             .map(|seed| RunSpec {
                 seed,
@@ -168,6 +195,8 @@ pub struct FrameData {
     /// Zero if the engine does not measure it.
     pub cpu_ms: f32,
     pub gpu_ms: f32,
+    /// The water meshes in the view: each is one draw call (S-160).
+    pub water_draws: f32,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -177,6 +206,7 @@ struct PartStats {
     primitives: f64,
     cpu_ms: f64,
     gpu_ms: f64,
+    water_draws: f64,
 }
 
 /// Collects the frames of one run.
@@ -198,6 +228,7 @@ pub struct PartResult {
     pub primitives: f32,
     pub cpu_ms: f32,
     pub gpu_ms: f32,
+    pub water_draws: f32,
 }
 
 /// The result of one run.
@@ -209,6 +240,9 @@ pub struct RunResult {
     /// The number of Terrain3D mesh rings in this run (0: not known).
     pub terrain_lods: i32,
     pub parts: Vec<PartResult>,
+    /// The names of the parts (the views of the Water view test). Empty
+    /// for a path: the parts have numbers.
+    pub part_names: Vec<String>,
 }
 
 impl RunStats {
@@ -227,6 +261,7 @@ impl RunStats {
         p.primitives += frame.primitives as f64;
         p.cpu_ms += frame.cpu_ms as f64;
         p.gpu_ms += frame.gpu_ms as f64;
+        p.water_draws += frame.water_draws as f64;
     }
 
     /// The numbers of each part. A part without frames is left out.
@@ -248,6 +283,7 @@ impl RunStats {
                     primitives: (p.primitives / n) as f32,
                     cpu_ms: (p.cpu_ms / n) as f32,
                     gpu_ms: (p.gpu_ms / n) as f32,
+                    water_draws: (p.water_draws / n) as f32,
                 }
             })
             .collect()
@@ -256,13 +292,14 @@ impl RunStats {
     /// The numbers of the full run: the same statistics over all parts.
     pub fn total(&self) -> Option<PartResult> {
         let mut all = FrameHistogram::default();
-        let mut sums = (0.0f64, 0.0f64, 0.0f64, 0.0f64);
+        let mut sums = (0.0f64, 0.0f64, 0.0f64, 0.0f64, 0.0f64);
         for p in &self.parts {
             all.merge(&p.frames);
             sums.0 += p.draw_calls;
             sums.1 += p.primitives;
             sums.2 += p.cpu_ms;
             sums.3 += p.gpu_ms;
+            sums.4 += p.water_draws;
         }
         if all.frames == 0 {
             return None;
@@ -279,6 +316,7 @@ impl RunStats {
             primitives: (sums.1 / n) as f32,
             cpu_ms: (sums.2 / n) as f32,
             gpu_ms: (sums.3 / n) as f32,
+            water_draws: (sums.4 / n) as f32,
         })
     }
 }
@@ -295,18 +333,22 @@ pub struct TestReport<'a> {
     /// The game has no window or no GPU: the numbers do not tell the
     /// speed.
     pub headless: bool,
+    /// The settings of the process that change the cost, for example
+    /// "water on" (each setting runs in a new process).
+    pub settings: String,
 }
 
 fn row(out: &mut String, name: &str, r: &PartResult) {
     let _ = writeln!(
         out,
-        "| {name} | {} | {:.1} | {:.1} | {:.1} | {:.1} | {:.0} | {:.0} | {:.1} | {:.1} |",
+        "| {name} | {} | {:.1} | {:.1} | {:.1} | {:.1} | {:.0} | {:.1} | {:.0} | {:.1} | {:.1} |",
         r.frames,
         r.avg_fps,
         r.low_1pct_fps,
         r.p95_ms,
         r.worst_ms,
         r.draw_calls,
+        r.water_draws,
         r.primitives / 1000.0,
         r.cpu_ms,
         r.gpu_ms
@@ -317,17 +359,33 @@ fn row(out: &mut String, name: &str, r: &PartResult) {
 pub fn make_markdown(t: &TestReport) -> String {
     let mut out = String::new();
     let _ = writeln!(out, "### Test: {}\n", t.kind.title());
-    let _ = writeln!(
-        out,
-        "The camera flies a closed path of {} parts around the centre of the zone: \
-         radius {:.0} m, speed {:.0} m/s, {:.0} m above the ground, flat look-down of 12 degrees. \
-         Each part is about {:.1} s.",
-        t.path.parts,
-        t.path.radius_m,
-        t.path.speed_mps,
-        t.clearance_m,
-        t.path.part_seconds()
-    );
+    if t.kind == TestKind::WaterView {
+        let names: Vec<&str> = WATER_VIEWS.iter().map(|v| v.1).collect();
+        let _ = writeln!(
+            out,
+            "The camera stops at fixed views of the water: {}. Each view lasts {:.0} s; \
+             the numbers start after {:.0} s. The camera is 4 m above the water near the \
+             shore and looks across the longest stretch of water.",
+            names.join(", "),
+            VIEW_SECONDS,
+            VIEW_WARM_SECONDS
+        );
+    } else {
+        let _ = writeln!(
+            out,
+            "The camera flies a closed path of {} parts around the centre of the zone: \
+             radius {:.0} m, speed {:.0} m/s, {:.0} m above the ground, flat look-down of 12 degrees. \
+             Each part is about {:.1} s.",
+            t.path.parts,
+            t.path.radius_m,
+            t.path.speed_mps,
+            t.clearance_m,
+            t.path.part_seconds()
+        );
+    }
+    if !t.settings.is_empty() {
+        let _ = writeln!(out, "\nSettings of this process: {}.", t.settings);
+    }
     if t.cancelled {
         out.push_str("\nThe test stopped before the end. The list is not full.\n");
     }
@@ -351,15 +409,32 @@ pub fn make_markdown(t: &TestReport) -> String {
             "\n#### Seed {}, view distance {distance}{rings}\n",
             run.spec.seed
         );
-        out.push_str(
-            "| part | frames | avg fps | 1% low fps | p95 ms | worst ms | draw calls | primitives (k) | render cpu ms | render gpu ms |\n\
-             |---|---|---|---|---|---|---|---|---|---|\n",
+        let first = if run.part_names.is_empty() {
+            "part"
+        } else {
+            "view"
+        };
+        let _ = writeln!(
+            out,
+            "| {first} | frames | avg fps | 1% low fps | p95 ms | worst ms | draw calls | water draws | primitives (k) | render cpu ms | render gpu ms |\n\
+             |---|---|---|---|---|---|---|---|---|---|---|"
         );
         for p in &run.parts {
-            row(&mut out, &format!("{}", p.part + 1), p);
+            let name = run
+                .part_names
+                .get(p.part)
+                .cloned()
+                .unwrap_or_else(|| format!("{}", p.part + 1));
+            row(&mut out, &name, p);
         }
         if let Some(total) = total {
             row(&mut out, "**all**", total);
+        }
+        // A view with no frames: the zone has no such place.
+        for (i, name) in run.part_names.iter().enumerate() {
+            if !run.parts.iter().any(|p| p.part == i) {
+                let _ = writeln!(out, "\nNo frames for the view \"{name}\".");
+            }
         }
     }
     out
@@ -379,6 +454,7 @@ pub fn make_json(t: &TestReport) -> Value {
             "primitives": p.primitives,
             "render_cpu_ms": p.cpu_ms,
             "render_gpu_ms": p.gpu_ms,
+            "water_draw_calls": p.water_draws,
         })
     };
     let runs: Vec<Value> = t
@@ -390,6 +466,7 @@ pub fn make_json(t: &TestReport) -> Value {
                 "view_distance_forced_m": run.spec.view_distance_m,
                 "view_distance_used_m": run.used_view_distance_m,
                 "terrain_lods": run.terrain_lods,
+                "part_names": run.part_names,
                 "parts": run.parts.iter().map(part).collect::<Vec<_>>(),
                 "total": total.as_ref().map(part),
             })
@@ -405,6 +482,7 @@ pub fn make_json(t: &TestReport) -> Value {
         },
         "cancelled": t.cancelled,
         "headless": t.headless,
+        "settings": t.settings,
         "runs": runs,
     })
 }
@@ -436,7 +514,11 @@ mod tests {
 
     #[test]
     fn names_round_trip() {
-        for k in [TestKind::Benchmark, TestKind::DrawDistance] {
+        for k in [
+            TestKind::Benchmark,
+            TestKind::DrawDistance,
+            TestKind::WaterView,
+        ] {
             assert_eq!(TestKind::from_name(k.name()), Some(k));
         }
         assert_eq!(TestKind::from_name("nothing"), None);
@@ -493,6 +575,7 @@ mod tests {
                     primitives: 20000.0,
                     cpu_ms: 2.0,
                     gpu_ms: 6.0,
+                    water_draws: 0.0,
                 },
             );
         }
@@ -548,6 +631,7 @@ mod tests {
             used_view_distance_m: 300.0,
             terrain_lods: 3,
             parts: s.results(),
+            part_names: Vec::new(),
         };
         let runs = vec![(run, s.total())];
         let t = TestReport {
@@ -557,6 +641,7 @@ mod tests {
             runs: &runs,
             cancelled: true,
             headless: true,
+            settings: String::new(),
         };
         let text = make_markdown(&t);
         assert!(text.contains("### Test: Draw distance test"));
@@ -568,5 +653,58 @@ mod tests {
         assert_eq!(j["test"], "draw-distance");
         assert_eq!(j["runs"][0]["seed"], 7);
         assert!(j["runs"][0]["total"]["avg_fps"].as_f64().unwrap() > 50.0);
+    }
+
+    #[test]
+    fn water_views_follow_time() {
+        assert_eq!(plan(TestKind::WaterView).len(), 3);
+        assert_eq!(view_at(0.5, 2), Some((0, false)));
+        assert_eq!(view_at(2.5, 2), Some((0, true)));
+        assert_eq!(view_at(6.5, 2), Some((1, false)));
+        assert_eq!(view_at(9.0, 2), Some((1, true)));
+        assert_eq!(view_at(12.0, 2), None);
+    }
+
+    #[test]
+    fn water_view_report_names_the_views() {
+        let mut s = RunStats::new(2);
+        for _ in 0..10 {
+            s.add(
+                0,
+                FrameData {
+                    ms: 16.0,
+                    water_draws: 2.0,
+                    ..FrameData::default()
+                },
+            );
+        }
+        let run = RunResult {
+            spec: RunSpec {
+                seed: 1,
+                view_distance_m: None,
+            },
+            used_view_distance_m: 767.0,
+            terrain_lods: 4,
+            parts: s.results(),
+            part_names: vec!["the largest lake".into(), "a river".into()],
+        };
+        let runs = vec![(run, s.total())];
+        let t = TestReport {
+            kind: TestKind::WaterView,
+            path: path(),
+            clearance_m: 25.0,
+            runs: &runs,
+            cancelled: false,
+            headless: false,
+            settings: "water on".into(),
+        };
+        let text = make_markdown(&t);
+        assert!(text.contains("### Test: Water view"));
+        assert!(text.contains("| the largest lake | 10 |"));
+        assert!(text.contains("No frames for the view \"a river\"."));
+        assert!(text.contains("Settings of this process: water on."));
+        let j = make_json(&t);
+        assert_eq!(j["runs"][0]["total"]["water_draw_calls"], 2.0);
+        assert_eq!(j["settings"], "water on");
     }
 }

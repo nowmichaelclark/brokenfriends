@@ -15,6 +15,7 @@ use crate::scatter::SCATTER_GROUP;
 use crate::terrain::TERRAIN_GROUP;
 use crate::test_runner::TEST_RUNNER_GROUP;
 use crate::view_distance::VIEW_DISTANCE_GROUP;
+use crate::water::WATER_GROUP;
 use godot::classes::{
     CanvasLayer, ColorRect, ICanvasLayer, Input, InputEvent, InputEventJoypadButton, InputEventKey,
     Label,
@@ -233,6 +234,9 @@ impl BfDevMenu {
         if let Some(mut scatter) = self.node(SCATTER_GROUP) {
             self.state.scatter = scatter.call("is_scatter_enabled", &[]).booleanize();
         }
+        if let Some(mut water) = self.node(WATER_GROUP) {
+            self.state.water = water.call("is_water_shown", &[]).booleanize();
+        }
         if let Some(mut view) = self.node(VIEW_DISTANCE_GROUP) {
             let forced = view.call("get_forced_distance", &[]).to::<f32>();
             self.state
@@ -299,6 +303,13 @@ impl BfDevMenu {
                 if let Some(mut scatter) = self.node(SCATTER_GROUP) {
                     let on = scatter.call("is_scatter_enabled", &[]).booleanize();
                     scatter.call("set_scatter_enabled", &[(!on).to_variant()]);
+                }
+                self.read_game_state();
+            }
+            Action::ToggleWater => {
+                if let Some(mut water) = self.node(WATER_GROUP) {
+                    let on = water.call("is_water_shown", &[]).booleanize();
+                    water.call("set_water_shown", &[(!on).to_variant()]);
                 }
                 self.read_game_state();
             }

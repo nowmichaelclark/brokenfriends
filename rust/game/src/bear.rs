@@ -12,7 +12,7 @@ use crate::lost_limb::{self, BfLostLimb, LostLimbSpec, BEAR_PARTS_LAYER, LOST_LI
 use crate::motion::{angle_difference, approach, jump_speed, JumpTimers};
 use crate::ragdoll::Ragdoll;
 use crate::tear::{Change, Seams, Stage, TearParams};
-use crate::terrain::TERRAIN_GROUP;
+use crate::terrain::{BfTerrain, WaterAt, TERRAIN_GROUP};
 use crate::tumble::{get_up_yaw, impact, start_spin, Settle, TumbleParams};
 use glam::{Vec2, Vec3};
 use godot::classes::base_material_3d::{BillboardMode, CullMode};
@@ -511,6 +511,67 @@ pub struct BfBear {
     #[init(val = 40.0)]
     dry_seconds: f32,
 
+    /// The bear floats when the water (level minus ground) is this deep,
+    /// in metres (S-160: a simple float, before the swim of S-163).
+    #[export]
+    #[init(val = 0.25)]
+    swim_depth_m: f32,
+
+    /// The bear stops to float when the water is less deep than this, in
+    /// metres.
+    #[export]
+    #[init(val = 0.22)]
+    swim_out_depth_m: f32,
+
+    /// The feet of a floating bear are this far below the surface, in
+    /// metres. A dense body (mud, tar) holds the bear higher.
+    #[export]
+    #[init(val = 0.18)]
+    float_line_m: f32,
+
+    /// The spring that holds a floating bear at its float line (1/s²).
+    #[export]
+    #[init(val = 30.0)]
+    float_spring: f32,
+
+    /// The damping of the float spring (1/s). Less damping bobs more.
+    #[export]
+    #[init(val = 7.0)]
+    float_damping: f32,
+
+    /// The speed of a floating bear in clear water, in m/s.
+    #[export]
+    #[init(val = 0.8)]
+    paddle_speed: f32,
+
+    /// The speed of a floating bear with the jog button, in m/s.
+    #[export]
+    #[init(val = 1.3)]
+    paddle_jog_speed: f32,
+
+    /// In the thickest water (viscosity 1), the paddle speed is this part
+    /// of the speed in clear water.
+    #[export]
+    #[init(val = 0.25)]
+    thick_speed_part: f32,
+
+    /// How fast a floating bear gets to its paddle speed, in m/s each
+    /// second (in clear water).
+    #[export]
+    #[init(val = 3.0)]
+    paddle_acceleration: f32,
+
+    /// A bear that falls into deep water slows to this fall speed at
+    /// once, in m/s. Thus the water stops a tumble.
+    #[export]
+    #[init(val = 1.5)]
+    water_entry_speed: f32,
+
+    /// The bear floats now.
+    swimming: bool,
+    /// The water at the feet in the last physics step.
+    water: Option<WaterAt>,
+
     /// The wind from the obstacles: a velocity that carries the bear.
     /// `BfObstacles` sets it before each physics step.
     wind: Vector3,
@@ -677,6 +738,7 @@ impl BfBear {
         self.lift = Vector2::ZERO;
         self.ground_slow = 0.0;
         self.thrown = None;
+        self.swimming = false;
         self.event("restart");
     }
 
@@ -897,6 +959,10 @@ impl BfBear {
     pub fn debug_text(&self) -> GString {
         let stamina = self.stamina * 100.0;
         let mode = match self.mode {
+            Mode::Walk if self.swimming => format!(
+                "float   water {:.2} m   stamina {stamina:.0}%",
+                self.water.map_or(0.0, |w| w.depth)
+            ),
             Mode::Walk if self.exhausted => format!("walk (tired)   stamina {stamina:.0}%"),
             Mode::Walk => format!("walk   stamina {stamina:.0}%"),
             Mode::Mantle { .. } => format!("onto a ledge   stamina {stamina:.0}%"),
@@ -938,6 +1004,7 @@ impl BfBear {
             ),
             Mode::Mantle { .. } => ("mantle", 0.0, -1.0),
             Mode::Tumble => ("tumble", 0.0, -1.0),
+            Mode::Walk if self.swimming => ("swim", 0.0, -1.0),
             Mode::Walk => {
                 let state = if !on_floor {
                     if velocity.y > 0.0 {
@@ -985,6 +1052,23 @@ impl BfBear {
         // In a tumble, the stick does nothing: the bear is not stuck.
         let held = self.last_wish.length() > 0.01 && self.mode != Mode::Tumble;
         d.set("stick_held", held);
+        // The water at the feet (S-160). A bear in the air above the
+        // water is not in it.
+        let feet_y = self.base().get_global_position().y;
+        if let Some(w) = self.water.filter(|w| self.swimming || feet_y < w.level) {
+            let state = if self.swimming {
+                "swim"
+            } else if w.depth >= 0.15 {
+                "wade"
+            } else {
+                "shallow"
+            };
+            d.set("water_body", w.number as i64);
+            d.set("water_kind", w.kind);
+            d.set("water_depth", w.depth);
+            d.set("water_state", state);
+            d.set("water_viscosity", w.viscosity);
+        }
         d
     }
 
@@ -1012,6 +1096,10 @@ impl BfBear {
 impl BfBear {
     /// One step on the ground or in the air.
     fn walk(&mut self, delta: f32, wish: Vector2, jog: bool, jump_pressed: bool) {
+        if self.update_water() {
+            self.swim(delta, wish, jog);
+            return;
+        }
         let max_slope = self.max_slope_degrees.to_radians();
         self.base_mut().set_floor_max_angle(max_slope);
         let on_floor = self.base().is_on_floor();
@@ -1142,6 +1230,87 @@ impl BfBear {
                 self.exhausted = false;
             }
         }
+        self.try_grab(delta, wish);
+    }
+
+    /// Reads the water at the feet. Starts or ends the float. Gives true
+    /// if the bear floats now.
+    fn update_water(&mut self) -> bool {
+        let feet = self.base().get_global_position();
+        self.water = self
+            .base()
+            .get_tree()
+            .get_first_node_in_group(TERRAIN_GROUP)
+            .and_then(|t| t.try_cast::<BfTerrain>().ok())
+            .and_then(|t| t.bind().water_at(feet.x, feet.z));
+        match self.water {
+            Some(w) if !self.swimming => {
+                // Wade in, or fall in from above.
+                let line = self.float_line_m / w.density.max(0.5);
+                if w.depth >= self.swim_depth_m && feet.y <= w.level - line * 0.5 {
+                    self.swimming = true;
+                    let mut velocity = self.base().get_velocity();
+                    velocity.y = velocity.y.max(-self.water_entry_speed.max(0.0));
+                    self.base_mut().set_velocity(velocity);
+                    self.thrown = None;
+                    self.event(&format!("swim_start:#{}:{}", w.number, w.kind));
+                }
+            }
+            Some(w) if w.depth < self.swim_out_depth_m => {
+                self.swimming = false;
+                self.event("swim_end:shallow");
+            }
+            None if self.swimming => {
+                self.swimming = false;
+                self.event("swim_end:shore");
+            }
+            _ => {}
+        }
+        self.swimming
+    }
+
+    /// One step of the simple float (S-160): a spring holds the feet
+    /// below the surface, and the bear paddles slowly. S-163 replaces
+    /// this with the real swim.
+    fn swim(&mut self, delta: f32, wish: Vector2, jog: bool) {
+        let Some(w) = self.water else {
+            return;
+        };
+        let feet = self.base().get_global_position();
+        let mut velocity = self.base().get_velocity();
+        let thick =
+            1.0 - (1.0 - self.thick_speed_part.clamp(0.0, 1.0)) * w.viscosity.clamp(0.0, 1.0);
+        let speed = thick
+            * if jog {
+                self.paddle_jog_speed
+            } else {
+                self.paddle_speed
+            };
+        let target = (wish.x * speed + self.wind.x, wish.y * speed + self.wind.z);
+        let (vx, vz) = approach(
+            (velocity.x, velocity.z),
+            target,
+            self.paddle_acceleration.max(0.1) * thick * delta,
+        );
+        velocity.x = vx;
+        velocity.z = vz;
+        let line = self.float_line_m / w.density.max(0.5);
+        let target_y = w.level - line;
+        velocity.y +=
+            (self.float_spring * (target_y - feet.y) - self.float_damping * velocity.y) * delta;
+        self.base_mut().set_velocity(velocity);
+        self.base_mut().move_and_slide();
+        self.stay_above_ground();
+
+        if wish != Vector2::ZERO {
+            let wanted = wish.x.atan2(wish.y);
+            let step = self.turn_speed_degrees.to_radians() * delta;
+            self.yaw += angle_difference(self.yaw, wanted).clamp(-step, step);
+        }
+        self.air_time = 0.0;
+        self.timers = JumpTimers::default();
+        self.make_wet(1.0);
+        // A steep bank: the bear can grab it from the water.
         self.try_grab(delta, wish);
     }
 

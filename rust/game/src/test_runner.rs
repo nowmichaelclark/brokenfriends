@@ -7,12 +7,13 @@
 //! statistics and the text) are in `crate::playtest::bench`.
 
 use crate::playtest::bench::{
-    camera_height, make_json, make_markdown, plan, BenchPath, FrameData, PartResult, PathPoint,
-    RunResult, RunSpec, RunStats, TestKind, TestReport,
+    camera_height, make_json, make_markdown, plan, view_at, BenchPath, FrameData, PartResult,
+    PathPoint, RunResult, RunSpec, RunStats, TestKind, TestReport, VIEW_SECONDS, WATER_VIEWS,
 };
 use crate::recorder::RECORDER_GROUP;
 use crate::terrain::TERRAIN_GROUP;
 use crate::view_distance::{VIEW_CAMERA_GROUP, VIEW_DISTANCE_GROUP};
+use crate::water::WATER_GROUP;
 use godot::classes::performance::Monitor;
 use godot::classes::{
     Camera3D, CanvasLayer, DisplayServer, INode, InputEvent, InputEventJoypadButton, InputEventKey,
@@ -49,6 +50,11 @@ struct Active {
     last_usec: u64,
     /// The command line started this test. The game quits at the end.
     quit_at_end: bool,
+    /// The camera views of the Water view test in this run: the eye and
+    /// the target, or `None` if the zone has no such place.
+    views: Vec<Option<(Vector3, Vector3)>>,
+    /// The names of the views for the report.
+    view_names: Vec<String>,
 }
 
 /// Runs the tests of the dev menu.
@@ -263,6 +269,8 @@ impl BfTestRunner {
             camera,
             last_usec: Time::singleton().get_ticks_usec(),
             quit_at_end,
+            views: Vec::new(),
+            view_names: Vec::new(),
         });
         self.begin_run();
         true
@@ -281,7 +289,14 @@ impl BfTestRunner {
             return;
         };
         let spec = active.specs[active.run];
-        active.stats = RunStats::new(self.path_parts.clamp(3, 64) as usize);
+        let parts = if active.kind == TestKind::WaterView {
+            WATER_VIEWS.len()
+        } else {
+            self.path_parts.clamp(3, 64) as usize
+        };
+        active.stats = RunStats::new(parts);
+        active.views.clear();
+        active.view_names.clear();
         active.phase = Phase::Zone { requested: false };
         let forced = spec.view_distance_m.unwrap_or(0.0);
         if let Some(mut view) = self.node(VIEW_DISTANCE_GROUP) {
@@ -303,6 +318,43 @@ impl BfTestRunner {
         };
         let generating = terrain.call("is_generating", &[]).booleanize();
         let current_seed = terrain.call("current_seed", &[]).to::<i64>();
+        let water_draws = self
+            .node(WATER_GROUP)
+            .map_or(0.0, |mut w| w.call("drawn_meshes", &[]).to::<i32>() as f32);
+        // The Water view test: find the views when the zone is ready.
+        let need_views = matches!(&self.active, Some(a)
+            if a.kind == TestKind::WaterView
+                && a.views.is_empty()
+                && matches!(a.phase, Phase::Settle { .. }));
+        if need_views {
+            let mut views = Vec::new();
+            let mut names = Vec::new();
+            let mut water = self.node(WATER_GROUP);
+            for (name, title) in WATER_VIEWS {
+                let (pose, text) = match &mut water {
+                    Some(w) => {
+                        let pose = w
+                            .call("test_view", &[name.to_variant()])
+                            .to::<PackedVector3Array>();
+                        let text = w.call("test_view_text", &[name.to_variant()]).to_string();
+                        let pose = (pose.len() >= 2).then(|| (pose[0], pose[1]));
+                        (pose, text)
+                    }
+                    None => (None, String::new()),
+                };
+                views.push(pose);
+                names.push(if text.is_empty() {
+                    title.to_string()
+                } else {
+                    format!("{title}: {text}")
+                });
+            }
+            if let Some(active) = &mut self.active {
+                active.views = views;
+                active.view_names = names;
+            }
+        }
+        let mut view_pose: Option<(Vector3, Vector3)> = None;
 
         // The state machine. `next` says what to do after the borrow.
         enum Next {
@@ -341,8 +393,11 @@ impl BfTestRunner {
                 }
                 Phase::Settle { left } => {
                     *left -= delta;
-                    let p = path.at_time(0.0);
-                    aim = Some(p);
+                    if active.kind == TestKind::WaterView {
+                        view_pose = active.views.iter().flatten().next().copied();
+                    } else {
+                        aim = Some(path.at_time(0.0));
+                    }
                     text = format!(
                         "{title}: run {}/{runs}, seed {}: wait ...",
                         active.run + 1,
@@ -350,6 +405,36 @@ impl BfTestRunner {
                     );
                     if *left <= 0.0 {
                         active.phase = Phase::Fly { elapsed: 0.0 };
+                    }
+                }
+                Phase::Fly { elapsed } if active.kind == TestKind::WaterView => {
+                    *elapsed += delta;
+                    // A view that the zone does not have is skipped.
+                    while let Some((i, _)) = view_at(*elapsed, active.views.len()) {
+                        if active.views[i].is_some() {
+                            break;
+                        }
+                        *elapsed = (i + 1) as f32 * VIEW_SECONDS;
+                    }
+                    match view_at(*elapsed, active.views.len()) {
+                        Some((i, measured)) => {
+                            view_pose = active.views[i];
+                            if measured {
+                                frame_to_add = Some((i, delta));
+                            }
+                            text = format!(
+                                "{title}: run {}/{runs}, seed {}, view {}/{}: {}. B or Esc stops the test.",
+                                active.run + 1,
+                                spec.seed,
+                                i + 1,
+                                active.views.len(),
+                                active.view_names[i]
+                            );
+                        }
+                        None => {
+                            next = Next::RunDone;
+                            text = format!("{title}: run {}/{runs} is done", active.run + 1);
+                        }
                     }
                 }
                 Phase::Fly { elapsed } => {
@@ -394,6 +479,12 @@ impl BfTestRunner {
             }
         }
 
+        if let (Some((eye, target)), Some(active)) = (view_pose, &mut self.active) {
+            if eye.distance_to(target) > 0.01 {
+                active.camera.look_at_from_position(eye, target);
+            }
+        }
+
         // Measure the frame. The camera has the new place now.
         let render_ms = self.base().get_viewport().map(|viewport| {
             let rs = RenderingServer::singleton();
@@ -415,6 +506,7 @@ impl BfTestRunner {
                     primitives: perf.get_monitor(Monitor::RENDER_TOTAL_PRIMITIVES_IN_FRAME) as f32,
                     cpu_ms,
                     gpu_ms,
+                    water_draws,
                 },
             );
         }
@@ -465,6 +557,7 @@ impl BfTestRunner {
                 used_view_distance_m: used,
                 terrain_lods: lods,
                 parts,
+                part_names: active.view_names.clone(),
             },
             total,
         ));
@@ -498,6 +591,7 @@ impl BfTestRunner {
                         used_view_distance_m: used,
                         terrain_lods: lods,
                         parts,
+                        part_names: active.view_names.clone(),
                     },
                     total,
                 ));
@@ -505,6 +599,10 @@ impl BfTestRunner {
         }
 
         let headless = DisplayServer::singleton().get_name() == "headless";
+        let water_on = self
+            .node(WATER_GROUP)
+            .is_some_and(|mut w| w.call("is_water_shown", &[]).booleanize());
+        let settings = format!("water {}", if water_on { "on" } else { "off" });
         let report = TestReport {
             kind: active.kind,
             path: self.path(),
@@ -512,6 +610,7 @@ impl BfTestRunner {
             runs: &active.results,
             cancelled,
             headless,
+            settings,
         };
         let markdown = make_markdown(&report);
         let data = make_json(&report).to_string();

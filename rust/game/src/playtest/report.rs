@@ -83,6 +83,7 @@ pub fn make_report(r: &ReportInput) -> String {
     mark_section(&mut out, r.events);
     obstacle_section(&mut out, r.events);
     tumble_section(&mut out, r.events);
+    water_section(&mut out, r.samples, r.events);
     event_section(&mut out, r.events);
     out
 }
@@ -400,6 +401,45 @@ fn tumble_section(out: &mut String, events: &[Event]) {
     }
 }
 
+/// The lakes and ponds (S-160): the seconds in each water state and the
+/// starts of the float. Each sample is one second.
+fn water_section(out: &mut String, samples: &[Sample], events: &[Event]) {
+    out.push_str("\n## Water\n\n");
+    let mut states: Vec<(String, usize)> = Vec::new();
+    let mut bodies: Vec<(String, usize)> = Vec::new();
+    for w in samples
+        .iter()
+        .filter_map(|s| s.bear.as_ref()?.water.as_ref())
+    {
+        match states.iter_mut().find(|(n, _)| *n == w.state) {
+            Some(e) => e.1 += 1,
+            None => states.push((w.state.clone(), 1)),
+        }
+        let body = format!("{} #{} (viscosity {:.2})", w.kind, w.body, w.viscosity);
+        match bodies.iter_mut().find(|(n, _)| *n == body) {
+            Some(e) => e.1 += 1,
+            None => bodies.push((body, 1)),
+        }
+    }
+    let starts = events
+        .iter()
+        .filter(|e| e.kind == "bear" && e.info.starts_with("swim_start"))
+        .count();
+    if states.is_empty() && starts == 0 {
+        out.push_str("- the bear was not in water\n");
+        return;
+    }
+    out.push_str("States: `shallow` (below 0.15 m), `wade`, `swim` (the simple float).\n\n");
+    for (state, n) in &states {
+        let _ = writeln!(out, "- {state}: {n} s");
+    }
+    let _ = writeln!(out, "- float starts: {starts}");
+    bodies.sort_by_key(|b| std::cmp::Reverse(b.1));
+    for (body, n) in bodies.iter().take(8) {
+        let _ = writeln!(out, "- in {body}: {n} s");
+    }
+}
+
 fn count<'a>(list: &mut Vec<(&'a str, &'a str, usize)>, limb: &'a str, what: &'a str) {
     match list.iter_mut().find(|c| c.0 == limb && c.1 == what) {
         Some(c) => c.2 += 1,
@@ -621,5 +661,43 @@ mod tests {
     fn clock_text() {
         assert_eq!(clock(0.0), "00:00.0");
         assert_eq!(clock(75.25), "01:15.2");
+    }
+
+    #[test]
+    fn report_counts_the_time_in_water() {
+        use crate::playtest::{BearSample, WaterSample};
+        let in_water = |t: f64, state: &str| Sample {
+            t,
+            bear: Some(BearSample {
+                water: Some(WaterSample {
+                    body: 3,
+                    kind: "lake".into(),
+                    depth: 1.2,
+                    state: state.into(),
+                    viscosity: 0.1,
+                }),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let samples = vec![
+            in_water(1.0, "wade"),
+            in_water(2.0, "swim"),
+            in_water(3.0, "swim"),
+        ];
+        let events = vec![Event {
+            kind: "bear".into(),
+            info: "swim_start:#3:lake".into(),
+            ..Default::default()
+        }];
+        let mut out = String::new();
+        water_section(&mut out, &samples, &events);
+        assert!(out.contains("- swim: 2 s"), "{out}");
+        assert!(out.contains("- wade: 1 s"), "{out}");
+        assert!(out.contains("- float starts: 1"), "{out}");
+        assert!(out.contains("- in lake #3 (viscosity 0.10): 3 s"), "{out}");
+        let mut dry = String::new();
+        water_section(&mut dry, &[], &[]);
+        assert!(dry.contains("not in water"));
     }
 }

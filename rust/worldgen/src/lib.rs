@@ -15,6 +15,7 @@ pub mod obstacles;
 pub mod props;
 pub mod scatter;
 pub mod smoke;
+pub mod water;
 
 pub use heightmap::HeightMap;
 pub use highlands::{Ground, HighlandsParams, Zone};

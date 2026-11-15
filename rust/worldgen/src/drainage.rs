@@ -143,6 +143,47 @@ pub fn flow(surface: &[f32], size: usize) -> Flow {
     }
 }
 
+/// The basins that `partial_fill_basins` records are at least this deep.
+const RECORD_MIN_DEPTH: f32 = 0.2;
+
+/// One closed basin that the partial fill found (S-160). Water bodies
+/// (`crate::water`) come from these records.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Basin {
+    /// The cells of the basin (indexes on the grid), from low to high index.
+    pub cells: Vec<u32>,
+    /// The lowest height in the basin after the fill: the dry lake bed of
+    /// a deep basin, or the lowest ground of a shallow basin.
+    pub floor: f32,
+    /// The cell with the lowest ground before the fill.
+    pub floor_cell: u32,
+    /// The height where water leaves the basin.
+    pub spill: f32,
+    /// The cell next to the basin where water leaves it.
+    pub spill_cell: u32,
+    /// The largest depth below the spill height, before the fill.
+    pub depth: f32,
+    /// The basin was deeper than `shallow`. It kept its shape and got a
+    /// flat dry lake bed.
+    pub deep: bool,
+    /// The pass that found the basin. Pass 0 finds the basins of the
+    /// ground itself. Later passes find basins on the slopes of deep
+    /// basins.
+    pub pass: u32,
+}
+
+/// The result of `partial_fill_basins`.
+#[derive(Clone, Debug, Default)]
+pub struct PartialFill {
+    /// The depth of the fill for each cell.
+    pub fill: Vec<f32>,
+    /// `true` on dry lake beds.
+    pub lake: Vec<bool>,
+    /// The closed basins that are 0.2 m deep or more, in the order that
+    /// the passes found them.
+    pub basins: Vec<Basin>,
+}
+
 /// Fills closed basins in part, and gives the depth of the fill for
 /// each cell.
 ///
@@ -157,18 +198,33 @@ pub fn partial_fill(
     shallow: f32,
     floor_part: f32,
 ) -> (Vec<f32>, Vec<bool>) {
+    let r = partial_fill_basins(heights, size, epsilon, shallow, floor_part);
+    (r.fill, r.lake)
+}
+
+/// Does the same as `partial_fill`, and also gives a record for each
+/// basin: its cells, floor, spill height and spill cell.
+pub fn partial_fill_basins(
+    heights: &[f32],
+    size: usize,
+    epsilon: f32,
+    shallow: f32,
+    floor_part: f32,
+) -> PartialFill {
     let n = size * size;
     let mut surface = heights.to_vec();
     let mut lake = vec![false; n];
     let mut label = vec![u32::MAX; n];
     let mut stack: Vec<u32> = Vec::new();
+    let mut basins: Vec<Basin> = Vec::new();
     // A basin can have smaller basins inside it. Each pass finds the
     // basins that the pass before left open. The lake beds of the passes
     // before are outlets, thus a pass does not fill them again.
-    for _ in 0..3 {
+    for pass in 0..3u32 {
         let filled = fill_basins(&surface, size, epsilon, Some(&lake));
         label.fill(u32::MAX);
         let mut depths: Vec<f32> = Vec::new();
+        let mut cells_of: Vec<Vec<u32>> = Vec::new();
         for start in 0..n {
             if label[start] != u32::MAX || filled[start] - surface[start] <= 0.02 {
                 continue;
@@ -176,9 +232,11 @@ pub fn partial_fill(
             // Find all cells of this basin, and its largest depth.
             let id = depths.len() as u32;
             let mut deepest = 0.0f32;
+            let mut cells = Vec::new();
             label[start] = id;
             stack.push(start as u32);
             while let Some(i) = stack.pop() {
+                cells.push(i);
                 let i = i as usize;
                 deepest = deepest.max(filled[i] - surface[i]);
                 let (x, z) = (i % size, i / size);
@@ -202,10 +260,12 @@ pub fn partial_fill(
                 }
             }
             depths.push(deepest);
+            cells_of.push(cells);
         }
         if depths.is_empty() {
             break;
         }
+        let before = surface.clone();
         for i in 0..n {
             if label[i] == u32::MAX {
                 // A tiny fill: keep it, it helps the flow.
@@ -223,9 +283,93 @@ pub fn partial_fill(
                 }
             }
         }
+        for (id, mut cells) in cells_of.into_iter().enumerate() {
+            let depth = depths[id];
+            if depth < RECORD_MIN_DEPTH {
+                continue;
+            }
+            cells.sort_unstable();
+            basins.push(basin_record(
+                cells,
+                id as u32,
+                &label,
+                &before,
+                &surface,
+                &filled,
+                size,
+                depth,
+                depth >= shallow,
+                pass,
+            ));
+        }
     }
     let fill = surface.iter().zip(heights).map(|(s, h)| s - h).collect();
-    (fill, lake)
+    PartialFill { fill, lake, basins }
+}
+
+/// Makes the record of one basin. `before` is the surface before the
+/// pass, `after` the surface after it, and `filled` the full fill.
+#[allow(clippy::too_many_arguments)]
+fn basin_record(
+    cells: Vec<u32>,
+    id: u32,
+    label: &[u32],
+    before: &[f32],
+    after: &[f32],
+    filled: &[f32],
+    size: usize,
+    depth: f32,
+    deep: bool,
+    pass: u32,
+) -> Basin {
+    let s = size as isize;
+    let mut floor = f32::MAX;
+    let mut floor_cell = cells[0];
+    let mut lowest = f32::MAX;
+    let mut spill_cell = u32::MAX;
+    let mut spill = f32::MAX;
+    for &c in &cells {
+        let i = c as usize;
+        floor = floor.min(after[i]);
+        if before[i] < lowest {
+            lowest = before[i];
+            floor_cell = c;
+        }
+        // The spill cell is the lowest neighbour outside the basin. The
+        // order of the cells is fixed, thus a tie gives the same cell.
+        let (x, z) = ((i % size) as isize, (i / size) as isize);
+        for (dx, dz, _) in NEIGHBOURS {
+            let (nx, nz) = (x + dx, z + dz);
+            if nx < 0 || nz < 0 || nx >= s || nz >= s {
+                continue;
+            }
+            let ni = (nz * s + nx) as usize;
+            if label[ni] == id {
+                continue;
+            }
+            let h = filled[ni];
+            if h < spill || (h == spill && (ni as u32) < spill_cell) {
+                spill = h;
+                spill_cell = ni as u32;
+            }
+        }
+    }
+    if spill_cell == u32::MAX {
+        // A basin that fills the full grid has no outlet. This cannot
+        // occur, because the border cells are outlets.
+        spill_cell = floor_cell;
+        spill = filled[floor_cell as usize];
+    }
+    Basin {
+        cells,
+        floor,
+        floor_cell,
+        spill,
+        spill_cell,
+        depth,
+        deep,
+        pass,
+    }
 }
 
 #[cfg(test)]
@@ -303,5 +447,42 @@ mod tests {
         // The small hole is filled to its rim, and it is not a lake.
         let hole = 32 * size + 55;
         assert!(fill[hole] > 1.5 && !lake[hole], "fill {}", fill[hole]);
+    }
+
+    #[test]
+    fn basins_have_records() {
+        // The bowl of the test before, and a shallow hole on its rim.
+        let size = 65;
+        let h = grid(size, |x, z| {
+            let d = ((x - 32.0).powi(2) + (z - 32.0).powi(2)).sqrt();
+            let bowl = if d < 20.0 { 20.0 + d * 1.5 } else { 70.0 - d };
+            let hole = if (x - 55.0).abs() < 2.0 && (z - 32.0).abs() < 2.0 {
+                4.0
+            } else {
+                0.0
+            };
+            bowl - hole
+        });
+        let r = partial_fill_basins(&h, size, 1e-3, 5.0, 0.25);
+        let deep: Vec<&Basin> = r.basins.iter().filter(|b| b.deep).collect();
+        assert_eq!(deep.len(), 1);
+        let bowl = deep[0];
+        let centre = (32 * size + 32) as u32;
+        assert_eq!(bowl.floor_cell, centre);
+        // The rim is at a distance of 20 cells: 70 - 20 = 50 m.
+        assert!((bowl.spill - 50.0).abs() < 1.0, "spill {}", bowl.spill);
+        // The floor is the dry lake bed: 20 m + 25% of 30 m.
+        assert!((bowl.floor - 27.5).abs() < 0.5, "floor {}", bowl.floor);
+        assert!(bowl.cells.contains(&centre));
+        assert!(!bowl.cells.contains(&bowl.spill_cell));
+        assert!((bowl.depth - (bowl.spill - 20.0)).abs() < 0.1);
+        // The small hole is a shallow basin of pass 0.
+        let hole = (32 * size + 55) as u32;
+        let shallow = r.basins.iter().find(|b| b.cells.contains(&hole)).unwrap();
+        assert!(!shallow.deep && shallow.pass == 0);
+        assert!(shallow.depth > 1.0 && shallow.depth < 4.5);
+        // The same input gives the same records.
+        let again = partial_fill_basins(&h, size, 1e-3, 5.0, 0.25);
+        assert_eq!(again.basins, r.basins);
     }
 }

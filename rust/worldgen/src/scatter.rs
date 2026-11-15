@@ -373,7 +373,11 @@ pub fn chunk_instances(
                         * (1.0 - 0.7 * ground.lake)
                 }
                 Class::Shrub => {
-                    if ground.rock >= 0.5 || ground.sand >= 0.5 || ground.lake >= 0.5 {
+                    if ground.rock >= 0.5
+                        || ground.sand >= 0.5
+                        || ground.lake >= 0.5
+                        || ground.water >= 0.5
+                    {
                         continue;
                     }
                     (0.1 + 1.7 * clump) * (1.0 - ground.rock)

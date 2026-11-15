@@ -24,7 +24,7 @@ use crate::playtest::report::{append_tests, make_report, ReportInput};
 use crate::playtest::stats::{FrameHistogram, SecondStats};
 use crate::playtest::{
     files_to_delete, log_problems, parse_lines, scrub, session_name, BearSample, CameraSample,
-    Event, FrameRecord, InputSample, Sample,
+    Event, FrameRecord, InputSample, Sample, WaterSample,
 };
 use crate::smoke_edge::SMOKE_GROUP;
 use crate::terrain::TERRAIN_GROUP;
@@ -876,6 +876,19 @@ impl BfRecorder {
             smoke_m,
             smoke_s,
             seam_min: get_f("seam_min"),
+            water: d.get("water_body").map(|body| WaterSample {
+                body: body.try_to::<i64>().unwrap_or(0) as u32,
+                kind: d
+                    .get("water_kind")
+                    .map(|v| v.to_string())
+                    .unwrap_or_default(),
+                depth: get_f("water_depth"),
+                state: d
+                    .get("water_state")
+                    .map(|v| v.to_string())
+                    .unwrap_or_default(),
+                viscosity: get_f("water_viscosity"),
+            }),
         }
     }
 

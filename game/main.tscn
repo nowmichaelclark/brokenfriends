@@ -6,6 +6,8 @@
 
 [node name="Terrain" type="BfTerrain" parent="."]
 
+[node name="Water" type="BfWater" parent="."]
+
 [node name="SmokeEdge" type="BfSmokeEdge" parent="."]
 
 [node name="FlyCamera" type="BfFlyCamera" parent="."]

@@ -39,6 +39,8 @@ mod verlet;
 mod view_distance;
 mod water;
 mod water_mesh;
+mod waterfall;
+mod waterfall_mesh;
 
 struct BfExtension;
 

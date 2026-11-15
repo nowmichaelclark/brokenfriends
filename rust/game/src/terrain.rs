@@ -667,6 +667,21 @@ impl BfTerrain {
         })
     }
 
+    /// Gives the push of a waterfall at a place (S-165), if the place is
+    /// in the curtain of a fall. `None` if the zone has no falls.
+    pub fn fall_push_at(
+        &self,
+        x: f32,
+        y: f32,
+        z: f32,
+    ) -> Option<bf_worldgen::waterfalls::FallPush> {
+        let zone = self.zone.as_ref()?;
+        if zone.water.falls.is_empty() {
+            return None;
+        }
+        zone.water.fall_push_at(x, y, z)
+    }
+
     /// Gives the caves of the current zone (S-164).
     pub fn cave_world(&self) -> Option<&Arc<CaveWorld>> {
         self.cave_world.as_ref()
@@ -899,9 +914,10 @@ impl BfTerrain {
         godot_print!(
             "BfTerrain: seed {}, {size} x {size} samples, heights {lo:.0} to {hi:.0} m, \
              generation {seconds:.1} s, Terrain3D import {show_ms:.0} ms, water bodies: {}, \
-             cave systems: {} ({cave_seconds:.2} s), obstacles: {}",
+             {}, cave systems: {} ({cave_seconds:.2} s), obstacles: {}",
             zone.seed,
             zone.water.bodies.len(),
+            zone.water.falls_report(&self.params().water),
             self.cave_world
                 .as_ref()
                 .map_or(0, |w| w.caves.systems.len()),

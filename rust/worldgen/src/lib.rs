@@ -17,6 +17,7 @@ pub mod rivers;
 pub mod scatter;
 pub mod smoke;
 pub mod water;
+pub mod waterfalls;
 
 pub use heightmap::HeightMap;
 pub use highlands::{Ground, HighlandsParams, Zone};

@@ -12,6 +12,7 @@
 use crate::atmosphere::ATMOSPHERE_GROUP;
 use crate::terrain::{BfTerrain, TERRAIN_GROUP};
 use crate::water_mesh::{build_meshes, MeshParams, TileMesh};
+use crate::waterfall::BfWaterfalls;
 use bf_worldgen::water::WaterKind;
 use godot::classes::geometry_instance_3d::ShadowCastingSetting;
 use godot::classes::image::Format;
@@ -35,6 +36,10 @@ const WATER_SHADER: &str = include_str!("water.gdshader");
 /// to the centre than this, in metres: inside the smoke wall (at least 590 m). The view
 /// looks toward the centre of the zone, away from the wall.
 const TEST_LAKE_RADIUS_M: f32 = 580.0;
+
+/// The camera of a fall view is this far from the fall, in metres (the
+/// worst view of the GPU budget: 15 m from the largest fall).
+const TEST_FALL_DISTANCE_M: f32 = 15.0;
 
 /// The size of the ripple texture in pixels.
 const RIPPLE_SIZE: usize = 128;
@@ -196,6 +201,8 @@ pub struct BfWater {
 
     /// Test only (`--bf-water-fog_off=on`): the water has no fog.
     fog_off_test: bool,
+    /// The waterfalls (S-165): a child node.
+    falls: Option<Gd<BfWaterfalls>>,
     material: Option<Gd<ShaderMaterial>>,
     /// The sun of the atmosphere, for the glint of unshaded water.
     sun: Option<Gd<DirectionalLight3D>>,
@@ -217,6 +224,10 @@ pub struct BfWater {
 impl INode3D for BfWater {
     fn ready(&mut self) {
         self.base_mut().add_to_group(WATER_GROUP);
+        let mut falls = BfWaterfalls::new_alloc();
+        falls.set_name("Waterfalls");
+        self.base_mut().add_child(&falls);
+        self.falls = Some(falls);
         for arg in Os::singleton().get_cmdline_user_args().as_slice() {
             let arg = arg.to_string();
             if arg == "--bf-water=off" {
@@ -331,10 +342,12 @@ impl BfWater {
         let Some(camera) = self.base().get_viewport().and_then(|v| v.get_camera_3d()) else {
             return 0;
         };
+        let falls = self.falls.as_ref().map_or(0, |f| f.bind().drawn_meshes());
         self.tiles
             .iter()
             .filter(|(_, t)| aabb_in_view(&camera, t.aabb))
             .count() as i32
+            + falls
     }
 
     /// Gives the overlay line: bodies, meshes, triangles and the build time.
@@ -343,8 +356,12 @@ impl BfWater {
         if !self.show_water {
             return GString::from("off");
         }
+        let falls = self
+            .falls
+            .as_ref()
+            .map_or(GString::new(), |f| f.bind().debug_text());
         GString::from(&format!(
-            "{} bodies ({} rivers), {} meshes ({} in view), {} triangles, built in {:.0} ms",
+            "{} bodies ({} rivers), {} meshes ({} draws in view), {} triangles, built in {:.0} ms; falls: {falls}",
             self.bodies,
             self.rivers,
             self.tiles.len(),
@@ -375,6 +392,16 @@ impl BfWater {
             }
         } else if name == "river_rapids" {
             if let Some(v) = zone.water.river_view(TEST_LAKE_RADIUS_M, 3.0) {
+                out.push(Vector3::new(v.eye[0], v.eye[1], v.eye[2]));
+                out.push(Vector3::new(v.target[0], v.target[1], v.target[2]));
+            }
+        } else if let Some(tallest) = fall_view_kind(&name) {
+            if let Some(v) = zone.water.fall_view(
+                &zone.heights,
+                TEST_LAKE_RADIUS_M,
+                tallest,
+                TEST_FALL_DISTANCE_M,
+            ) {
                 out.push(Vector3::new(v.eye[0], v.eye[1], v.eye[2]));
                 out.push(Vector3::new(v.target[0], v.target[1], v.target[2]));
             }
@@ -419,8 +446,35 @@ impl BfWater {
                     river.flow_mps
                 ));
             }
+        } else if let Some(tallest) = fall_view_kind(&name) {
+            if let Some(v) = zone.water.fall_view(
+                &zone.heights,
+                TEST_LAKE_RADIUS_M,
+                tallest,
+                TEST_FALL_DISTANCE_M,
+            ) {
+                let f = &zone.water.falls[v.fall as usize];
+                return GString::from(&format!(
+                    "fall #{} ({}, {:.0} m high, {:.0} m wide, {})",
+                    f.number,
+                    f.feature.name(),
+                    f.height_m,
+                    f.width_m,
+                    if f.thick { "thick" } else { "normal water" }
+                ));
+            }
         }
         GString::new()
+    }
+}
+
+/// Tells if a test view name is a fall view: `Some(true)` for the
+/// tallest fall, `Some(false)` for the widest fall.
+fn fall_view_kind(name: &GString) -> Option<bool> {
+    match name.to_string().as_str() {
+        "tallest_fall" => Some(true),
+        "widest_fall" => Some(false),
+        _ => None,
     }
 }
 

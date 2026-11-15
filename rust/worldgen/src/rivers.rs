@@ -46,6 +46,8 @@ pub struct RiverCell {
     /// The index of the next cell downstream in `Water::river_cells`, or
     /// `u32::MAX` at the mouth.
     pub next: u32,
+    /// The width of the riverbed at the cell, in metres.
+    pub width_m: f32,
 }
 
 /// A rapid or a waterfall: a large drop from one river cell to the next.
@@ -408,6 +410,7 @@ pub fn add_rivers(
             flow: smooth[i],
             foam: foam[i],
             next: u32::MAX,
+            width_m: inp.width[i],
         });
     }
     for i in (0..n).filter(|&i| compact[i] != u32::MAX) {
@@ -481,6 +484,7 @@ pub fn add_rivers(
         })
         .collect();
     water.river_cells = cells;
+    water.falls = crate::waterfalls::make_falls(water, &water.river_cells, &water.river_steps, p);
 }
 
 /// The Water view test prefers a rapid with a drop up to this, in metres.

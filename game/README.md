@@ -267,6 +267,44 @@ what it assumes.
     replaces this with the real swim.
   - **The camera** stays 0.2 m above the water (`water_clearance_m`).
   - **The start point** is never in the water.
+  - **Waterfalls** (S-165). `rust/worldgen/src/waterfalls.rs` joins the
+    fall steps of the rivers (drops of more than 2.5 m or steeper than
+    45 degrees that follow each other) into one fall: a path, a width, a
+    height, a direction. Each zone has 40 to 55 falls (seeds 1, 7, 42);
+    the tallest are 41 to 80 m, as steep cascades of 20 to 50 m of
+    run. `Water::falls_report` says in the generation line of the log
+    which zone has a tall fall (40 m or more) and a wide fall (30 m or
+    more), or why it has none.
+    `BfWaterfalls` (a child of `BfWater`, `waterfall.rs`,
+    `waterfall_mesh.rs`, `waterfall.gdshader`) draws them: each tile
+    of the zone has two surfaces, so a fall adds 2 draw calls for each
+    tile in view (8 at the most).
+    - **The curtain** is a sheet that follows the ground 0.35 m above it
+      along the path of the fall, with the water mask 0 where the
+      ground is higher than the water. It is opaque with an alpha
+      scissor: a scrolling noise makes streaks and a ragged edge. It
+      has no blending.
+    - **The effects** are blended: a foam square on the pool, 8 to 64
+      splash particles and 3 to 8 mist cards (none for a fall under 6
+      m). The splash and the mist are cards that face the camera and
+      move in the vertex shader: there are no particle nodes. Splash
+      shrinks away beyond 160 m, mist beyond 250 m, and a mist card
+      fades out near the camera, so it never fills the screen.
+    - **Thick water** (viscosity 0.5 or more: mud, tar) falls as a few
+      slow ropes with no mist.
+    - **The push on the bear** (`BfBear`, `fall_push_accel` 16 m/s²,
+      `fall_push_max_speed` 6 m/s, `fall_thick_part`): in the curtain,
+      the bear gets an acceleration along the fall and down, in the
+      middle of the curtain and weaker at its edge. Events: `fall_in:#<fall>`
+      and `fall_out`.
+    - **The cuts of the GPU budget** (`demo-2.md`): `--bf-waterfalls-mist=off`,
+      then `--bf-waterfalls-splash=off`, then `--bf-waterfalls=off` (also
+      the `mist`, `splash`, `mist_far_m` and `splash_far_m` fields on the
+      node). The Water view has two new views: `tallest_fall` and
+      `widest_fall`, 15 m from the foot of the fall, 2.5 m above the
+      pool. The report writes "waterfalls on" or "waterfalls off".
+    - **Cost.** Not measured (S-165 ran on a busy laptop). Commands for
+      the lead are in the summary of the commit.
   - **Debug.** The overlay line `water:` shows the bodies, the meshes
     (and the meshes in view), the triangles and the build time. The dev
     menu has "Water (lakes, ponds): on/off". `--bf-water=off` on the
@@ -529,7 +567,9 @@ what it assumes.
     river, about 14 m below a rapid within 580 m of the centre, and
     looks up the river at the rapid. It uses the largest river that has
     a rapid of 1.2 m or less there. Each view lasts 6 s; the numbers start after 2 s.
-    S-165 adds the falls.
+    Then (S-165) it stops 15 m from the tallest and from the widest fall
+    within 580 m of the centre (2.5 m above the pool, looking at the
+    middle of the curtain). A zone without such a fall skips the view.
   - **Cave tour** (S-164): for seeds 1, 7 and 42, the camera flies at
     10 m/s from 50 m outside the widest hillside mouth to the mouth,
     down the tunnels to the widest chamber within 400 m, once around it
@@ -552,8 +592,9 @@ what it assumes.
     `-- --bf-test=cave-tour` starts the
     test when the first zone shows and quits the game at the end. Add
     `--bf-record` for a recording without a window. Add `--bf-water=off`
-    to measure the same views without water (run each setting in a new
-    process). The report writes the setting ("water on" or "water off").
+    to measure the same views without water, or `--bf-waterfalls=off`
+    without the falls (run each setting in a new process). The report
+    writes the settings ("water on", "waterfalls on").
 - **`BfAutoplay`** is the autoplay bot (S-133, `plan/diagnostics.md`,
   `rust/game/src/autoplay.rs`). It plays the bear through virtual
   gamepad input: it sends joypad events to Godot (left stick, A, B and
@@ -1153,6 +1194,21 @@ Mikey does not build on his laptop (decision R10).
   the rain in this zone. Mikey: are short, steep streams enough, or
   should the zone have longer rivers (more full lakes, or less steep
   valleys)?
+- **The falls are natural; the zone carves no cliff** (S-165).
+  `demo-2.md` says to carve a flat lip at the best candidate. The rivers
+  already make steep cascades of 40 to 80 m on seeds 1, 7 and 42, so the
+  tall fall is the highest natural fall if it is 40 m or more. The wide
+  fall is the best natural fall (height times width) that is 8 m high or
+  more: it is drawn 30 m wide, but only where the ground is below its
+  water, so it is as wide as its valley allows. A river step has the
+  slope of a cascade (45 to 60 degrees), not a vertical drop. Mikey: do
+  you want true cliffs (a carved, near-vertical drop with an overhang)?
+- **Lake outlets have no special fall** (S-165). A fall below a full lake
+  is a fall of the river that leaves it. A lake that spills over a
+  small step has no curtain.
+- **The push of a fall is a push, not a hold** (S-165). The bear in the
+  curtain gets 16 m/s² along the fall (at most 6 m/s), and it can walk
+  out. It does not fall or tumble by itself.
 - **Rivers are numbered after the lakes and ponds** (S-162). Thus the
   numbers of the lakes stay the same as in S-160.
 - **A riverbed now runs out of each full lake** (S-162). The wet flow

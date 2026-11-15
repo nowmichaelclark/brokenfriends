@@ -74,6 +74,13 @@ pub struct WaterParams {
     /// A drop steeper than this (rise divided by run, 1 is 45 degrees) is
     /// a waterfall.
     pub fall_slope: f32,
+    /// The tall fall of a zone is at least this high, in metres (S-165).
+    pub tall_fall_m: f32,
+    /// The wide fall of a zone is drawn at least this wide, in metres.
+    pub wide_fall_m: f32,
+    /// The wide fall is the best fall that is at least this high, in
+    /// metres.
+    pub wide_min_height_m: f32,
     /// The slowest river flow, in metres each second.
     pub flow_min_mps: f32,
     /// The flow gets this much faster for each unit of the square root
@@ -108,6 +115,9 @@ impl Default for WaterParams {
             rapid_drop_m: 0.5,
             fall_drop_m: 2.5,
             fall_slope: 1.0,
+            tall_fall_m: 40.0,
+            wide_fall_m: 30.0,
+            wide_min_height_m: 8.0,
             flow_min_mps: 0.3,
             flow_slope_k: 6.0,
             flow_max_mps: 3.5,
@@ -296,6 +306,8 @@ pub struct Water {
     pub river_sample_cell: Vec<u32>,
     /// The rapids and the waterfalls of the rivers.
     pub river_steps: Vec<RiverStep>,
+    /// The waterfalls: the fall steps of the rivers, joined (S-165).
+    pub falls: Vec<crate::waterfalls::Waterfall>,
 }
 
 /// The water at one place.
@@ -812,6 +824,11 @@ impl Water {
             eat(c.flow[0].to_bits());
         }
         eat(self.river_steps.len() as u32);
+        for f in &self.falls {
+            eat(f.body);
+            eat(f.height_m.to_bits());
+            eat(f.width_m.to_bits());
+        }
         h
     }
 

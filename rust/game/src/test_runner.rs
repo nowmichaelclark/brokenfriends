@@ -16,6 +16,7 @@ use crate::recorder::RECORDER_GROUP;
 use crate::terrain::TERRAIN_GROUP;
 use crate::view_distance::{VIEW_CAMERA_GROUP, VIEW_DISTANCE_GROUP};
 use crate::water::WATER_GROUP;
+use crate::waterfall::WATERFALLS_GROUP;
 use bf_worldgen::caves::{Tour, TOUR_PARTS};
 use godot::classes::performance::Monitor;
 use godot::classes::{
@@ -717,9 +718,13 @@ impl BfTestRunner {
         let cut_on = self
             .node(CAVES_GROUP)
             .is_some_and(|mut c| c.call("is_deep_cut_enabled", &[]).booleanize());
+        let falls_on = self
+            .node(WATERFALLS_GROUP)
+            .is_some_and(|mut w| w.call("is_falls_shown", &[]).booleanize());
         let settings = format!(
-            "water {}, caves {}, deep-cave cut {}",
+            "water {}, waterfalls {}, caves {}, deep-cave cut {}",
             if water_on { "on" } else { "off" },
+            if falls_on { "on" } else { "off" },
             if caves_on { "on" } else { "off" },
             if cut_on { "on" } else { "off" }
         );

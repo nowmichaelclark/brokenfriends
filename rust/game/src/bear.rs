@@ -567,6 +567,27 @@ pub struct BfBear {
     #[init(val = 1.5)]
     water_entry_speed: f32,
 
+    /// A waterfall pushes the bear in its curtain: the push in m/s each
+    /// second (S-165). The push goes along the fall and down. 0 turns it
+    /// off.
+    #[export]
+    #[init(val = 16.0)]
+    fall_push_accel: f32,
+
+    /// The push of a waterfall does not make the bear faster than this
+    /// along the push, in m/s.
+    #[export]
+    #[init(val = 6.0)]
+    fall_push_max_speed: f32,
+
+    /// A thick fall (mud, tar) pushes with this part of the push.
+    #[export]
+    #[init(val = 0.4)]
+    fall_thick_part: f32,
+
+    /// The bear is in the curtain of this fall now (for the events).
+    in_fall: Option<u32>,
+
     /// The bear floats now.
     swimming: bool,
     /// The water at the feet in the last physics step.
@@ -1105,6 +1126,7 @@ impl BfBear {
         let on_floor = self.base().is_on_floor();
 
         let mut velocity = self.base().get_velocity();
+        velocity += self.fall_push(delta, velocity);
         // A throw ends when the bear is on the ground and does not go up.
         if on_floor && velocity.y <= 0.01 {
             self.thrown = None;
@@ -1233,6 +1255,41 @@ impl BfBear {
         self.try_grab(delta, wish);
     }
 
+    /// Gives the change of velocity that a waterfall makes in this step
+    /// (S-165): zero if the bear is not in a curtain. The push goes down
+    /// the fall; it stops when the bear is as fast as `fall_push_max_speed`
+    /// along it. The recorder gets `fall_in:#<number>` and `fall_out`.
+    fn fall_push(&mut self, delta: f32, velocity: Vector3) -> Vector3 {
+        let feet = self.base().get_global_position();
+        let push = if self.fall_push_accel > 0.0 {
+            self.base()
+                .get_tree()
+                .get_first_node_in_group(TERRAIN_GROUP)
+                .and_then(|t| t.try_cast::<BfTerrain>().ok())
+                .and_then(|t| t.bind().fall_push_at(feet.x, feet.y + 0.2, feet.z))
+        } else {
+            None
+        };
+        let Some(push) = push else {
+            if self.in_fall.take().is_some() {
+                self.event("fall_out");
+            }
+            return Vector3::ZERO;
+        };
+        if self.in_fall != Some(push.fall) {
+            self.in_fall = Some(push.fall);
+            self.event(&format!("fall_in:#{}", push.fall));
+        }
+        let dir = Vector3::new(push.direction[0], push.direction[1], push.direction[2]);
+        let part = if push.thick {
+            self.fall_thick_part.clamp(0.0, 1.0)
+        } else {
+            1.0
+        };
+        let room = (self.fall_push_max_speed - velocity.dot(dir)).max(0.0);
+        dir * (self.fall_push_accel * push.strength * part * delta).min(room)
+    }
+
     /// Reads the water at the feet. Starts or ends the float. Gives true
     /// if the bear floats now.
     fn update_water(&mut self) -> bool {
@@ -1278,6 +1335,7 @@ impl BfBear {
         };
         let feet = self.base().get_global_position();
         let mut velocity = self.base().get_velocity();
+        velocity += self.fall_push(delta, velocity);
         let thick =
             1.0 - (1.0 - self.thick_speed_part.clamp(0.0, 1.0)) * w.viscosity.clamp(0.0, 1.0);
         let speed = thick

@@ -39,6 +39,9 @@ seams, smoke edge) is built and waits for Mikey's feel notes. Demo 2
 
 ## Recommended order
 
+0. **S-206 first** (Mikey, 2026-11-15): a planning lead on Fable 5.2,
+   medium. It plans the types of lead sessions and the way of working.
+   It may change the order below.
 1. **S-163** (swimming, Sonnet, high). It is the last row before
    Mikey's first look at demo 2 (S-167). Parallel with it: **S-187**
    (dev menu caves line and "go to the nearest mouth", Sonnet, low),

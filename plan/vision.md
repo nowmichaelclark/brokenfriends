@@ -18,6 +18,24 @@ gameplay.
   textures and rules can change. Strange things stand next to normal
   things. The mood is calm but a little wrong.
 
+## Procedural almost everything (Mikey, 2026-11-15)
+
+Mikey sees a game that is very dynamic to play, because procedural
+generation controls almost everything. He does not know the details
+yet. This is the long-term direction, not a plan or a roadmap item.
+
+- A seed can choose the look of things, the size of things and the
+  timing of things, not only the shape of the ground.
+- Weights (or another control) keep the results good, so that the
+  parts of a world come together well.
+- Two worlds can feel very different. Mikey's examples, only to show
+  the scale of the idea: a world full of geysers, a waterfall wider
+  than Niagara Falls, or caves with very strange, unique shapes.
+
+Thus, when a session makes a system, it keeps the values that a seed
+could choose as data (ranges and weights), not as fixed constants in
+the code. Do not build this generality before a row asks for it.
+
 ## Things Mikey wants later
 
 - Very strange structures: land bridges, arches, objects like

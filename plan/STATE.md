@@ -1,6 +1,6 @@
 # State
 
-Updated: 2026-11-15 (lead Brain: water, rivers, falls and caves on the Intel GPU)
+Updated: 2026-11-15 (lead Brain: S-206, a planning lead on the way of working)
 
 Write this file again each time. Do not add to the end (90 lines at most).
 
@@ -20,7 +20,7 @@ terrain shader, cheaper shadows and sky light, `research/gpu-speed.md`). The Git
 ## Agenda
 
 To start a session, Mikey opens the place in the "Where" column. He selects the model and effort, then types "Run S-NNN". At the end of a session, the session deletes its row. It changes the rows that it unblocks to **ready**. It adds follow-up rows at the bottom.
-Next number: S-144. A cloud worker of the lead Brain chat numbers its new rows from the range in its brief.
+Next number: S-207. A worker of the lead numbers its new rows from the range in its brief.
 
 | # | Session | Where | Model, effort | Status |
 |---|---|---|---|---|
@@ -58,6 +58,7 @@ Next number: S-144. A cloud worker of the lead Brain chat numbers its new rows f
 | S-203 | **Build: the bear in a fall** (R11, R12, R18). Tune `fall_push_accel` from the recorder events `fall_in` and `fall_out`. Add the tumble, the wet parts and the splash on the bear when it stands in a curtain, and a spray when it enters the pool. | Lead chat (cloud worker) | Sonnet 5.5, medium | waiting on S-163, S-167 |
 | S-204 | **Build: falls in the autoplay** (`diagnostics.md`, "Autoplay"). Add the tour task "stand in a fall" (go to the foot of the tallest fall within 580 m, then climb into the curtain). Count `fall_in` events in the report. | Lead chat (cloud worker) | Sonnet 5.5, low | waiting on S-171 |
 | S-205 | **Build: a Cave tour without caves, for the base cost.** With `--bf-caves=off` the Cave tour finds no cave and flies nowhere. Keep the cave data for the path, and hide only the cave meshes, rims and holes. Then the outside part gives the cost of the caves seen from outside (budget 0.3 ms). | Claude Code (local) | Sonnet 5.5, medium | **ready** |
+| S-206 | **Brain (planner, lead): how we work from now on.** A planning session only: read the plan files, `plan/sessions/`, `HANDOFF.md`, the newest commits (their weak spots) and the wiki, not the code. 1) Assess how we work now: what works, what does not, what can change (the lead and its workers, Mikey's play as the bottleneck, speed work that needs a quiet laptop, the wiki, `STATE.md` over its limit, model and usage limits). 2) Propose types of lead sessions, each with a short brief in `plan/sessions/`: for example bird's-eye, speed, research and wiki, tech debt and repo hygiene, tuning and feel, and a builder lead. Say how often each runs and how they hand work to each other. 3) Give two or three options for the way of working, with a recommendation; Mikey selects. 4) Keep the proc-gen direction of `vision.md` (2026-11-15) in view. 5) Make `STATE.md` short and clear (for example one agenda per lead type). Write decisions only after Mikey agrees. End with `HANDOFF.md`. | Claude Code (local) | Fable 5.2, medium | **ready**: do this first |
 
 ## Combined runs
 

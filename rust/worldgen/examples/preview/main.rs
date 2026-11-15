@@ -8,15 +8,32 @@
 //! - `--spacing M`: the distance between samples in metres (default 1).
 //! - `--out DIR`: the folder for the images (default `preview`).
 //!
-//! For each seed, the tool writes four images:
+//! For each seed, the tool writes four images of the ground:
 //! - `seed_N_height.png`: the heights, 16 bits, black is low.
 //! - `seed_N_relief.png`: a map with ground colours and shadows.
 //! - `seed_N_air.png`: a view from the air through haze.
 //! - `seed_N_ground.png`: a view from the eyes of the bear.
+//!
+//! It also writes images of the caves (S-161). Cave air is blue where
+//! it sees no sky and yellow where it sees the sky. Rock is brown and
+//! open air is pale.
+//! - `seed_N_caves_map.png`: the cave graph from above, 2 m for each
+//!   pixel. Light colours are near the ground, dark colours are deep.
+//!   Red dots are hillside mouths, cyan dots are sinkholes, the white
+//!   cross is the start point, and the grey circle is the safe part.
+//! - `seed_N_caves_yH.png`: a horizontal slice at the height H, 1 m for
+//!   each pixel.
+//! - `seed_N_cave_S_path.png`: a vertical slice of system S along the
+//!   way from its first mouth down to its deepest chamber, 1 m for each
+//!   pixel. The way is straightened.
+//! - `seed_N_cave_S_hall.png`: a vertical slice from west to east
+//!   through the hall (the first chamber) of system S.
 
 use bf_worldgen::highlands::{generate, HighlandsParams, Zone};
 use rayon::prelude::*;
 use std::path::PathBuf;
+
+mod caves;
 use std::time::Instant;
 
 const SUN: [f32; 3] = [0.52, 0.56, 0.64];
@@ -49,6 +66,9 @@ fn main() {
         let mut zone = generate(seed, size, spacing, &params);
         let seconds = start.elapsed().as_secs_f32();
         print_numbers(&zone, seconds);
+        // The caves come before the obstacles, as in the game: they read
+        // the heights before the ash crusts dig their pits.
+        caves::write_all(&zone, &out);
         print_obstacles(&mut zone);
 
         let colours = zone.ground_colours();

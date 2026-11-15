@@ -90,3 +90,6 @@ sorts them.
 - Bear: muddy or coloured water leaves a stain on the fur that stays after the fur dries and fades slowly.
 - Caves: use the run-length columns of `research/caves-and-sdf.md` if caves must change while the game runs (digging, collapse).
 - Swimming: diving under water, with the view and the light under the surface (demo 2 has floating only).
+- Caves: bake the sky visibility with a few ray casts for each chunk (S-166) if the value from the tunnel distance looks wrong, mainly under sinkholes.
+- Caves: chambers with more shape (two or three joined balls, pillars, fallen blocks) after Mikey sees the first chamber.
+- Caves: a min-height pyramid for the roof checks in `caves/build.rs` if zones get larger than 2 km.

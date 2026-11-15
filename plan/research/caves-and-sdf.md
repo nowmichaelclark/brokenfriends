@@ -38,3 +38,34 @@ you copy code.
 | Zylann/godot_voxel, https://github.com/Zylann/godot_voxel | Godot chunk streaming, collision and threads (C++, read only). | MIT |
 | Veloren devblogs, https://veloren.net/blog/devblog-16/ | Column storage ("chonks"). | GPL-3.0. Study only. |
 | Godot docs, Using the ArrayMesh | The glue from Rust to Godot. | Docs. |
+
+## What S-161 built (2026-11-15)
+
+The graph answers the queries, so the cave layer stores no RLE
+columns. The code is in `rust/worldgen/src/caves/`.
+
+- **Shapes.** A chamber is an ellipsoid with a flat floor plane. Its
+  distance is the estimate `k0 * (k0 - 1) / k1` of Inigo Quilez. The
+  code clamps the estimate between two simple bounds, so the bound
+  check stays safe. A tunnel is a chain of capsules with a linear
+  radius. Only the formulas come from the articles; the code is our own.
+- **Smooth union.** The polynomial smooth minimum of Inigo Quilez. A
+  chain of joins is never more than `k` below the smallest value.
+- **A rule that keeps chunks equal.** A shape counts at a point only if
+  its distance there is less than its reach (6 m + 2k + the bumps). The
+  rule depends only on the point. Thus the grid, a chunk fill and a
+  loop over all shapes give the same bits (a test checks this).
+- **Bound check.** Each shape gives the lowest and highest distance in
+  a ball around the block, from its Lipschitz constant. The 32 m blocks
+  of seeds 1, 7 and 42 (4 m test zones): about 92% have no cave, and
+  about 35 to 40% of the rest have a wall on a 4 m grid.
+- **Noise.** Our own 3D gradient noise with the 12 cube-edge gradients
+  of Ken Perlin's improved noise (2002), 4 octaves, 40 m.
+- **Sky visibility.** Dijkstra on the graph gives the distance to the
+  nearest mouth. The light falls exponentially along the tunnels. This
+  is cheap and smooth, but it is not a ray cast.
+
+| Source | Use | Licence |
+|---|---|---|
+| Inigo Quilez, "distance functions" and "smooth minimum", https://iquilezles.org/articles/ | Ellipsoid estimate, smooth union (formulas only). | Articles; no code copied. |
+| Ken Perlin, "Improving Noise" (SIGGRAPH 2002) | Gradient set and fade curve. | Paper; no code copied. |

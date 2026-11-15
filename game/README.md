@@ -21,6 +21,32 @@ what it assumes.
   5. The drainage step finds where rain goes. Deep closed basins get a
      flat dry lake bed. Paths that collect much rain become dry
      riverbeds. A river stops at the shore of a dry lake.
+- **The cave layer** (S-161, `bf-worldgen`, `caves/`). The game does
+  not use it yet (S-164 does). It makes two to five cave systems in each
+  zone, from the zone heights and the seed:
+  - Each system is a graph. A node is a chamber (a flattened ball with a
+    flat floor, 40 to 250 m wide) or a joint. An edge is a tunnel (a
+    chain of capsules, 3 to 25 m wide, bent by noise) or a sinkhole
+    shaft. Smooth union joins the shapes, and 3D noise makes bumps in
+    the walls.
+  - Each system starts at a hillside mouth. A tunnel goes from the
+    mouth to the first chamber (the hall, 100 m wide or more). A chain
+    of chambers goes down 250 to 400 m below the mouth. Some systems also have side tunnels, a loop or a
+    sinkhole.
+  - All caves stay 60 m inside the nearest place of the smoke front.
+    The rock above a cave is at least 8 m thick, except at mouths.
+  - The signed distance field (SDF) is not stored. A grid of 16 m
+    columns lists the shapes near each column. `cave_value`, `air_value`
+    and `fill_air` (one chunk of 34³ samples for Surface Nets) give the
+    SDF. `classify_block` is the bound check: it tells if a block has no
+    cave, only cave air, or a wall.
+  - Queries without a mesh: `in_cave`, `floor_below`, `ray_hit`,
+    `sky_visibility` and `chamber_at`. `hole_mask` gives the hole cells
+    of the mouths and a band around them, for the Terrain3D control map.
+  - Costs (release build, on a laptop that was busy with another
+    build): the graph and the grid take 30 to 70 ms for a full zone. In
+    the tests, one SDF sample takes about 0.2 to 0.3 µs, and one chunk
+    of 34³ samples takes 1.5 to 3.2 ms on one thread.
 - **`BfTerrain`** makes a zone of 2048 × 2048 m from a seed on a worker
   thread. It gives the heights and the ground colours to the Terrain3D
   addon. Terrain3D draws the ground and makes the collision. Push F4
@@ -633,7 +659,14 @@ cargo run --release -p bf-worldgen --example preview -- --seed 1 --seed 7 --seed
 
 For each seed, the tool writes four PNG images into `rust/preview/`: a
 height image, a map with shadows, a view from the air, and a view from
-the eyes of the bear. It also prints the time, the height range and
+the eyes of the bear. It also writes images of the caves: a map of the
+cave graph (`seed_N_caves_map.png`), four horizontal slices through
+chambers (`seed_N_caves_yH.png`), and for each system a vertical slice
+along the way from the mouth to the deepest chamber
+(`seed_N_cave_S_path.png`) and through the hall
+(`seed_N_cave_S_hall.png`). In the slices, rock is brown and open air
+is pale. Cave air is dark blue where it sees no sky and yellow where
+it sees the sky. It also prints the time, the height range and
 the parts of the zone that the bear can walk (less than 35 degrees) or
 must climb (more than 50 degrees). In the cloud container, one zone
 takes 2.3 s (release) or 2.8 s (dev build in the game).
@@ -939,6 +972,24 @@ Mikey does not build on his laptop (decision R10).
   guesses (`max_seconds`, `max_depth_m` on `SmokeEdge`). A jogging bear
   (3.2 m/s) reaches 45 m in 14 s, so the time kills first. Mikey: is
   12 s too short or too long?
+- **Caves (S-161).** These are first guesses. Mikey can change them
+  after he walks in a cave (S-167):
+  - Each system has one hillside mouth and sometimes one sinkhole. The
+    generator makes no crumbling floors yet (S-172 does).
+  - Chamber floors are flat, with small bumps (30% of the wall bumps),
+    so that the bear can walk on them. Chamber walls and roofs are
+    round with bumps of up to 8 m.
+  - The tunnel from the mouth to the hall descends at about 16 degrees.
+    If the zone has no room for that, it is steeper (up to 29 degrees
+    in seeds 1, 7 and 42, and 42 degrees at most). Tunnels between the
+    deeper chambers can be up to about 42 degrees steep.
+  - Sky visibility comes from the distance along the tunnels to the
+    nearest mouth. It falls to 37% each 24 m. A metre of sinkhole
+    shaft counts as 0.35 m. Thus a hall far from the mouth is fully
+    dark. This is not a ray cast, so a chamber under a sinkhole gets one
+    value for all of its air.
+  - The caves come from the heights before the obstacles dig their
+    pits.
 - **A square zone has a round wall.** The front is a radius from the
   centre, not a distance from the border. The wall is 40 m or more
   inside the border at all places. The corners of the zone are far

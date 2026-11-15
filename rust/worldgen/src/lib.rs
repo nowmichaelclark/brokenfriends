@@ -4,6 +4,7 @@
 //! always gives the same result. The code uses no `sin`, `cos` or `powf`
 //! in generation, so the results are the same on all computers.
 
+pub mod caves;
 pub mod detmath;
 pub mod drainage;
 pub mod erosion_filter;

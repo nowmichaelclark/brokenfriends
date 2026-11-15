@@ -52,5 +52,9 @@ version" are still valid.
 - **Erosion filter:** keep the MPL-2.0 port for now. Write our own
   erosion simulation later, for the dynamic world (avalanches, sand,
   runtime erosion). That is a different tool from the filter.
+- **The recipe** (`recipe.md`, S-210): four questions with a
+  recommended option each: how different two zones are, if the seed
+  changes how the bear plays, if a zone can have none of a thing, and
+  when the work starts.
 - **Zone edge for demo 1:** the smoke edge only. Goo and lava come
   later.

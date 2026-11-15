@@ -1,14 +1,13 @@
 # Handoff to the next lead session
 
 Written: 2026-11-15, night, at the end of S-206 (a planning lead,
-Fable 5.2). **The next lead is a Fix lead**, for the bug tools S-213
+Fable 5.2), and changed by S-210. **The next lead is a Fix lead**, for the bug tools S-213
 to S-216 (not for the bugs first), then a Builder lead. Mikey starts it with: "Start the Fix lead. Read
 plan/sessions/lead.md."
 
-**Before it, if Fable 5.2 is still available (until 2026-11-16):**
-"Run S-210". It writes `plan/recipe.md`, the foundation for
-"procedural almost everything". After that date, all leads use Opus
-5.5 or Sonnet 5.5.
+**S-210 is done** (the last Fable 5.2 session): `plan/recipe.md` is
+the foundation for "procedural almost everything". All leads now use
+Opus 5.5 or Sonnet 5.5.
 
 ## Start here
 
@@ -46,6 +45,27 @@ light are on `main` (build 2e2d5f8).
 - S-184 is now part of S-167, so Mikey plays one sitting.
 - New rows: S-207 and S-208 (Hygiene), S-209 and S-210 (Research),
   S-211 (Bird's-eye), S-212 (Fix: the bugs that Mikey sees now).
+
+## The recipe (S-210, `recipe.md`)
+
+A seed will choose the character of a zone, not only the places of
+things. The seed sets a few dials (wet, rugged, hollow, danger, cover,
+smog, strange). One or two dials are heroes and go far. Each system
+has a table of knobs with hard ranges, and a dial moves its knobs
+together. The plain recipe is the world of today, bit for bit, and
+tests and speed tests use it.
+
+- The base rows change nothing that Mikey plays: S-217 (a test that
+  fixes the zones of seeds 1, 7 and 42; do it first, in the Fix
+  lead), S-218 (the core), S-219 (one recipe in the game).
+- The system rows S-220 to S-225 are one system each and can run
+  beside each other after S-219. They show only in "seeded" mode.
+- Mikey has four questions in `recipe.md` (how different, does the
+  bear change, can a zone lack a thing, when to start). The rows
+  build the recommended option until he answers.
+- `recipe.md` lists ten risks in the code. The worst: no test fixes
+  the world of a seed, and the caves and the smoke edge read the
+  smoke values from two places.
 
 ## Mikey's bugs (S-212)
 
@@ -95,3 +115,4 @@ same files, so do not run them at the same time.
 - Longer rivers (S-191) and true cliffs for the big falls (S-202).
 - The new water look after S-180 (in S-167).
 - Demo 1: are the obstacles the right kinds? The visual style.
+- The four questions of `recipe.md`.

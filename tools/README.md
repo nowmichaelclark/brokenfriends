@@ -51,6 +51,9 @@ and makes it better.
 | Look tour (clean pictures of each kind of thing) | S-215 |
 | Look review (faults in pictures, reference pictures) | S-216 |
 | Water sweep (one table of GPU ms for many settings) | S-182 |
+| Zone fingerprint (a test fails when the zone of a seed changes) | S-217 |
+| Recipe audit (ranges, promises and corners on many seeds) | S-227 |
+| Corner recipes and cost numbers (the speed of the worst recipe) | S-228 |
 | Playtest replay | S-124 |
 
 ## Wishes

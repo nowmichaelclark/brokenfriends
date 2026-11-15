@@ -106,3 +106,6 @@ sorts them.
 - Rivers: a recorder line with the flow at the bear (`water.flow`), so S-163 and the playtest show the current that the bear feels.
 - Rivers: "rust orange" more often below ash rock (`demo-2.md`, "Look kinds"); now the look of a river does not read the ground.
 - Rivers: a test that counts the dry samples next to a river that are lower than its level (water that hangs over a low bank).
+- Recipe: a seeded zone size needs the distances in metres of a 2 km zone (`erosion_length_m`, `hard_at_m`, `min_front_m`) as parts of the zone size (`recipe.md`, risk 9).
+- Recipe: a deck (not independent rolls) that gives the hero dials to the zones of one world, so that zones next to each other are different (`recipe.md`, research).
+- Recipe: the bear from a recipe (other friends), with the same `Draw` and `Knob` types (`bear.md`).

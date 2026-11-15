@@ -35,6 +35,8 @@ yet. This is the long-term direction, not a plan or a roadmap item.
 Thus, when a session makes a system, it keeps the values that a seed
 could choose as data (ranges and weights), not as fixed constants in
 the code. Do not build this generality before a row asks for it.
+`recipe.md` (S-210) is the spec for this: dials, knobs, limits, the
+speed budget and the audit.
 
 ## Things Mikey wants later
 

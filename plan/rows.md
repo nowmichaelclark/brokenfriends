@@ -235,21 +235,6 @@ Where: Claude Code (local or cloud). Model: Sonnet 5.5, medium.
 
 Where: Claude Code (local or cloud). Model: Sonnet 5.5, medium.
 
-## S-210
-
-**Brain (the last Fable 5.2 session, by 2026-11-16): the foundation for "procedural almost everything"** (`vision.md`). This is the design that all later systems follow, so the strongest model does it once. Read the code this time (`rust/`), not only the plans.
-
-1. Read how each system gets its values today: terrain, water, rivers, falls, caves, obstacles, scatter, smog, the bear. List which values are seeded ranges and weights, which are `#[export]` tuning values, and which are constants in the code.
-2. Use one subagent for a short research summary: how other games keep procedural results good (weights, constraints, budgets, a director). The wiki article can come later (S-209).
-3. Write the spec `plan/recipe.md`: how a seed makes the "recipe" of a zone (looks, sizes, timings); how weights and limits keep the parts good together; how a system declares its ranges as data; how Mikey's tuning (R10) and the seeded ranges live together; how the speed budget (R5) limits a recipe; how the world audit (S-214) checks a recipe on many seeds; what stays fixed.
-4. Give two or three options with a recommendation where the choice is Mikey's (taste, scope). Write decisions only after he agrees.
-5. Name the risks in the present code for this direction, the worst first, each with the file and a row.
-6. Write the rows that move the systems to the spec, one system for each row, small enough for Sonnet 5.5, with the order. Do not change game code in this session.
-
-Done when a Sonnet 5.5 worker can do the first row from `recipe.md` and its row text only.
-
-Where: Claude Code (local). Model: Fable 5.2, medium. After 2026-11-16: Opus 5.5, high.
-
 ## S-211
 
 **Bird's-eye: the first look from above.** Sort `inbox.md` (delete what is built, group the rest by system, mark what fits `vision.md`). Give Mikey the list "Proposed, Mikey must decide" of `decisions.md` and the "Assumed" list of `game/README.md` as short taste questions; technical points that are in use for weeks become decisions if he agrees. Check the order of all agendas against demo 2 and the proc-gen direction. Write `STATE.md` again.
@@ -293,3 +278,81 @@ Where: Claude Code (local). Model: Sonnet 5.5, high.
 **Fix tool: the look review** (`diagnostics.md`, "Finding bugs"). 1) `plan/looks.md`: for each kind of view, what must be true and a list of known faults (square edges, gaps, floating things, wrong fog, holes, z-fighting, popping). 2) A reference set: the pictures that Mikey approved, as `look-reference.zip` on the `game-latest` release (not in the repo). `tools/look-review.sh` compares a new look tour with it and lists the views that changed. 3) The review step: one subagent for each kind of view reads the pictures against `looks.md` and writes the faults with the picture name. Test it: the review must name Mikey's three bugs of S-212 without his words. Write the result, with what it missed, in `diagnostics.md`.
 
 Where: Claude Code (local). Model: Opus 5.5, medium.
+
+## S-217
+
+**Fix tool: the zone fingerprint** (`recipe.md`, risk 1). A function in `bf-worldgen` (no Godot) gives one 64-bit number for a zone: a hash of the bits of the heights, the riverbed and lakebed maps, each water body (kind, level, look, area), the falls, the cave graph (nodes, edges, mouths), the obstacles (after `place_obstacles`), and the scatter instances of the 4 chunks at the start point for each class. Use the settings of the game: size 2048, spacing 1.0, all `Default` params, caves on. Add a test with the stored numbers of seeds 1, 7 and 42, and print each part's number when the test fails, so a session sees which system changed. Add `--fingerprint` to the preview example. A session that changes a plain zone on purpose stores the new numbers and says so in its commit. Add the tool to `tools/README.md`. Done when the test passes on Linux in `tools/check.sh` and in the GitHub build; write in the summary if the Windows build runs it too.
+
+Where: Claude Code (local or cloud). Model: Sonnet 5.5, medium.
+
+## S-218
+
+**Build: the recipe core** (`recipe.md`, "The parts"). Make `rust/worldgen/src/recipe.rs` with `RECIPE_VERSION`, `zone_seed`, `Draw` (our own FNV-1a, `unit`, `signed`, `pick`), `Dial`, `Dials`, `DIAL_TABLE`, `Knob`, `value`, the weight-with-bias helper, `Mode`, `Base`, `ZoneRecipe` with `plain`, `seeded` and `describe`. Add `LookParams` (empty for now). In each system file add `pub const KNOBS: &[Knob] = &[]`, `pub fn seeded(base, dials, draw)` that gives `base` back, and `pub fn fix(&mut params)` that does nothing. Tests: the same name gives the same number; two names give different numbers; `value` with dials 0 and no wobble gives `base` exactly; `value` stays in `lo` to `hi` for 10,000 draws; over 10,000 seeds the hero counts are near the weights; `plain` gives the base structs. Do not change how a zone is made: the fingerprint of S-217 must pass.
+
+Where: Claude Code (local or cloud). Model: Sonnet 5.5, high.
+
+## S-219
+
+**Build: the game uses one recipe** (`recipe.md`, risk 3). `BfTerrain::regenerate` makes one `ZoneRecipe` from its exports (the `Base`) and gives it to `generate`, the caves, the obstacles, and through a `#[func]` to `BfScatter` and `BfSmokeEdge`. No node calls `XParams::default()` for a zone. `BfSmokeEdge` keeps its exports, but they go into the `Base` of the terrain, so the caves and the smoke edge read the same `SmokeParams`. Add `--bf-recipe=plain|seeded` (default `plain`) and one dev menu line. Show `describe()` in the dev menu, in `session.json` and at the top of `report.md`, with `RECIPE_VERSION`. Done when the fingerprint passes, the game loads headless, and a test shows that a changed smoke front moves the cave margin.
+
+Where: Claude Code (local). Model: Sonnet 5.5, high.
+
+## S-220
+
+**Build: the water recipe** (`recipe.md`, "What each system row does"). System: `worldgen/water.rs`, `rivers.rs`, `waterfalls.rs`. Dial: `wet`; `strange` for the looks. Move the look weights of `pick_look`, `RIVER_LOOK_WEIGHTS` and the look tables (colour, clarity, density, viscosity) into data in `WaterParams`. Knobs, as a start: `lake_part_min`, `full_lake_chance`, `pond_part`, `wet_min_area_m2`, `river_part_min`, `river_part_max`, `flow_max_mps`. The bias of the look weights for `strange`: more milky, rust, mud and tar. Keep `bank_margin_m`, `min_depth_m` and the fall limits fixed.
+
+Where: Claude Code (local or cloud). Model: Sonnet 5.5, medium.
+
+## S-221
+
+**Build: the terrain recipe** (`recipe.md`, "What each system row does"). System: `worldgen/highlands.rs`. Dial: `rugged`; `strange` for the ground colours. Knobs, as a start: `relief_m`, `ridge_wavelength_m`, `ridge_sharpness`, `valley_at`, `warp_amount_m`, `massif_amount`, `erosion.strength`, `floor_height_m`. Move the 6 ground colours (`highlands.rs:661`) into `LookParams` as one palette; add two more palettes with weights and a bias for `strange`. Keep the spacing, the size, `max_bend_m` and the drainage step fixed. Check with the start point and the cave tests that a zone at each end still has a start point and a hillside for a mouth.
+
+Where: Claude Code (local or cloud). Model: Sonnet 5.5, high.
+
+## S-222
+
+**Build: the cave recipe** (`recipe.md`, "What each system row does"). System: `worldgen/caves/`. Dial: `hollow`; `strange` for the wall noise. Move the ranges that are numbers in `build.rs` (lines 462 to 593 and 760 to 763) into `CaveParams`. Do not add a draw to the old counter `Rng`: a new seeded value uses `Draw` by name. Knobs, as a start: `systems_min`, `systems_max`, `depth_max_m`, `chamber_width_max_m`, `chamber_height_max_m`, `branch_max`, `loop_chance`, `sinkhole_chance`, `chamber_noise_part`, `tunnel_noise_part`, `bend_m`. Keep `roof_min_m`, `walk_slope`, `edge_margin_m`, `start_clear_m` and the grid fixed. Both ends must pass the tests of `caves/tests.rs`.
+
+Where: Claude Code (local or cloud). Model: Sonnet 5.5, high.
+
+## S-223
+
+**Build: the obstacle recipe** (`recipe.md`, "What each system row does", risk 10). System: `worldgen/obstacles.rs`. Dial: `danger`. Move the period and size formulas (lines 793 to 830) into data in `ObstacleParams`. Make `max_count` a weight table with a seeded mix: each zone has two or three main types (`Draw::pick`), and the other types are rare. Knobs: `density`, `hard_at_m`, `near_density`. Keep the tells of `game/obstacles.rs`, `clear_start_m`, `first_within_m` and the gaps fixed (fairness). The first obstacle of each main type near the start stays easy.
+
+Where: Claude Code (local or cloud). Model: Sonnet 5.5, medium.
+
+## S-224
+
+**Build: the scatter recipe and seeded prop shapes** (`recipe.md`, "What each system row does", risk 6). System: `worldgen/scatter.rs`, `props.rs`, `game/scatter.rs`. Dial: `cover`; `strange` for the shapes. Knobs: the `chance` and `size_max_m` of each class. `rock_mesh`, `pebble_mesh` and `shrub_mesh` take shape values from the recipe (bump, squash, cut, crown size), so each zone has its own rocks and shrubs. The number of variants and the triangles of each mesh stay the same, so the cost does not change. `BfScatter` makes its meshes again when the zone changes.
+
+Where: Claude Code (local). Model: Sonnet 5.5, medium.
+
+## S-225
+
+**Build: the recipe for smog, sky and the smoke edge** (`recipe.md`, "What each system row does", risk 6). System: `game/atmosphere.rs`, `worldgen/smoke.rs`, `game/smoke_edge.rs`, the cave rock colour of `game/caves.rs`. Dial: `smog`; `strange` for the colours. Fill `LookParams`: fog colour and density, smog height, sky colours, sun colour, sun elevation, smoke colour, cave rock colour. `BfAtmosphere` sets these one time when the zone changes, not each frame. Knobs of the smoke edge: `swing_fraction`, `height_max_m`, the lobe list. The thin end of the fog density is fixed by speed: use the value of today as `lo` until S-228 gives a number. The front speed stays below the walk speed.
+
+Where: Claude Code (local). Model: Sonnet 5.5, medium.
+
+## S-226
+
+**Build: traits and promises** (`recipe.md`, "Traits" and "Limits"). Add the trait table, the promise check after the zone is made, the tries (`attempt`, 3 at most), the fallback with no trait, and the log line for each failed promise. The first trait is "the great lake": it needs `wet` above 0.3, it sets the water knobs, and its promise is one lake of 40,000 m² or more. Show the trait in `describe()`. The audit (S-227) must show that fewer than 10% of 50 seeds need a second try. If not, change the trait so that it builds its lake on purpose.
+
+Where: Claude Code (local). Model: Opus 5.5, high.
+
+## S-227
+
+**Fix tool: the audit checks recipes** (`recipe.md`, "How the world audit checks a recipe"). Add to the world audit of S-214: level 1 (10,000 recipes: ranges, `fix` rules, hero counts, a table for each dial), level 2 (the seeded zones of seeds 1, 7 and 42 in `cargo test` and of 50 seeds each night: shape rules, promises, time to make the zone), level 3 (corners: each knob at `lo` and at `hi`, a part of the list each night). Write the "Recipes" section of `audit.md`. Done when the audit runs with the empty knob tables of S-218 and fails in a test that gives it a knob with a range that breaks a rule.
+
+Where: Claude Code (local or cloud). Model: Sonnet 5.5, high.
+
+## S-228
+
+**Speed: cost numbers and the corner test** (`recipe.md`, "The speed budget"). Add `--bf-recipe=corner:<system>`. For each system that has knobs, run the Benchmark and its tour with the corner recipe on the Intel GPU, one process for each. Add the cost numbers to the audit (water triangles in view, fall area, props in one chunk ring, chamber triangles, transparent layers) and set each limit from the measured views. If a corner is over its target, make the range smaller and write the reason in the knob table. Write the numbers in `play-notes.md`.
+
+Where: Claude Code (local, Mikey's laptop). Model: Sonnet 5.5, medium.
+
+## S-229
+
+**Mikey plays: seeded zones.** Mikey turns on "Recipe: seeded" in the dev menu and goes through five seeds (F4), about two minutes each. He says which zones feel different, which feel wrong, and which hero he likes. He also looks at the contact sheet of 12 zones. Then he answers the four questions of `recipe.md`. A Brain session writes his answers in `decisions.md` and changes the tables.
+
+Where: Mikey's laptop.

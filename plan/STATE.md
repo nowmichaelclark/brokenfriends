@@ -1,6 +1,6 @@
 # State
 
-Updated: 2026-11-15 (S-138 done: S-136, the desktop causes the freezes; S-129, thorn snags, rock teeth and falling rocks)
+Updated: 2026-11-15 (S-140 closed: KWin stalls not reproduced; reopen if the freezes return)
 
 Write this file again each time. Do not add to the end (90 lines at most).
 
@@ -45,7 +45,6 @@ Next number: S-139.
 | S-134 | **Build: fix what the first nightly autoplay finds** (`diagnostics.md`, "Autoplay"). Read `autoplay-nightly.md` on the `game-latest` release and the "Autoplay" notes of the game builds. Fix the bugs that it shows (falls through the ground, errors, many stuck or climb loop events at one place). If a task of the tour is often "missed" on a seed, make the bot better (`playtest/autoplay.rs`). Also look at the small put-back (0.26 m) on seed 7 at the stepping stones near (-256, 201): the collision and the heightmap do not agree there. | Claude Code | Sonnet 5.5, medium | waiting on the first nightly run (after the push of S-133) |
 | S-135 | **Build: tune the tumble and the seams from the playtest** (R11, R12). Read Mikey's notes and "Tumbles and limbs" in `report.md` (causes, speeds, time on the ground, torn seams, lost and sewn limbs), and `seam_min` in `samples.jsonl`. Change the defaults on `Bear` (`tumble_*`, `seam_*`, `thread_wear_per_m`, `sew_*`) and keep `TumbleParams::default()` and `TearParams::default()` the same. Look at the marks for a ragdoll that shakes, goes through the ground or stands up wrong. | Claude Code | Sonnet 5.5, medium | **ready** |
 | S-139 | **Build: find why the Intel GPU gives 12 fps** (`research/freezes.md`). On the playtest laptop, `BrokenFriends.x86_64 --gpu-index 0` uses the Intel UHD Graphics (the class of the speed target, R5): GPU time 80 ms each frame at 1080p. Run the Benchmark and the Draw distance test on that GPU (`-- --bf-test=...`), find the expensive part (shadows, smog, smoke cards, Terrain3D, the bear, primitives) by turning parts off, and cut it to reach 60 fps. Do this row before the tuning rows. | Claude Code on Mikey's laptop | Opus 5.5, high | **ready** |
-| S-140 | **Setup: stop the desktop stalls on the playtest laptop** (`research/freezes.md`). KWin stops for about 940 ms in one kernel call every few minutes, also without the game. Mikey runs `sudo python3 tools/.cache/kwin-stall-trace.py tools/.cache/kwin-stalls.txt` (8 minutes, it only reads). The session reads the kernel stack in that file, names the cause, and gives Mikey the commands for the fix. Keep the NVIDIA GPU in use (Mikey, 2026-11-15). This is not game work: change nothing in `rust/` or `game/`. | Claude Code on Mikey's laptop | Sonnet 5.5, medium | waiting on Mikey's run of the trace |
 
 ## Combined runs
 

@@ -56,9 +56,12 @@ its default vsync.
 
 ## What is not known yet
 
-- Which kernel call KWin makes. A user without root cannot read the
-  kernel stack of KWin. `tools/.cache/kwin-stall-trace.py` (not in
-  git) reads it with `sudo`.
+- Which kernel call KWin makes. S-140 ran `tools/.cache/kwin-stall-trace.py`
+  (not in git) several times on 2026-11-15. Each run of 8 minutes
+  caught 0 stalls. The last KWin "main thread was hanging" line in the
+  log is from 2026-11-14 23:11. The stalls are not reproduced. S-138
+  did not fix them: it changed only the game. If the freezes return,
+  run the trace while the game plays, then read the kernel stack.
 - Suspects [unverified]: a probe of the monitor ports of the NVIDIA
   GPU, memory compaction (the laptop has 7.6 GB RAM and uses swap;
   the kernel log has NVIDIA "Out of memory" lines), or the game

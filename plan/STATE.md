@@ -1,14 +1,11 @@
 # State
-Updated: 2026-11-15 (S-210: `recipe.md`, the foundation for "procedural almost everything"; rows S-217 to S-229). Write this file again each time. Do not add to the end (90 lines at most). One line for each row. The full text of each row is in `rows.md`. `tools/check-plan.py` checks both files.
-
+Updated: 2026-11-18 (Brain: rows S-230 to S-232, one workflow with Ballad Falls, the app that Driftloom becomes at 1.0). Write this file again each time. Do not add to the end (90 lines at most). One line for each row. The full text of each row is in `rows.md`. `tools/check-plan.py` checks both files.
 ## Phase
-**Demo 1** (`demo-1.md`) is built: walk, jump, climb, obstacles, tumble, seams and the smoke edge in one biome. It waits for Mikey's feel notes (S-137).
-**Demo 2** (`demo-2.md`, R24, R25) is in work: lakes, rivers, waterfalls, walkable caves and the cave light are on `main` (build 2e2d5f8). Swimming (S-163) is the last row before Mikey's first look (S-167). **Speed** (Intel GPU): the Benchmark needs about 12.5 ms; lake and cave views need 15 to 18 ms before water; the numbers are in `play-notes.md`. **Recipe** (`recipe.md`, S-210): a seed will choose the character of a zone (dials, knobs, limits). Mikey has four questions to answer in it. The base rows are S-217 to S-219.
-
+**Demo 1** (`demo-1.md`) is built: walk, jump, climb, obstacles, tumble, seams and the smoke edge in one biome. It waits for Mikey's feel notes (S-137). **Demo 2** (`demo-2.md`, R24, R25) is in work: lakes, rivers, waterfalls, walkable caves and the cave light are on `main` (build 2e2d5f8). Swimming (S-163) is the last row before Mikey's first look (S-167). **Speed** (Intel GPU): the Benchmark needs about 12.5 ms; lake and cave views need 15 to 18 ms before water; the numbers are in `play-notes.md`. **Recipe** (`recipe.md`, S-210): a seed will choose the character of a zone (dials, knobs, limits). Mikey has four questions to answer in it. The base rows are S-217 to S-219.
 ## Cycle (`sessions/lead.md`, R27, R28)
 Builder → Speed → Fix → Hygiene → Mikey plays → Feel → Bird's-eye. One lead at a time. Research runs while the cycle waits. A Fix lead can run at any time.
 - **Next lead: Fix**, for the bug tools S-213 to S-216 (`diagnostics.md`, "Finding bugs") and S-217. Then Builder. Wave: S-163, and beside it S-187 and S-186, one after the other; S-218 and S-219 can run beside them.
-- **Play gate: open** (1 play row is ready). It closes when S-163 is on `main` (S-167 becomes ready). Then the Builder does only rows with "–" or a ready play row in the "Play" column. Next number: S-230. A worker numbers its new rows from the range in its brief.
+- **Play gate: open** (1 play row is ready). It closes when S-163 is on `main` (S-167 becomes ready). Then the Builder does only rows with "–" or a ready play row in the "Play" column. Next number: S-233. A worker numbers its new rows from the range in its brief.
 
 ## Mikey plays (`sessions/play.md`). Do all ready rows in one sitting.
 | # | Row | Status |
@@ -88,3 +85,6 @@ Builder → Speed → Fix → Hygiene → Mikey plays → Feel → Bird's-eye. O
 | S-208 | The weak spots of the first demo 2 wave become rows | Sonnet 5.5, medium | **ready** |
 | S-209 | Research: move `plan/research/` (15 notes) to the wiki | Sonnet 5.5, medium | **ready** |
 | S-211 | Bird's-eye: sort the inbox and the open lists; check the direction and the cycle | Opus 5.5, high | after the first Feel lead |
+| S-230 | One way Claude talks to Mikey: the fact rule, Weak spots without a count, keep the workflow light | Sonnet 5.5, medium | **ready** |
+| S-231 | Tool: the workflow cost (docs-only commits, words read before work) | Sonnet 5.5, low | **ready** |
+| S-232 | Research: sort the Broken Friends topics of the wiki's wanted list | Sonnet 5.5, medium | **ready** |

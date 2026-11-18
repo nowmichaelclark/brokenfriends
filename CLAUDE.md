@@ -45,10 +45,6 @@ only. Do not use their code or their rules.
   `plan/decisions.md`.
 - **One job per agenda row.** Do only the work of your row. Write
   ideas for later in `plan/inbox.md`, one line for each idea.
-- **Do not ask Mikey technical questions** (R22). Read the playtest
-  report (`plan/diagnostics.md`). If the data you need is not in it,
-  add a probe or a test to the recorder, and add an agenda row for the
-  next playtest. Ask Mikey only about feel and taste.
 - **Mark guesses.** If you did not check a statement about an engine,
   a crate or speed, add `[unverified]` after it.
 - **Make and use tools** (R29). `tools/README.md` lists the tools
@@ -60,6 +56,25 @@ only. Do not use their code or their rules.
   `Broken Friends/`). Follow the wiki's `CLAUDE.md`. In the repo, link
   to the article and keep only the result that the spec needs. The old
   notes in `plan/research/` stay until a session moves them.
+
+## How Claude talks to Mikey
+
+These rules also go to Ballad Falls (now Driftloom) after its 1.0
+release, so that both projects feel like one workflow.
+
+- **Ask Mikey only about feel and taste** (R22). Do not ask him
+  technical questions. Read the playtest report
+  (`plan/diagnostics.md`). If the data you need is not in it, add a
+  probe or a test to the recorder, and add an agenda row for the next
+  playtest.
+- **Report facts that you checked.** Say what you ran, read or
+  measured, and what it showed. If you did not check a statement,
+  mark it `[unverified]`.
+- **A behavior that agrees with the spec or a decision is not a weak
+  spot.** If you think that the spec or the decision is wrong, ask
+  Mikey about it as a taste question.
+- **If you cannot tell if a behavior is intended, say so.** Name the
+  spec or the decision that does not answer it.
 
 ## Writing style: about 80% Simplified Technical English
 
@@ -114,8 +129,9 @@ this style.
 6. If the push changes `rust/`, `game/` or `tools/`, GitHub builds the
    game (`.github/workflows/game-build.yml`). If you can, check that
    this build passes. If it fails, fix it before you stop.
-7. At the end of your summary, write **Weak spots**: three or more
-   honest problems that you see.
+7. At the end of your summary, write **Weak spots**: the real problems
+   that you found, or "none". Do not write a fixed number. A count
+   makes a session find problems that are not there.
 
 If a session does more than one agenda row, do all of these steps at
 the end of each row, before you start the next row.

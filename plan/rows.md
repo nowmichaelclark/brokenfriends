@@ -357,16 +357,6 @@ Where: Claude Code (local, Mikey's laptop). Model: Sonnet 5.5, medium.
 
 Where: Mikey's laptop.
 
-## S-230
-
-**Hygiene: one way Claude talks to Mikey.** Mikey agreed to this on 2026-11-18 (project thread "Plan shared workflow for both projects"). The same rules go to Ballad Falls (now Driftloom) after its 1.0, so both projects feel like one workflow. Do these three edits:
-
-1. In `CLAUDE.md`, add a short section "How Claude talks to Mikey". Put R22 in it (ask Mikey only about feel and taste). Add the fact rule: report what you checked, as facts. If a behavior agrees with the spec or a decision, it is not a weak spot. If you cannot tell if a behavior is intended, say so.
-2. In `CLAUDE.md`, "End of every agenda row", step 7, and in `plan/sessions/brain.md`: change "three or more honest problems" to "the real problems that you found, or none". A count makes a session find problems that are not there.
-3. In `plan/sessions/lead.md`, add "Keep the workflow light": the three things that slow Driftloom. (a) A status file with no cap: Driftloom's queue is 9,000 words. Keep the 90-line cap of `STATE.md`. (b) One value that every change edits in a shared file: Driftloom's version number causes merge commits and a long CI run. (c) One feature cut into many items, each with its own handoff.
-
-Where: Claude Code (local or cloud). Model: Sonnet 5.5, medium.
-
 ## S-231
 
 **Tool: the workflow cost** (R29). Make `tools/workflow-cost.py` (no packages). It reports, for each week: the share of commits that change only docs, the words that a lead reads before work (`CLAUDE.md`, `HANDOFF.md`, `STATE.md`, `decisions.md`, `tech.md` and the longest brief), and the size of `STATE.md` and `rows.md`. Add it to `tools/README.md`. The Bird's-eye lead runs it. If a number climbs two weeks in a row, it adds a Hygiene row. The numbers on 2026-11-18: 69 of 136 commits change only docs (50%), about 8,300 words before work, `STATE.md` 90 of 90 lines, `rows.md` 5,333 words.

@@ -356,9 +356,3 @@ Where: Claude Code (local, Mikey's laptop). Model: Sonnet 5.5, medium.
 **Mikey plays: seeded zones.** Mikey turns on "Recipe: seeded" in the dev menu and goes through five seeds (F4), about two minutes each. He says which zones feel different, which feel wrong, and which hero he likes. He also looks at the contact sheet of 12 zones. Then he answers the four questions of `recipe.md`. A Brain session writes his answers in `decisions.md` and changes the tables.
 
 Where: Mikey's laptop.
-
-## S-232
-
-**Research: sort the Broken Friends topics of the wanted list** (R26). The wiki's `Background/Wanted articles.md` has 53 B topics, and none has an article. The game changed direction since the list was made (the 3D restart, demo 2, `recipe.md`). Compare each B topic with `vision.md`, the specs and `recipe.md`. Mark it keep, rewrite or drop. Rewrite the kept topics for the game of today, and delete the topics that the wiki does not need. Do not change the D topics: the Driftloom part of the wiki becomes a Ballad Falls folder at the rename. Follow the wiki's `CLAUDE.md` and run `python3 _tools/check.py` there before you push.
-
-Where: Claude Code (local or cloud). Model: Sonnet 5.5, medium.

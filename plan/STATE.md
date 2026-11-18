@@ -1,5 +1,5 @@
 # State
-Updated: 2026-11-18 (Hygiene: S-230 and S-231 are done; `CLAUDE.md` has "How Claude talks to Mikey", and `tools/workflow-cost.py` is new). Write this file again each time. Do not add to the end (90 lines at most). One line for each row. The full text of each row is in `rows.md`. `tools/check-plan.py` checks both files.
+Updated: 2026-11-18 (Hygiene: S-230 and S-231 are done; `CLAUDE.md` has "How Claude talks to Mikey", and `tools/workflow-cost.py` is new. Research: S-232 is done; the wiki's wanted list has 32 B topics for the 3D game). Write this file again each time. Do not add to the end (90 lines at most). One line for each row. The full text of each row is in `rows.md`. `tools/check-plan.py` checks both files.
 ## Phase
 **Demo 1** (`demo-1.md`) is built: walk, jump, climb, obstacles, tumble, seams and the smoke edge in one biome. It waits for Mikey's feel notes (S-137). **Demo 2** (`demo-2.md`, R24, R25) is in work: lakes, rivers, waterfalls, walkable caves and the cave light are on `main` (build 2e2d5f8). Swimming (S-163) is the last row before Mikey's first look (S-167). **Speed** (Intel GPU): the Benchmark needs about 12.5 ms; lake and cave views need 15 to 18 ms before water; the numbers are in `play-notes.md`. **Recipe** (`recipe.md`, S-210): a seed will choose the character of a zone (dials, knobs, limits). Mikey has four questions to answer in it. The base rows are S-217 to S-219.
 ## Cycle (`sessions/lead.md`, R27, R28)
@@ -85,4 +85,3 @@ Builder → Speed → Fix → Hygiene → Mikey plays → Feel → Bird's-eye. O
 | S-208 | The weak spots of the first demo 2 wave become rows | Sonnet 5.5, medium | **ready** |
 | S-209 | Research: move `plan/research/` (15 notes) to the wiki | Sonnet 5.5, medium | **ready** |
 | S-211 | Bird's-eye: sort the inbox and the open lists; check the direction and the cycle | Opus 5.5, high | after the first Feel lead |
-| S-232 | Research: sort the Broken Friends topics of the wiki's wanted list | Sonnet 5.5, medium | **ready** |

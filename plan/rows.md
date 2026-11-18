@@ -357,12 +357,6 @@ Where: Claude Code (local, Mikey's laptop). Model: Sonnet 5.5, medium.
 
 Where: Mikey's laptop.
 
-## S-231
-
-**Tool: the workflow cost** (R29). Make `tools/workflow-cost.py` (no packages). It reports, for each week: the share of commits that change only docs, the words that a lead reads before work (`CLAUDE.md`, `HANDOFF.md`, `STATE.md`, `decisions.md`, `tech.md` and the longest brief), and the size of `STATE.md` and `rows.md`. Add it to `tools/README.md`. The Bird's-eye lead runs it. If a number climbs two weeks in a row, it adds a Hygiene row. The numbers on 2026-11-18: 69 of 136 commits change only docs (50%), about 8,300 words before work, `STATE.md` 90 of 90 lines, `rows.md` 5,333 words.
-
-Where: Claude Code (local or cloud). Model: Sonnet 5.5, low.
-
 ## S-232
 
 **Research: sort the Broken Friends topics of the wanted list** (R26). The wiki's `Background/Wanted articles.md` has 53 B topics, and none has an article. The game changed direction since the list was made (the 3D restart, demo 2, `recipe.md`). Compare each B topic with `vision.md`, the specs and `recipe.md`. Mark it keep, rewrite or drop. Rewrite the kept topics for the game of today, and delete the topics that the wiki does not need. Do not change the D topics: the Driftloom part of the wiki becomes a Ballad Falls folder at the rename. Follow the wiki's `CLAUDE.md` and run `python3 _tools/check.py` there before you push.

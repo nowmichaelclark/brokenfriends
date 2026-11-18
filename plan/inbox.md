@@ -109,3 +109,4 @@ sorts them.
 - Recipe: a seeded zone size needs the distances in metres of a 2 km zone (`erosion_length_m`, `hard_at_m`, `min_front_m`) as parts of the zone size (`recipe.md`, risk 9).
 - Recipe: a deck (not independent rolls) that gives the hero dials to the zones of one world, so that zones next to each other are different (`recipe.md`, research).
 - Recipe: the bear from a recipe (other friends), with the same `Draw` and `Knob` types (`bear.md`).
+- Wiki: when a row plans the mobile port, the sound or the 2D friends, add new B topics for it to `Background/Wanted articles.md` (S-232 dropped the old ones).

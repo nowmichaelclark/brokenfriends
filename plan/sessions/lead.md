@@ -80,6 +80,25 @@ fails if the line is wrong.
   is gone, or if the gate line is wrong. Run it after each change of
   the agenda.
 
+## Keep the workflow light
+
+Driftloom, Mikey's other project, became slow for three reasons. Do
+not let them start here:
+
+- **A status file with no cap.** Driftloom's queue has about 9,000
+  words, and each code session reads it before work. Keep `STATE.md`
+  below 90 lines. Keep the full row texts in `rows.md`, and delete a
+  row when it is done.
+- **One value that every change edits in a shared file.** Each
+  Driftloom app change edits the same version number. Thus two
+  sessions collide, which makes merge commits, and each change starts
+  a long CI run. Do not add a value like this. The build name here is
+  the commit id (`game-build.yml` writes `BUILD.txt`). Keep it so.
+- **One feature cut into many items, each with its own handoff.**
+  Each handoff costs a session that reads the plan again. Make one
+  row for one feature that a worker can finish in one session. Split
+  a row only when each part can be tested or played alone.
+
 ## Workers
 
 - Start one worker for each agenda row with the Agent tool. Give it

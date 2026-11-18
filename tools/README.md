@@ -29,6 +29,7 @@ and makes it better.
 |---|---|---|---|
 | Full check | Check a row before the commit | `tools/check.sh` (`--quick`: no Godot) | About 5 minutes. One seed in the tour. |
 | Plan check | Check `STATE.md` against `rows.md` | `tools/check-plan.py` | Reads only the table format. |
+| Workflow cost | See, for each week, the docs-only commits, the words a lead reads before work, and the size of `STATE.md` and `rows.md` | `tools/workflow-cost.py` (`--weeks N`, default 8) | Counts commits, not time. A file in `plan/` or `archive/`, or a `.md` file, is a doc. The newest week is not complete. Needs the full history (`git fetch --unshallow` in a shallow clone). |
 | Get build | Get the build that Mikey plays | `tools/get-build.sh` | Needs `gh`. |
 | Preview images | See a zone as maps, with no Godot | `cargo run --release -p bf-worldgen --example preview -- --seed 1` | Maps from above only. Only CI builds it on a clean clone. |
 | Playtest recorder | Read what happened in a play | Always on; the zip is in `playtests/` (`plan/diagnostics.md`) | Checks the bear and the speed, not the picture. Small pictures with the overlay. |

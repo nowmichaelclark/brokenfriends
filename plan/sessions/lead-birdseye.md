@@ -24,6 +24,8 @@ changes the plan.
    Read the "Model check" lines of the handoff commits
    (`git log --grep "Model check"`), and change the model table in
    `lead.md` from them. Propose a change if a step does not work.
+   Run `tools/workflow-cost.py`. If it says that a number climbs two
+   weeks in a row, add a Hygiene row for it.
 7. Write `STATE.md` again: the phase, the cycle, one table for each
    lead, each row with a model and an effort.
 

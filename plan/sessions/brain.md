@@ -25,8 +25,8 @@ newest section of `play-notes.md`, and the spec that the row names.
 - At the end, write the agenda in `STATE.md` again, with the full text
   of each new row in `rows.md`. For each row, give the lead table, the
   model and the effort that you recommend. Run `tools/check-plan.py`.
-- At the end of your reply, write **Weak spots**: three or more honest
-  problems.
+- At the end of your reply, write **Weak spots**: the real problems
+  that you found, or "none" (CLAUDE.md, "How Claude talks to Mikey").
 
 ## Keep the context small
 

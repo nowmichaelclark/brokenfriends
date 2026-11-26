@@ -59,8 +59,8 @@ only. Do not use their code or their rules.
 
 ## How Claude talks to Mikey
 
-These rules also go to Ballad Falls (now Driftloom) after its 1.0
-release, so that both projects feel like one workflow.
+These rules are the same in Ballad Falls (its `AGENTS.md`), so that both
+projects feel like one workflow.
 
 - **Ask Mikey only about feel and taste** (R22). Do not ask him
   technical questions. Read the playtest report
